@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🪳 바퀴벌레 잡기 게임</title>
+
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: #111;
+        font-family: Arial, sans-serif;
+    }
+
+    canvas {
+        display: block;
+        margin: auto;
+        background: #16213e;
+    }
+
+    #info {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        font-size: 20px;
+        z-index: 10;
+    }
+
+    #gameover {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        text-align: center;
+        display: none;
+    }
+
+    #gameover h1 {
+        font-size: 60px;
+        margin: 0;
+    }
+
+    #gameover p {
+        font-size: 24px;
+    }
+
+    button {
+        padding: 10px 20px;
+        font-size: 20px;
+        cursor: pointer;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="info">
+    점수: <span id="score">0</span> |
+    시간: <span id="time">15</span>
+</div>
+
+<div id="gameover">
+    <h1 id="resultText"></h1>
+    <p id="finalScore"></p>
+    <button onclick="restartGame()">다시 시작</button>
+</div>
+
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+
+<script>
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const WIDTH = 800;
+const HEIGHT = 600;
+
+const NUM_COCKROACHES = 10;
+const GAME_TIME = 15;
+
+const BASE_SPEED = 2;
+const MAX_SPEED = 6;
+
+let score = 0;
+let startTime;
+let gameOver = false;
+let speedMultiplier = 1;
+
+const cockroaches = [];
+
+class Cockroach {
+    constructor() {
+        this.reset();
+    }
+
+    reset() {
+        this.x = Math.random() * (WIDTH - 100) + 50;
+        this.y = Math.random() * (HEIGHT - 100) + 50;
+
+        this.angle = Math.random() * Math.PI * 2;
+        this.alive = true;
+        this.size = 20;
+    }
+
+    move() {
+        if (!this.alive) return;
+
+        if (Math.random() < 0.03) {
+            this.angle += (Math.random() - 0.5);
+        }
+
+        const speed = Math.min(BASE_SPEED * speedMultiplier, MAX_SPEED);
+
+        this.x += Math.cos(this.angle) * speed;
+        this.y += Math.sin(this.angle) * speed;
+
+        if (this.x < 30 || this.x > WIDTH - 30) {
+            this.angle = Math.PI - this.angle;
+        }
+
+        if (this.y < 30 || this.y > HEIGHT - 30) {
+            this.angle = -this.angle;
+        }
+    }
+
+    draw() {
+        if (!this.alive) {
+            ctx.fillStyle = "#8b0000";
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 18, 0, Math.PI * 2);
+            ctx.fill();
+            return;
+        }
+
+        ctx.save();
+
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+
+        // 다리
+        ctx.strokeStyle = "#3d2b1f";
+        ctx.lineWidth = 2;
+
+        for (let i = -1; i <= 1; i++) {
+
+            ctx.beginPath();
+            ctx.moveTo(-5, i * 8);
+            ctx.lineTo(-15, i * 12);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(5, i * 8);
+            ctx.lineTo(15, i * 12);
+            ctx.stroke();
+        }
+
+        // 몸통
+        ctx.fillStyle = "#5a3e28";
+
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 20, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 머리
+        ctx.beginPath();
+        ctx.arc(18, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 눈
+        ctx.fillStyle = "red";
+
+        ctx.beginPath();
+        ctx.arc(20, -3, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(20, 3, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    clicked(mx, my) {
+        const dx = this.x - mx;
+        const dy = this.y - my;
+
+        return Math.sqrt(dx * dx + dy * dy) < 25;
+    }
+}
+
+function initGame() {
+
+    cockroaches.length = 0;
+
+    for (let i = 0; i < NUM_COCKROACHES; i++) {
+        cockroaches.push(new Cockroach());
+    }
+
+    score = 0;
+    startTime = Date.now();
+    gameOver = false;
+    speedMultiplier = 1;
+
+    document.getElementById("gameover").style.display = "none";
+}
+
+function drawBackground() {
+
+    ctx.fillStyle = "#16213e";
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    ctx.strokeStyle = "#0f3460";
+
+    for (let x = 0; x < WIDTH; x += 60) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, HEIGHT);
+        ctx.stroke();
+    }
+
+    for (let y = 0; y < HEIGHT; y += 60) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(WIDTH, y);
+        ctx.stroke();
+    }
+}
+
+function update() {
+
+    if (gameOver) return;
+
+    const elapsed = (Date.now() - startTime) / 1000;
+    const remaining = Math.max(0, GAME_TIME - elapsed);
+
+    speedMultiplier = 1 + Math.floor(elapsed / 3) * 0.3;
+
+    drawBackground();
+
+    cockroaches.forEach(r => {
+        r.move();
+        r.draw();
+    });
+
+    document.getElementById("score").innerText = score;
+    document.getElementById("time").innerText = remaining.toFixed(1);
+
+    const aliveCount = cockroaches.filter(r => r.alive).length;
+
+    if (aliveCount === 0) {
+        endGame(true);
+    }
+
+    if (remaining <= 0) {
+        endGame(false);
+    }
+
+    requestAnimationFrame(update);
+}
+
+function endGame(win) {
+
+    gameOver = true;
+
+    const resultText = document.getElementById("resultText");
+
+    if (win) {
+        resultText.innerText = "🎉 성공!";
+        resultText.style.color = "#00ff88";
+    } else {
+        resultText.innerText = "💀 게임 오버!";
+        resultText.style.color = "#ff4444";
+    }
+
+    document.getElementById("finalScore").innerText =
+        `최종 점수: ${score}`;
+
+    document.getElementById("gameover").style.display = "block";
+}
+
+canvas.addEventListener("click", (e) => {
+
+    if (gameOver) return;
+
+    const rect = canvas.getBoundingClientRect();
+
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    cockroaches.forEach(r => {
+
+        if (r.alive && r.clicked(mx, my)) {
+            r.alive = false;
+            score += 10;
+        }
+    });
+});
+
+function restartGame() {
+    initGame();
+    update();
+}
+
+initGame();
+update();
+
+</script>
+
+</body>
+</html>
