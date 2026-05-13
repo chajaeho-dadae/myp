@@ -253,10 +253,13 @@
       const rank = index + 1;
       const viewCount = views[p.id] || 0;
       const badgeClass = rank <= 3 ? `rank-badge rank-${rank}` : 'rank-badge';
+      const rankDisplay = rank <= 6
+        ? `<span class="${badgeClass}">${rank}</span>`
+        : '';
 
       return `
         <tr>
-          <td><span class="${badgeClass}">${rank}</span></td>
+          <td>${rankDisplay}</td>
           <td>${p.name}</td>
           <td>
             <a href="${p.href}" onclick="incrementView('${p.id}', '${p.href}', event)">
