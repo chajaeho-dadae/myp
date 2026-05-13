@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오얏나무 키우기 게임</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #dff5df;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .game-box {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      width: 400px;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    }
+
+    h1 {
+      color: green;
+    }
+
+    .tree {
+      font-size: 80px;
+      margin: 20px 0;
+    }
+
+    .water-bar {
+      width: 100%;
+      height: 25px;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .water-fill {
+      height: 100%;
+      background: deepskyblue;
+      width: 50%;
+    }
+
+    button {
+      padding: 10px 15px;
+      margin: 5px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      color: white;
+      font-weight: bold;
+    }
+
+    .login { background: purple; }
+    .water { background: green; }
+    .harvest { background: orange; }
+    .normal { background: limegreen; }
+    .advanced { background: darkorange; }
+    .premium { background: red; }
+
+    .shop {
+      background: #f2f2f2;
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-box">
+    <h1>오얏나무 키우기 🌳</h1>
+
+    <div class="tree" id="tree">🌱</div>
+
+    <p>성장 단계: <span id="growth">1</span></p>
+    <p>코인: <span id="coins">0</span> 🪙</p>
+    <p>현재 비료: <span id="fertilizer">없음</span></p>
+
+    <div class="water-bar">
+      <div class="water-fill" id="waterFill"></div>
+    </div>
+
+    <p>물 상태: <span id="water">50</span>%</p>
+
+    <button class="login" onclick="loginGame()">로그인 🌟</button>
+    <button class="water" onclick="giveWater()">물 주기 💧</button>
+    <button class="harvest" onclick="harvestFruit()">오얏 수확 🍑</button>
+
+    <div class="shop">
+      <h2>비료 상점 🛒</h2>
+
+      <button class="normal" onclick="buyNormal()">
+        일반 비료 (10코인)
+      </button>
+
+      <button class="advanced" onclick="buyAdvanced()">
+        고급 비료 (15코인)
+      </button>
+
+      <button class="premium" onclick="buyPremium()">
+        최고급 비료 (20코인)
+      </button>
+    </div>
+
+    <p id="message">오얏나무를 키워보세요!</p>
+  </div>
+
+  <script>
+    let water = Number(localStorage.getItem('water')) || 50;
+    let growth = Number(localStorage.getItem('growth')) || 1;
+    let coins = Number(localStorage.getItem('coins')) || 0;
+    let fertilizer = localStorage.getItem('fertilizer') || '없음';
+    let withered = false;
+
+    const lastLogin = Number(localStorage.getItem('lastLogin')) || Date.now();
+
+    if (Date.now() - lastLogin > 30000) {
+      withered = true;
+      document.getElementById('message').innerText = '오랫동안 로그인하지 않아 나무가 시들었어요 😢';
+    }
+
+    function saveGame() {
+      localStorage.setItem('water', water);
+      localStorage.setItem('growth', growth);
+      localStorage.setItem('coins', coins);
+      localStorage.setItem('fertilizer', fertilizer);
+      localStorage.setItem('lastLogin', Date.now());
+    }
+
+    function updateUI() {
+      document.getElementById('growth').innerText = growth;
+      document.getElementById('coins').innerText = coins;
+      document.getElementById('fertilizer').innerText = fertilizer;
+      document.getElementById('water').innerText = water;
+      document.getElementById('waterFill').style.width = water + '%';
+
+      const tree = document.getElementById('tree');
+
+      if (withered) {
+        tree.innerText = '🥀';
+      } else if (growth < 3) {
+        tree.innerText = '🌱';
+      } else if (growth < 6) {
+        tree.innerText = '🌿';
+      } else if (growth < 10) {
+        tree.innerText = '🌳';
+      } else {
+        tree.innerText = '🍑';
+      }
+    }
+
+    function loginGame() {
+      withered = false;
+      water = 50;
+      document.getElementById('message').innerText = '로그인 성공! 🌟';
+      saveGame();
+      updateUI();
+    }
+
+    function giveWater() {
+      if (withered) {
+        document.getElementById('message').innerText = '시든 나무는 로그인으로 살려야 해요!';
+        return;
+      }
+
+      water = Math.min(water + 20, 100);
+
+      let bonus = 0;
+
+      if (fertilizer === '일반') bonus = 1;
+      if (fertilizer === '고급') bonus = 2;
+      if (fertilizer === '최고급') bonus = 3;
+
+      growth += 1 + bonus;
+
+      document.getElementById('message').innerText = '물을 줬어요! 🌧️';
+
+      saveGame();
+      updateUI();
+    }
+
+    function harvestFruit() {
+      if (growth < 5) {
+        document.getElementById('message').innerText = '아직 오얏이 열리지 않았어요!';
+        return;
+      }
+
+      coins += 5;
+
+      document.getElementById('message').innerText = '오얏 수확 성공! 코인 5개 획득 🪙';
+
+      saveGame();
+      updateUI();
+    }
+
+    function buyNormal() {
+      if (coins < 10) {
+        alert('코인이 부족합니다!');
+        return;
+      }
+
+      coins -= 10;
+      fertilizer = '일반';
+
+      saveGame();
+      updateUI();
+    }
+
+    function buyAdvanced() {
+      if (coins < 15) {
+        alert('코인이 부족합니다!');
+        return;
+      }
+
+      coins -= 15;
+      fertilizer = '고급';
+
+      saveGame();
+      updateUI();
+    }
+
+    function buyPremium() {
+      if (coins < 20) {
+        alert('코인이 부족합니다!');
+        return;
+      }
+
+      coins -= 20;
+      fertilizer = '최고급';
+
+      saveGame();
+      updateUI();
+    }
+
+    setInterval(() => {
+      water -= 1;
+
+      if (water <= 0) {
+        water = 0;
+        withered = true;
+        document.getElementById('message').innerText = '물이 부족해서 나무가 시들었어요 😢';
+      }
+
+      saveGame();
+      updateUI();
+    }, 5000);
+
+    updateUI();
+  </script>
+</body>
+</html>
