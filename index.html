@@ -5,52 +5,81 @@
   <title>나만의 프로그램 만들기 모음</title>
 
   <style>
-    body{
+    :root {
+      --bg-page: #1a1a1a;
+      --bg-table: #252525;
+      --bg-header: #111111;
+      --bg-hover: #2e2e2e;
+      --text-primary: #e8e8e8;
+      --text-secondary: #aaaaaa;
+      --border-color: #3a3a3a;
+      --accent: #5AAACC;
+      --rank-gold: #FFD700;
+      --rank-silver: #C0C0C0;
+      --rank-bronze: #CD7F32;
+    }
+
+    body {
       font-family: sans-serif;
-      font-size: 22px;
-      padding:40px; 
-      background:#f4f4f4;
+      font-size: 18px;
+      padding: 40px;
+      background: var(--bg-page);
+      color: var(--text-primary);
     }
 
-    h1{
-      text-align:center;
+    h1 {
+      text-align: center;
+      color: var(--text-primary);
     }
 
-    table{
-      width:100%;
-      border-collapse:collapse;
-      background:white;
+    h3 {
+      text-align: center;
+      color: var(--accent);
     }
 
-    th, td{
-      border:1px solid #ccc;
-      padding:12px;
-      text-align:left;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-table);
     }
 
-    th{
-      background:#333;
-      color:white;
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 12px;
+      text-align: center;
     }
 
-    tr:hover{
-      background:#f0f0f0;
+    td.desc {
+      text-align: left;
     }
 
-    a{
-      color:blue;
-      text-decoration:none;
+    th {
+      background: var(--bg-header);
+      color: #ffffff;
+    }
+
+    tr:hover td {
+      background: var(--bg-hover);
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
     }
 
     .view-count {
       font-weight: bold;
-      color: #333;
+      color: var(--text-primary);
     }
 
     .rank-badge {
       display: inline-block;
-      background: #5AAACC;
-      color: white;
+      background: #3a3a3a;
+      color: var(--text-primary);
       border-radius: 50%;
       width: 28px;
       height: 28px;
@@ -60,16 +89,16 @@
       margin-right: 6px;
     }
 
-    .rank-1 { background: #FFD700; color: #333; }
-    .rank-2 { background: #C0C0C0; color: #333; }
-    .rank-3 { background: #CD7F32; color: white; }
+    .rank-1 { background: var(--rank-gold); color: #333; }
+    .rank-2 { background: var(--rank-silver); color: #333; }
+    .rank-3 { background: var(--rank-bronze); color: white; }
   </style>
 </head>
 
 <body>
 
 <h1>나만의 프로그램 만들기 모음</h1>
-  <font align='center' color = '#5AAACC'><h3>2026학년도 다대중학교 2학년 정보</h3></font>
+<h3>2026학년도 다대중학교 2학년 정보</h3>
 
 <table id="programTable">
   <thead>
@@ -86,7 +115,6 @@
 </table>
 
 <script>
-  // 프로그램 데이터
   const programs = [
     {
       id: "21이OO",
@@ -195,34 +223,28 @@
     }
   ];
 
-  // localStorage에서 조회수 불러오기
   function getViews() {
     const saved = localStorage.getItem('programViews');
     return saved ? JSON.parse(saved) : {};
   }
 
-  // 조회수 저장
   function saveViews(views) {
     localStorage.setItem('programViews', JSON.stringify(views));
   }
 
-  // 링크 클릭 시 조회수 증가
   function incrementView(id, href, event) {
     event.preventDefault();
     const views = getViews();
     views[id] = (views[id] || 0) + 1;
     saveViews(views);
     renderTable();
-    // 새 탭에서 링크 열기
     window.open(href, '_blank');
   }
 
-  // 테이블 렌더링 (조회수 내림차순 정렬)
   function renderTable() {
     const views = getViews();
     const tbody = document.getElementById('tableBody');
 
-    // 조회수 기준 내림차순 정렬
     const sorted = [...programs].sort((a, b) => {
       return (views[b.id] || 0) - (views[a.id] || 0);
     });
@@ -241,14 +263,13 @@
               ${p.title}
             </a>
           </td>
-          <td>${p.desc}</td>
+          <td class="desc">${p.desc}</td>
           <td class="view-count">${viewCount}</td>
         </tr>
       `;
     }).join('');
   }
 
-  // 초기 렌더링
   renderTable();
 </script>
 
