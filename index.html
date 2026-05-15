@@ -1,334 +1,115 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>나만의 프로그램 만들기 모음</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 다대중 정보 프로젝트</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; line-height: 1.6; margin: 20px; background-color: #f8f9fa; }
+        header { text-align: center; margin-bottom: 40px; position: relative; }
+        .admin-btn { position: absolute; top: 0; right: 0; padding: 8px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px; font-size: 0.9em; }
+        
+        h1 { margin-bottom: 5px; color: #333; }
+        h3 { margin-top: 0; color: #666; font-weight: 400; }
 
-  <style>
-    :root {
-      --bg-page: #1a1a1a;
-      --bg-table: #252525;
-      --bg-header: #111111;
-      --bg-hover: #2e2e2e;
-      --text-primary: #e8e8e8;
-      --text-secondary: #aaaaaa;
-      --border-color: #3a3a3a;
-      --accent: #5AAACC;
-      --rank-gold: #FFD700;
-      --rank-silver: #C0C0C0;
-      --rank-bronze: #CD7F32;
-    }
-
-    body {
-      font-family: sans-serif;
-      font-size: 18px;
-      padding: 40px;
-      background: var(--bg-page);
-      color: var(--text-primary);
-    }
-
-    h1 {
-      text-align: center;
-      color: var(--text-primary);
-    }
-
-    h3 {
-      text-align: center;
-      color: var(--accent);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--bg-table);
-    }
-
-    th, td {
-      border: 1px solid var(--border-color);
-      padding: 12px;
-      text-align: center;
-    }
-
-    td.desc, td.algo {
-      text-align: left;
-    }
-
-    th {
-      background: var(--bg-header);
-      color: #ffffff;
-    }
-
-    tr:hover td {
-      background: var(--bg-hover);
-    }
-
-    a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
-
-    .view-count {
-      font-weight: bold;
-      color: var(--text-primary);
-    }
-
-    .rank-badge {
-      display: inline-block;
-      background: #3a3a3a;
-      color: var(--text-primary);
-      border-radius: 50%;
-      width: 28px;
-      height: 28px;
-      text-align: center;
-      line-height: 28px;
-      font-size: 14px;
-      margin-right: 6px;
-    }
-
-    .rank-1 { background: var(--rank-gold); color: #333; }
-    .rank-2 { background: var(--rank-silver); color: #333; }
-    .rank-3 { background: var(--rank-bronze); color: white; }
-  </style>
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        th, td { padding: 15px; border-bottom: 1px solid #eee; text-align: center; }
+        th { background-color: #007bff; color: white; }
+        
+        .medal-1 { background-color: #fff9c4; font-weight: bold; } /* 금 */
+        .medal-2 { background-color: #f5f5f5; font-weight: bold; } /* 은 */
+        .medal-3 { background-color: #efebe9; font-weight: bold; } /* 동 */
+        
+        .medal-icon { font-size: 1.2em; }
+        a { color: #007bff; text-decoration: none; font-weight: 600; }
+        a:hover { text-decoration: underline; }
+    </style>
 </head>
-
 <body>
 
-<h1>나만의 프로그램 만들기 모음</h1>
-<h3>2026학년도 다대중학교 2학년 정보</h3>
+    <header>
+        <a href="admin.html" class="admin-btn">관리자 모드</a>
+        <h1>나만의 프로그램 만들기 모음</h1>
+        <h3>2026학년도 다대중학교 2학년 정보</h3>
+    </header>
 
-<table id="programTable">
-  <thead>
-    <tr>
-      <th>순위</th>
-      <th>이름</th>
-      <th>작품</th>
-      <th>설명</th>
-      <th>알고리즘</th>
-      <th>조회수</th>
-    </tr>
-  </thead>
-  <tbody id="tableBody">
-  </tbody>
-</table>
+    <table id="work-table">
+        <thead>
+            <tr>
+                <th>순위</th>
+                <th>이름</th>
+                <th>작품명</th>
+                <th>설명</th>
+                <th>알고리즘</th>
+                <th>조회수</th>
+            </tr>
+        </thead>
+        <tbody id="table-body">
+            </tbody>
+    </table>
 
-<script>
-  const programs = [
-    {
-      id: "21이OO",
-      name: "이OO",
-      title: "나의 퍼스널컬러 찾기!",
-      href: "students/21 이OO - 나의 퍼스널컬러 찾기!.html",
-      desc: "평소에 퍼스널컬러가 무엇인지 잘몰라서<br>안어울리는 화장, 안어울리는 색깔, 안어울리는 옷 등을 <br>입고 다닌 친구들을 이 프로그램을 통해 자신의 퍼스널 컬러가 무엇인지,<br>어떤옷이 안어울리고 어떤옷이 잘어울리는지 <br>이뻐질수 있게 도움을 주는 프로그램이다.",
-      algo: ""
-    },
-    {
-      id: "최OO",
-      name: "최OO",
-      title: "조선시대 신분",
-      href: "students/26 최OO - 조선시대 신분.html",
-      desc: "조선시대 신분",
-      algo: ""
-    },
-    {
-      id: "27이OO_mbti",
-      name: "이OO",
-      title: "MBTI로 알아보는 좋은 직업",
-      href: "students/27 김OO - MBTI로 알아보는 좋은 직업.html",
-      desc: "자신의 MBTI를 통해 자신에게 잘 어울리는 직업",
-      algo: ""
-    },
-    {
-      id: "21염OO",
-      name: "염OO",
-      title: "농사 게임",
-      href: "students/21 염OO - 농사 게임.html",
-      desc: "농사 게임",
-      algo: ""
-    },
-    {
-      id: "27남OO",
-      name: "남OO",
-      title: "회사원키우기",
-      href: "students/27 남OO - 회사원키우기.html",
-      desc: "게임의 기본컨셉은 신입 사원부터 ceo까지 올라가는 게임<br>업무나 인간 관계, 야근, 자기 개발, 체력 관리, 월급 관리 같은 요소가 핵심.",
-      algo: ""
-    },
-    {
-      id: "21최OO",
-      name: "최OO",
-      title: "배달 시뮬레이션",
-      href: "students/21 최OO - 배달 시뮬레이션.html",
-      desc: "이 게임을 소개하자면 지구 종말 세계에서 돈을 벌기 위해 배달하는 게임이에요.<br>배달을 끝내면 돈을 벌고 스킨을 꾸밀수 있으며 상점 또한 있습니다.<br>근데 배달 중에 이상한 사람이 있으면 조심하세요.",
-      algo: ""
-    },
-    {
-      id: "27박OO",
-      name: "박OO",
-      title: "시험D-1생존게임",
-      href: "students/27 박OO - 시험D-1생존게임.html",
-      desc: "게임은 시간 단위 턴 제로 진행된다.<br>한 턴이 지날 때마다 시간이 감소하며 플레이어는 행동 하나를 선택해야 한다.<br>턴은 총 10번이다.<br>행동 종류에는 공부하기, 잠자기, 휴식하기, 휴대폰 보기, 간식 먹기 등이 있다.",
-      algo: ""
-    },
-    {
-      id: "21고OO",
-      name: "고OO",
-      title: "친구 잡기",
-      href: "students/21 고OO - 친구 잡기.html",
-      desc: "1.게임시작<br>2.친구가 나타남<br>3.친구가 주인공에게 침을뱉어 공격함<br>4.wsad로 조작하며 전찬우의 공격을 피함<br>5.친구의 공격을 맞았는가?",
-      algo: ""
-    },
-    {
-      id: "26이OO",
-      name: "이OO",
-      title: "저녁 메뉴 추천",
-      href: "students/26 이OO - 저녁 메뉴 추천.html",
-      desc: "저녁 메뉴 추천",
-      algo: ""
-    },
-    {
-      id: "21박OO",
-      name: "박OO",
-      title: "오얏나무 키우기",
-      href: "students/21 박OO - 오얏나무 키우기.html",
-      desc: "프로그램 설명",
-      algo: ""
-    },
-    {
-      id: "21조OO",
-      name: "조OO",
-      title: "저녁메뉴추천",
-      href: "students/21 조OO - 저녁메뉴추천.html",
-      desc: "저녁에 항상 뭘 먹을지 모르겠어서 고민하는 시간이 너무 아까워서 이런 프로그램이 있으면 좋겠다고 생각해서 만들게 되었다<br>자기가 먹고싶은 맛을 말하고 그 맛에 포함되는 음식을 추천해주는 프로그램",
-      algo: ""
-    },
-    {
-      id: "21강OO",
-      name: "강OO",
-      title: "바퀴벌레 잡기 게임",
-      href: "students/21 강OO - 바퀴벌레 잡기 게임.html",
-      desc: "집 안에서 바퀴벌레가 나타난다.<br>처음 잡을 땐 느리지만 한 마리 잡을 때 마다 바퀴벌레가 빨라진다.<br>마지막 단계까지 깨면 게임 클리어이다.",
-      algo: ""
-    },
-    {
-      id: "27이OO_roulette",
-      name: "이OO",
-      title: "룰렛 게임",
-      href: "students/27 이OO - 룰렛 게임.html",
-      desc: "돌려라 룰렛 전쟁!",
-      algo: ""
-    },
-    {
-      id: "27유OO",
-      name: "유OO",
-      title: "만약에 시뮬레이터",
-      href: "students/27 유OO - 만약에 시뮬레이터.html",
-      desc: "사용자가 선택을 입력하면, 그 선택의 '다른 가능성'을 재미있게 시뮬레이션해준다<br>예: \"오늘 공부 안 하면?\" → 미래의 내가 보내는 메시지<br>\"고백하면?\" → 성공 / 실패 시나리오 짧은 스토리",
-      algo: ""
-    },
-    {
-      id: "14김OO",
-      name: "김OO",
-      title: "야구게임",
-      href: "students/15 김OO - 야구게임.html",
-      desc: "야구 게임을 했는데 재미가 있어서<br>3d느낌으로 컴투스 프로 야구 v26느낌으로",
-      algo: ""
-    },
+    <script>
+        // Supabase 설정
+        const SUPABASE_URL = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    
-    {
-      id: "24조OO",
-      name: "조OO",
-      title: "축구복싱26",
-      href: "students/24 조OO - 축구복싱26.html",
-      desc: "축구선수끼리 축구가 아니라 복싱을 하여 싸우는 모습을 보고 싶기 때문이다.",
-      algo: ""
-    },
+        async function fetchWorks() {
+            // 조회수(views) 내림차순으로 데이터 가져오기
+            const { data, error } = await supabase
+                .from('students_work') // 테이블명
+                .select('*')
+                .order('views', { ascending: false });
 
-    {
-      id: "24강OO",
-      name: "강OO",
-      title: "자신의 퍼스널 컬러에 맞는 화장품 추천",
-      href: "students/24 강OO - 자신의 퍼스널 컬러에 맞는 화장품 추천.html",
-      desc: "자신의 퍼스널 컬러에 맞는 화장품 추천",
-      algo: ""
-    },
+            if (error) {
+                console.error('Error fetching data:', error);
+                return;
+            }
 
-   {
-      id: "OO",
-      name: "OO",
-      title: "",
-      href: "students/OO - .html",
-      desc: "",
-      algo: ""
-    },
+            renderTable(data);
+        }
 
-  {
-      id: "OO",
-      name: "OO",
-      title: "",
-      href: "students/OO - .html",
-      desc: "",
-      algo: ""
-    }
-  ];
+        function renderTable(data) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
 
-  function getViews() {
-    const saved = localStorage.getItem('programViews');
-    return saved ? JSON.parse(saved) : {};
-  }
+            data.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                let rankDisplay = '';
+                
+                // 순위 및 메달 로직 (1위: 금1, 2~3위: 은2, 4~6위: 동3)
+                if (index === 0) {
+                    rankDisplay = '<span class="medal-icon">🥇</span>';
+                    tr.classList.add('medal-1');
+                } else if (index >= 1 && index <= 2) {
+                    rankDisplay = '<span class="medal-icon">🥈</span>';
+                    tr.classList.add('medal-2');
+                } else if (index >= 3 && index <= 5) {
+                    rankDisplay = '<span class="medal-icon">🥉</span>';
+                    tr.classList.add('medal-3');
+                } else {
+                    rankDisplay = ''; // 나머지 순위 빈칸
+                }
 
-  function saveViews(views) {
-    localStorage.setItem('programViews', JSON.stringify(views));
-  }
+                tr.innerHTML = `
+                    <td>${rankDisplay}</td>
+                    <td>${item.name}</td>
+                    <td><a href="students/${item.file_name}" target="_blank" onclick="updateView('${item.id}')">${item.title}</a></td>
+                    <td>${item.description}</td>
+                    <td>${item.algorithm}</td>
+                    <td>${item.views}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
 
-  function incrementView(id, href, event) {
-    event.preventDefault();
-    const views = getViews();
-    views[id] = (views[id] || 0) + 1;
-    saveViews(views);
-    renderTable();
-    window.open(href, '_blank');
-  }
+        // 조회수 증가 함수
+        async function updateView(id) {
+            const { data } = await supabase.rpc('increment_view', { row_id: id });
+        }
 
-  function renderTable() {
-    const views = getViews();
-    const tbody = document.getElementById('tableBody');
-
-    const sorted = [...programs].sort((a, b) => {
-      return (views[b.id] || 0) - (views[a.id] || 0);
-    });
-
-    tbody.innerHTML = sorted.map((p, index) => {
-      const rank = index + 1;
-      const viewCount = views[p.id] || 0;
-      const badgeClass = rank <= 3 ? `rank-badge rank-${rank}` : 'rank-badge';
-      const rankDisplay = rank <= 6
-        ? `<span class="${badgeClass}">${rank}</span>`
-        : '';
-
-      return `
-        <tr>
-          <td>${rankDisplay}</td>
-          <td>${p.name}</td>
-          <td>
-            <a href="${p.href}" onclick="incrementView('${p.id}', '${p.href}', event)">
-              ${p.title}
-            </a>
-          </td>
-          <td class="desc">${p.desc}</td>
-          <td class="algo">${p.algo}</td>
-          <td class="view-count">${viewCount}</td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  renderTable();
-</script>
-
+        fetchWorks();
+    </script>
 </body>
 </html>
