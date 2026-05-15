@@ -1,63 +1,201 @@
-<!DOCTYPE html>
+import base64
+
+# CSS for the admin page
+admin_css = """
+body { font-family: 'Pretendard', sans-serif; line-height: 1.6; margin: 0; background-color: #f0f2f5; color: #333; }
+.container { max-width: 1000px; margin: 40px auto; padding: 20px; }
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+h1 { margin: 0; color: #007bff; font-size: 1.5rem; }
+.btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; text-decoration: none; display: inline-block; }
+.btn-primary { background: #007bff; color: white; }
+.btn-primary:hover { background: #0056b3; }
+.btn-danger { background: #dc3545; color: white; padding: 4px 8px; font-size: 0.85em; }
+.btn-secondary { background: #6c757d; color: white; }
+
+/* Modal & Form */
+.modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+.modal-content { background: white; margin: 5% auto; padding: 30px; width: 500px; border-radius: 8px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+.form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+.form-actions { text-align: right; margin-top: 20px; }
+
+/* Table */
+table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+th { background: #f8f9fa; font-weight: 600; }
+tr:hover { background: #f1f1f1; }
+
+#login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.login-box { text-align: center; padding: 40px; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+"""
+
+admin_html_content = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>관리자 페이지</title>
+    <title>관리자 페이지 - 다대중 정보</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { background: #121212; color: white; padding: 20px; font-family: sans-serif; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 10px; max-width: 500px; margin: auto; }
-        input { width: 100%; padding: 10px; margin: 10px 0; background: #2d2d2d; border: 1px solid #444; color: white; }
-        button { width: 100%; padding: 10px; background: #375a7f; color: white; border: none; cursor: pointer; }
-    </style>
+    <style>{admin_css}</style>
 </head>
 <body>
-    <div class="card">
-        <h2>학생 등록</h2>
-        <input type="text" id="name" placeholder="이름">
-        <input type="text" id="title" placeholder="작품명">
-        <input type="text" id="desc" placeholder="설명">
-        <input type="text" id="algo" placeholder="알고리즘">
-        <input type="text" id="file" placeholder="파일명 (예: test.html)">
-        <button type="button" onclick="save()">저장 및 목록 추가</button>
-        <p><a href="index.html" style="color: #888;">돌아가기</a></p>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2>관리자 인증</h2>
+            <p>비밀번호를 입력하세요.</p>
+            <input type="password" id="admin-password" style="padding:10px; margin-bottom:10px; width:200px;"><br>
+            <button class="btn btn-primary" onclick="checkPassword()">확인</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>학생 작품 관리 시스템</h1>
+            <div>
+                <a href="index.html" class="btn btn-secondary">메인으로</a>
+                <button class="btn btn-primary" onclick="openModal()">신규 등록</button>
+            </div>
+        </header>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>이름</th>
+                    <th>작품명</th>
+                    <th>파일명</th>
+                    <th>조회수</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody id="admin-table-body">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="work-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">학생 작품 등록</h2>
+            <form id="work-form">
+                <input type="hidden" id="edit-id">
+                <div class="form-group">
+                    <label>이름</label>
+                    <input type="text" id="student-name" required>
+                </div>
+                <div class="form-group">
+                    <label>작품명</label>
+                    <input type="text" id="work-title" required>
+                </div>
+                <div class="form-group">
+                    <label>설명</label>
+                    <textarea id="work-desc" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>알고리즘</label>
+                    <textarea id="work-algo" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>HTML 파일명 (students/ 폴더 내 파일명)</label>
+                    <input type="text" id="file-name" placeholder="example.html" required>
+                    <small style="color: #666;">※ 실제 파일은 GitHub 저장소의 students 폴더에 직접 업로드해야 합니다.</small>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장하기</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://sdhpzypjqmowhrhxvvsj.supabase.co/rest/v1/';
+        const SUPABASE_URL = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
-        
-        let supabase = null;
-        try {
-            supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch(e) { alert("Supabase 설정이 잘못되었습니다."); }
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        async function save() {
-            const name = document.getElementById('name').value;
-            const title = document.getElementById('title').value;
-            const file = document.getElementById('file').value;
+        // 1. 비밀번호 확인 (간이 보안)
+        function checkPassword() {{
+            const pw = document.getElementById('admin-password').value;
+            if (pw === '1234') {{ // 실제 사용할 비밀번호로 변경하세요
+                document.getElementById('login-overlay').style.display = 'none';
+                loadData();
+            }} else {{
+                alert('비밀번호가 틀렸습니다.');
+            }}
+        }}
 
-            if (!name || !title || !file) {
-                alert("이름, 작품명, 파일명은 필수입니다.");
-                return;
-            }
+        // 2. 데이터 불러오기
+        async function loadData() {{
+            const {{ data, error }} = await supabaseClient
+                .from('students_work')
+                .select('*')
+                .order('created_at', {{ ascending: false }});
+            
+            if (error) return console.error(error);
 
-            try {
-                const { error } = await supabase.from('students').insert([{
-                    name, title, 
-                    description: document.getElementById('desc').value,
-                    algorithm: document.getElementById('algo').value,
-                    file_name: file,
-                    views: 0
-                }]);
+            const tbody = document.getElementById('admin-table-body');
+            tbody.innerHTML = '';
+            data.forEach(item => {{
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${{item.name}}</td>
+                        <td>${{item.title}}</td>
+                        <td>${{item.file_name}}</td>
+                        <td>${{item.views}}</td>
+                        <td>
+                            <button class="btn btn-danger" onclick="deleteWork('${{item.id}}')">삭제</button>
+                        </td>
+                    </tr>
+                `;
+            }});
+        }}
 
-                if (error) throw error;
-                alert("저장 성공!");
-                location.reload();
-            } catch (e) {
-                alert("저장 실패: " + e.message);
-            }
-        }
+        // 3. 모달 제어
+        function openModal() {{ document.getElementById('work-modal').style.display = 'block'; }}
+        function closeModal() {{ 
+            document.getElementById('work-modal').style.display = 'none'; 
+            document.getElementById('work-form').reset();
+            document.getElementById('edit-id').value = '';
+        }}
+
+        // 4. 데이터 저장 (등록)
+        document.getElementById('work-form').onsubmit = async (e) => {{
+            e.preventDefault();
+            const payload = {{
+                name: document.getElementById('student-name').value,
+                title: document.getElementById('work-title').value,
+                description: document.getElementById('work-desc').value,
+                algorithm: document.getElementById('work-algo').value,
+                file_name: document.getElementById('file-name').value,
+                views: 0
+            }};
+
+            const {{ error }} = await supabaseClient
+                .from('students_work')
+                .insert([payload]);
+
+            if (error) {{
+                alert('저장 실패: ' + error.message);
+            }} else {{
+                alert('등록되었습니다. GitHub에 해당 HTML 파일을 업로드하는 것을 잊지 마세요!');
+                closeModal();
+                loadData();
+            }}
+        }};
+
+        // 5. 데이터 삭제
+        async function deleteWork(id) {{
+            if (!confirm('정말 삭제하시겠습니까?')) return;
+            const {{ error }} = await supabaseClient
+                .from('students_work')
+                .delete()
+                .eq('id', id);
+            
+            if (error) alert('삭제 실패');
+            else loadData();
+        }}
     </script>
 </body>
-</html>
+</html>"""
+
+with open("admin.html", "w", encoding="utf-8") as f:
+    f.write(admin_html_content)
