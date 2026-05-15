@@ -2,114 +2,110 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2026 다대중 정보 프로젝트</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Pretendard', sans-serif; line-height: 1.6; margin: 20px; background-color: #f8f9fa; }
-        header { text-align: center; margin-bottom: 40px; position: relative; }
-        .admin-btn { position: absolute; top: 0; right: 0; padding: 8px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px; font-size: 0.9em; }
-        
-        h1 { margin-bottom: 5px; color: #333; }
-        h3 { margin-top: 0; color: #666; font-weight: 400; }
-
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        th, td { padding: 15px; border-bottom: 1px solid #eee; text-align: center; }
-        th { background-color: #007bff; color: white; }
-        
-        .medal-1 { background-color: #fff9c4; font-weight: bold; } /* 금 */
-        .medal-2 { background-color: #f5f5f5; font-weight: bold; } /* 은 */
-        .medal-3 { background-color: #efebe9; font-weight: bold; } /* 동 */
-        
-        .medal-icon { font-size: 1.2em; }
-        a { color: #007bff; text-decoration: none; font-weight: 600; }
-        a:hover { text-decoration: underline; }
+        /* 다크모드 스타일 */
+        body { font-family: 'Pretendard', sans-serif; background-color: #121212; color: #e0e0e0; margin: 20px; }
+        header { text-align: center; margin-bottom: 40px; border-bottom: 1px solid #333; padding-bottom: 20px; }
+        .admin-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; background: #333; color: #deff9a; border: 1px solid #deff9a; cursor: pointer; border-radius: 5px; }
+        h1 { color: #deff9a; }
+        table { width: 100%; border-collapse: collapse; background: #1e1e1e; border-radius: 10px; overflow: hidden; }
+        th, td { padding: 15px; border-bottom: 1px solid #333; text-align: center; }
+        th { background-color: #2c2c2c; color: #deff9a; }
+        .medal-1 { background-color: rgba(255, 215, 0, 0.1); } /* 금 */
+        .medal-2 { background-color: rgba(192, 192, 192, 0.1); } /* 은 */
+        .medal-3 { background-color: rgba(205, 127, 50, 0.1); } /* 동 */
+        a { color: #80cbc4; text-decoration: none; }
     </style>
 </head>
 <body>
-
     <header>
-        <a href="admin.html" class="admin-btn">관리자 모드</a>
+        <button onclick="enterAdmin()" class="admin-btn">관리자 모드</button>
         <h1>나만의 프로그램 만들기 모음</h1>
         <h3>2026학년도 다대중학교 2학년 정보</h3>
     </header>
-
-    <table id="work-table">
+    <table>
         <thead>
-            <tr>
-                <th>순위</th>
-                <th>이름</th>
-                <th>작품명</th>
-                <th>설명</th>
-                <th>알고리즘</th>
-                <th>조회수</th>
-            </tr>
+            <tr><th>순위</th><th>이름</th><th>작품명</th><th>설명</th><th>알고리즘</th><th>조회수</th></tr>
         </thead>
-        <tbody id="table-body">
-            </tbody>
+        <tbody id="table-body"></tbody>
     </table>
 
     <script>
-        // Supabase 설정
         const SUPABASE_URL = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        async function fetchWorks() {
-            // 조회수(views) 내림차순으로 데이터 가져오기
-            const { data, error } = await supabase
-                .from('students_work') // 테이블명
-                .select('*')
-                .order('views', { ascending: false });
-
-            if (error) {
-                console.error('Error fetching data:', error);
-                return;
+        function enterAdmin() {
+            const pw = prompt("관리자 비밀번호를 입력하세요.");
+            if (pw === "1234") { // 비밀번호 설정
+                window.location.href = 'admin.html';
+            } else if (pw !== null) {
+                alert("비밀번호가 올바르지 않습니다.");
             }
-
-            renderTable(data);
         }
 
-        function renderTable(data) {
+        async function fetchWorks() {
+            const { data, error } = await supabase.from('students_work').select('*').order('views', { ascending: false });
+            if (error) return;
             const tbody = document.getElementById('table-body');
-            tbody.innerHTML = '';
-
             data.forEach((item, index) => {
                 const tr = document.createElement('tr');
-                let rankDisplay = '';
+                let medal = '';
+                if (index === 0) { medal = '🥇'; tr.className = 'medal-1'; }
+                else if (index < 3) { medal = '🥈'; tr.className = 'medal-2'; }
+                else if (index < 6) { medal = '🥉'; tr.className = 'medal-3'; }
                 
-                // 순위 및 메달 로직 (1위: 금1, 2~3위: 은2, 4~6위: 동3)
-                if (index === 0) {
-                    rankDisplay = '<span class="medal-icon">🥇</span>';
-                    tr.classList.add('medal-1');
-                } else if (index >= 1 && index <= 2) {
-                    rankDisplay = '<span class="medal-icon">🥈</span>';
-                    tr.classList.add('medal-2');
-                } else if (index >= 3 && index <= 5) {
-                    rankDisplay = '<span class="medal-icon">🥉</span>';
-                    tr.classList.add('medal-3');
-                } else {
-                    rankDisplay = ''; // 나머지 순위 빈칸
-                }
-
-                tr.innerHTML = `
-                    <td>${rankDisplay}</td>
-                    <td>${item.name}</td>
-                    <td><a href="students/${item.file_name}" target="_blank" onclick="updateView('${item.id}')">${item.title}</a></td>
-                    <td>${item.description}</td>
-                    <td>${item.algorithm}</td>
-                    <td>${item.views}</td>
-                `;
+                tr.innerHTML = `<td>${medal}</td><td>${item.name}</td>
+                <td><a href="students/${item.file_name}" target="_blank" onclick="updateView('${item.id}')">${item.title}</a></td>
+                <td>${item.description}</td><td>${item.algorithm}</td><td>${item.views}</td>`;
                 tbody.appendChild(tr);
             });
         }
-
-        // 조회수 증가 함수
-        async function updateView(id) {
-            const { data } = await supabase.rpc('increment_view', { row_id: id });
-        }
-
+        async function updateView(id) { await supabase.rpc('increment_view', { row_id: id }); }
         fetchWorks();
     </script>
 </body>
 </html>
+
+### 2. `admin.html` 오류 수정 (데이터 등록 로직)
+등록이 되지 않았던 가장 큰 이유는 **Supabase의 RLS(Row Level Security) 설정** 때문일 가능성이 높습니다. 코드 상에서도 에러 메시지를 명확히 출력하도록 보완했습니다.
+
+**해결 방법:**
+1.  Supabase Dashboard -> **Authentication** -> **Policies**로 이동합니다.
+2.  `students_work` 테이블을 선택하고 **Enable RLS**를 해제하거나, 혹은 `anon` 역할에 대해 `INSERT` 권한을 허용하는 Policy를 추가해야 합니다.
+    *   *SQL Editor에서 실행 가능:* `CREATE POLICY "Allow anon insert" ON public.students_work FOR INSERT WITH CHECK (true);`
+
+```javascript
+// admin.html 내의 저장 로직 수정 부분
+document.getElementById('work-form').onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const payload = {
+        name: document.getElementById('student-name').value,
+        title: document.getElementById('work-title').value,
+        description: document.getElementById('work-desc').value,
+        algorithm: document.getElementById('work-algo').value,
+        file_name: document.getElementById('file-name').value,
+        views: 0 // 명시적으로 0 설정
+    };
+
+    // 로딩 표시 등 사용자 피드백 추가
+    console.log("저장 시도:", payload);
+
+    const { data, error } = await supabaseClient
+        .from('students_work')
+        .insert([payload]); // 배열 형태로 전달 필수
+
+    if (error) {
+        console.error('등록 에러 상세:', error);
+        alert('등록 실패! 사유: ' + error.message);
+    } else {
+        alert('성공적으로 등록되었습니다!');
+        closeModal();
+        loadData();
+    }
+};
+
+다대중학교 학생들의 정보 수업 프로젝트가 성공적으로 운영되기를 응원합니다! 추가로 궁금한 점이 있으면 언제든 말씀해 주세요.
