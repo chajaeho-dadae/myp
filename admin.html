@@ -2,105 +2,62 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>관리자 - 학생 작품 관리</title>
+    <title>관리자 페이지</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Pretendard', sans-serif; background: #121212; color: #e0e0e0; padding: 20px; }
-        .container { max-width: 800px; margin: auto; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #333; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        h2 { border-left: 5px solid #375a7f; padding-left: 15px; margin-bottom: 20px; }
-        label { display: block; margin-top: 10px; color: #aaa; font-size: 0.85rem; }
-        input, textarea { width: 100%; padding: 12px; margin-top: 5px; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 14px; background: #375a7f; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 20px; transition: 0.2s; }
-        button:hover { background: #4b79a1; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1e1e1e; }
-        th, td { padding: 12px; border-bottom: 1px solid #333; text-align: center; }
-        th { background: #252525; color: #aaa; }
-        .del-btn { background: #d9534f; width: auto; padding: 6px 12px; font-size: 0.8rem; margin: 0; }
-        .back-link { color: #888; text-decoration: none; display: inline-block; margin-top: 20px; }
-        .back-link:hover { color: #fff; }
+        body { background: #121212; color: white; padding: 20px; font-family: sans-serif; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 10px; max-width: 500px; margin: auto; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #2d2d2d; border: 1px solid #444; color: white; }
+        button { width: 100%; padding: 10px; background: #375a7f; color: white; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>새 학생 작품 등록</h2>
-        <div class="card">
-            <label>학생 이름</label>
-            <input type="text" id="name" placeholder="예: 홍길동">
-            
-            <label>작품명</label>
-            <input type="text" id="title" placeholder="예: 피하기 게임">
-            
-            <label>작품 설명</label>
-            <textarea id="desc" rows="2" placeholder="작품의 특징을 적어주세요."></textarea>
-            
-            <label>사용된 알고리즘</label>
-            <input type="text" id="algo" placeholder="예: 무한 반복문, 조건문 등">
-            
-            <label>연결할 파일명 (GitHub students 폴더 안의 파일명)</label>
-            <input type="text" id="file" placeholder="예: project1.html">
-            
-            <button onclick="save()">저장 및 목록 추가</button>
-        </div>
-
-        <h3>등록된 작품 목록</h3>
-        <div class="card" style="padding: 10px;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>이름</th>
-                        <th>작품명</th>
-                        <th>연결파일명</th>
-                        <th>삭제</th>
-                    </tr>
-                </thead>
-                <tbody id="listBody"></tbody>
-            </table>
-        </div>
-        <a href="index.html" class="back-link">← 메인 페이지로 돌아가기</a>
+    <div class="card">
+        <h2>학생 등록</h2>
+        <input type="text" id="name" placeholder="이름">
+        <input type="text" id="title" placeholder="작품명">
+        <input type="text" id="desc" placeholder="설명">
+        <input type="text" id="algo" placeholder="알고리즘">
+        <input type="text" id="file" placeholder="파일명 (예: test.html)">
+        <button type="button" onclick="save()">저장 및 목록 추가</button>
+        <p><a href="index.html" style="color: #888;">돌아가기</a></p>
     </div>
 
     <script>
         const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
         const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        async function load() {
-            const { data, error } = await supabase.from('students').select('*').order('id', {ascending: false});
-            if (error) return;
-            document.getElementById('listBody').innerHTML = data.map(s => `
-                <tr>
-                    <td>${s.name}</td>
-                    <td style="color:#4da3ff">${s.title}</td>
-                    <td style="font-family:monospace; color:#888">${s.file_name}</td>
-                    <td><button class="del-btn" onclick="del(${s.id})">삭제</button></td>
-                </tr>`).join('');
-        }
+        
+        let supabase = null;
+        try {
+            supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch(e) { alert("Supabase 설정이 잘못되었습니다."); }
 
         async function save() {
             const name = document.getElementById('name').value;
             const title = document.getElementById('title').value;
-            const description = document.getElementById('desc').value;
-            const algorithm = document.getElementById('algo').value;
-            const file_name = document.getElementById('file').value;
+            const file = document.getElementById('file').value;
 
-            if (!name || !title || !file_name) return alert("필수 항목을 입력하세요.");
+            if (!name || !title || !file) {
+                alert("이름, 작품명, 파일명은 필수입니다.");
+                return;
+            }
 
-            const { error } = await supabase.from('students').insert([{
-                name, title, description, algorithm, file_name, views: 0
-            }]);
+            try {
+                const { error } = await supabase.from('students').insert([{
+                    name, title, 
+                    description: document.getElementById('desc').value,
+                    algorithm: document.getElementById('algo').value,
+                    file_name: file,
+                    views: 0
+                }]);
 
-            if (error) alert("실패: " + error.message);
-            else { alert("등록 완료!"); location.reload(); }
-        }
-
-        async function del(id) {
-            if (confirm("삭제하시겠습니까?")) {
-                await supabase.from('students').delete().eq('id', id);
-                load();
+                if (error) throw error;
+                alert("저장 성공!");
+                location.reload();
+            } catch (e) {
+                alert("저장 실패: " + e.message);
             }
         }
-        load();
     </script>
 </body>
 </html>
