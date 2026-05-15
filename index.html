@@ -6,17 +6,83 @@
     <title>나만의 프로그램 만들기 모음</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Pretendard', sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f8f9fa; }
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-sub: #a0a0a0;
+            --accent-blue: #375a7f;
+            --accent-hover: #4b79a1;
+            --border-color: #333;
+        }
+
+        body { 
+            font-family: 'Pretendard', sans-serif; 
+            line-height: 1.6; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: var(--bg-color); 
+            color: var(--text-main);
+        }
+
         header { text-align: center; margin-bottom: 40px; position: relative; }
-        .admin-btn { position: absolute; top: 0; right: 0; padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        h1 { margin-bottom: 10px; color: #333; }
-        h3 { color: #666; font-weight: 400; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        th, td { padding: 15px; text-align: center; border-bottom: 1px solid #eee; }
-        th { background-color: #007bff; color: white; }
-        .medal { font-size: 1.2rem; font-weight: bold; }
-        .gold { color: #ffd700; } .silver { color: #c0c0c0; } .bronze { color: #cd7f32; }
-        .project-link { color: #007bff; text-decoration: none; font-weight: bold; cursor: pointer; }
+        
+        .admin-btn { 
+            position: absolute; top: 0; right: 0; 
+            padding: 8px 15px; 
+            background: #444; 
+            color: #eee; 
+            border: 1px solid #555; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            transition: 0.3s;
+        }
+        .admin-btn:hover { background: #555; }
+
+        h1 { margin-bottom: 10px; color: #fff; font-size: 2rem; }
+        h3 { color: var(--text-sub); font-weight: 400; }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            background: var(--card-bg); 
+            border-radius: 12px; 
+            overflow: hidden; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3); 
+        }
+
+        th { 
+            background-color: var(--accent-blue); 
+            color: #fff; 
+            padding: 18px; 
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        td { 
+            padding: 15px; 
+            text-align: center; 
+            border-bottom: 1px solid var(--border-color); 
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: #252525; }
+
+        .medal { font-size: 1.4rem; }
+        .gold { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.3); }
+        .silver { color: #c0c0c0; text-shadow: 0 0 10px rgba(192,192,192,0.3); }
+        .bronze { color: #cd7f32; text-shadow: 0 0 10px rgba(205,127,50,0.3); }
+        
+        .project-link { 
+            color: #4da3ff; 
+            text-decoration: none; 
+            font-weight: bold; 
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .project-link:hover { color: #82c0ff; text-decoration: underline; }
+
+        .view-count { font-family: 'Courier New', monospace; color: #00ff88; }
     </style>
 </head>
 <body>
@@ -45,7 +111,7 @@
     </main>
 
     <script>
-        // --- Supabase 설정 (여기에 본인의 키를 입력하세요) ---
+        // --- Supabase 설정 ---
         const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
         const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
         
@@ -57,12 +123,11 @@
         async function fetchAndRender() {
             let students = [];
 
-            // API 키가 등록되지 않았거나 Supabase 연결 실패 시 기본값(0) 설정
             if (!supabase) {
-                console.warn("Supabase API 키가 설정되지 않았습니다. 기본 데이터를 표시합니다.");
-                // 임시/기본 데이터 예시 (조회수 0)
+                // API 키 설정 전: 조회수 0으로 초기화된 더미 데이터
                 students = [
-                    { name: "데이터 로딩중", title: "설정 필요", description: "API키를 등록해주세요", algorithm: "-", views: 0, file_name: "#" }
+                    { name: "설정 대기", title: "API 키를 등록해 주세요", description: "supabase 연결이 필요합니다", algorithm: "None", views: 0, file_name: "#" },
+                    { name: "학생A", title: "작품1", description: "설명", algorithm: "순차", views: 0, file_name: "#" }
                 ];
             } else {
                 const { data, error } = await supabase
@@ -71,12 +136,11 @@
                     .order('views', { ascending: false });
 
                 if (error) {
-                    console.error("데이터 호출 에러:", error);
+                    console.error("Error:", error);
                 } else {
                     students = data;
                 }
             }
-
             renderTable(students);
         }
 
@@ -85,6 +149,7 @@
             tbody.innerHTML = data.map((s, index) => {
                 let rankLabel = "";
                 let medalClass = "";
+                
                 if (index === 0) { rankLabel = "🥇"; medalClass = "gold"; }
                 else if (index >= 1 && index <= 2) { rankLabel = "🥈"; medalClass = "silver"; }
                 else if (index >= 3 && index <= 5) { rankLabel = "🥉"; medalClass = "bronze"; }
@@ -92,43 +157,34 @@
                 return `
                     <tr>
                         <td class="medal ${medalClass}">${rankLabel}</td>
-                        <td>${s.name}</td>
+                        <td style="font-weight: 500;">${s.name}</td>
                         <td><span class="project-link" onclick="handleView('${s.file_name}', ${s.id})">${s.title}</span></td>
-                        <td>${s.description}</td>
-                        <td>${s.algorithm}</td>
-                        <td>${s.views}</td>
+                        <td style="color: var(--text-sub); font-size: 0.9rem;">${s.description}</td>
+                        <td><code style="background:#333; padding:2px 6px; border-radius:4px;">${s.algorithm}</code></td>
+                        <td class="view-count">${(s.views || 0).toLocaleString()}</td>
                     </tr>
                 `;
             }).join('');
         }
 
-        // 조회수 증가 함수
         async function handleView(fileName, id) {
-            if (supabase) {
-                // DB에서 조회수 1 증가 (RPC 사용이 깔끔하지만 기본 update로 구현)
-                const { data } = await supabase
-                    .from('students')
-                    .select('views')
-                    .eq('id', id)
-                    .single();
-                
-                await supabase
-                    .from('students')
-                    .update({ views: (data.views || 0) + 1 })
-                    .eq('id', id);
+            if (supabase && id) {
+                // RPC 없이 간단하게 업데이트 (동시 클릭 시 오차가 있을 수 있으나 교육용으론 충분)
+                const { data } = await supabase.from('students').select('views').eq('id', id).single();
+                await supabase.from('students').update({ views: (data.views || 0) + 1 }).eq('id', id);
             }
             
-            // 실제 학생 파일로 이동
-            window.location.href = `students/${fileName}`;
+            if(fileName !== "#") {
+                window.location.href = `students/${fileName}`;
+            }
         }
 
         function goAdmin() {
             const pw = prompt("관리자 비밀번호를 입력하세요.");
             if (pw === "1234") location.href = "admin.html";
-            else alert("비밀번호가 틀렸습니다.");
+            else if (pw !== null) alert("비밀번호가 틀렸습니다.");
         }
 
-        // 페이지 로드 시 실행
         fetchAndRender();
     </script>
 </body>
