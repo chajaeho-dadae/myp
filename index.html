@@ -13,16 +13,17 @@
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
         header { text-align: center; margin-bottom: 40px; position: relative; }
         .admin-btn { position: absolute; top: 0; right: 0; padding: 8px 15px; background: #444; color: #eee; border: 1px solid #555; border-radius: 5px; cursor: pointer; }
-        h1 { margin-bottom: 5px; color: #fff; }
-        h3 { color: var(--sub-text); font-weight: 400; margin-top: 0; }
-        table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
-        th { background: var(--accent); color: #fff; padding: 15px; }
+        h1 { margin: 0 0 10px 0; color: #fff; font-size: 2.2rem; }
+        h3 { color: var(--sub-text); font-weight: 400; margin: 0; }
+        table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.3); margin-top: 20px; }
+        th { background: var(--accent); color: #fff; padding: 18px; font-weight: 600; }
         td { padding: 15px; text-align: center; border-bottom: 1px solid var(--border); }
         tr:hover { background: #252525; }
-        .medal { font-size: 1.3rem; }
+        .medal { font-size: 1.4rem; }
         .gold { color: #ffd700; } .silver { color: #c0c0c0; } .bronze { color: #cd7f32; }
-        .project-link { color: #4da3ff; font-weight: bold; cursor: pointer; text-decoration: none; }
-        .project-link:hover { text-decoration: underline; }
+        .project-link { color: #4da3ff; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 1.1rem; }
+        .project-link:hover { text-decoration: underline; color: #82c0ff; }
+        code { background: #333; padding: 3px 7px; border-radius: 4px; font-family: monospace; color: #ffadad; }
     </style>
 </head>
 <body>
@@ -35,7 +36,12 @@
         <table>
             <thead>
                 <tr>
-                    <th>순위</th><th>이름</th><th>작품명</th><th>설명</th><th>알고리즘</th><th>조회수</th>
+                    <th style="width: 80px;">순위</th>
+                    <th style="width: 100px;">이름</th>
+                    <th>작품명 (클릭 시 실행)</th>
+                    <th>설명</th>
+                    <th>알고리즘</th>
+                    <th style="width: 100px;">조회수</th>
                 </tr>
             </thead>
             <tbody id="tableBody"></tbody>
@@ -50,7 +56,7 @@
         async function fetchAndRender() {
             let students = [];
             if (!supabase) {
-                students = [{ name: "설정 필요", title: "API 키를 등록하세요", description: "-", algorithm: "-", views: 0, file_name: "#" }];
+                students = [{ name: "연결대기", title: "Supabase 설정을 완료해주세요", description: "-", algorithm: "-", views: 0, file_name: "#" }];
             } else {
                 const { data } = await supabase.from('students').select('*').order('views', { ascending: false });
                 students = data || [];
@@ -61,25 +67,35 @@
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = data.map((s, i) => {
-                let medal = i === 0 ? "🥇" : (i < 3 ? "🥈" : (i < 6 ? "🥉" : ""));
-                let mClass = i === 0 ? "gold" : (i < 3 ? "silver" : (i < 6 ? "bronze" : ""));
+                let medal = "";
+                let mClass = "";
+                if (i === 0) { medal = "🥇"; mClass = "gold"; }
+                else if (i < 3) { medal = "🥈"; mClass = "silver"; }
+                else if (i < 6) { medal = "🥉"; mClass = "bronze"; }
+
                 return `<tr>
                     <td class="medal ${mClass}">${medal}</td>
-                    <td>${s.name}</td>
+                    <td style="font-weight:500">${s.name}</td>
                     <td><span class="project-link" onclick="handleView('${s.file_name}', ${s.id})">${s.title}</span></td>
-                    <td style="font-size:0.9rem; color:var(--sub-text)">${s.description}</td>
-                    <td><code style="background:#333; padding:2px 5px; border-radius:3px;">${s.algorithm}</code></td>
-                    <td style="color:#00ff88">${(s.views || 0).toLocaleString()}</td>
+                    <td style="text-align:left; color:var(--sub-text); font-size:0.9rem;">${s.description}</td>
+                    <td><code>${s.algorithm}</code></td>
+                    <td style="color:#00ff88; font-weight:bold;">${(s.views || 0).toLocaleString()}</td>
                 </tr>`;
             }).join('');
         }
 
         async function handleView(file, id) {
             if (supabase && id) {
+                // 조회수 1 증가 (간단한 로직)
                 const { data } = await supabase.from('students').select('views').eq('id', id).single();
                 await supabase.from('students').update({ views: (data.views || 0) + 1 }).eq('id', id);
             }
-            if (file !== "#") window.location.href = `students/${file}`;
+            // 새 탭에서 열기
+            if (file !== "#") {
+                const url = file.startsWith('http') ? file : `students/${file}`;
+                window.open(url, '_blank');
+                location.reload(); // 메인 페이지 순위 갱신을 위해 새로고침
+            }
         }
 
         function goAdmin() {
