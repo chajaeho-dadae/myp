@@ -1,111 +1,433 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>2026 다대중 정보 프로젝트</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        /* 다크모드 스타일 */
-        body { font-family: 'Pretendard', sans-serif; background-color: #121212; color: #e0e0e0; margin: 20px; }
-        header { text-align: center; margin-bottom: 40px; border-bottom: 1px solid #333; padding-bottom: 20px; }
-        .admin-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; background: #333; color: #deff9a; border: 1px solid #deff9a; cursor: pointer; border-radius: 5px; }
-        h1 { color: #deff9a; }
-        table { width: 100%; border-collapse: collapse; background: #1e1e1e; border-radius: 10px; overflow: hidden; }
-        th, td { padding: 15px; border-bottom: 1px solid #333; text-align: center; }
-        th { background-color: #2c2c2c; color: #deff9a; }
-        .medal-1 { background-color: rgba(255, 215, 0, 0.1); } /* 금 */
-        .medal-2 { background-color: rgba(192, 192, 192, 0.1); } /* 은 */
-        .medal-3 { background-color: rgba(205, 127, 50, 0.1); } /* 동 */
-        a { color: #80cbc4; text-decoration: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>나만의 프로그램 만들기 모음</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #151820;
+      --card:      #1c2030;
+      --border:    #252a3a;
+      --accent:    #4f8ef7;
+      --accent2:   #7c5cfc;
+      --text:      #e8ecf5;
+      --muted:     #6b7490;
+      --gold:      #f5c842;
+      --silver:    #b0bec5;
+      --bronze:    #cd7c3a;
+      --glow-gold: #f5c84255;
+      --glow-sil:  #b0bec540;
+      --glow-bro:  #cd7c3a40;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── 배경 그리드 패턴 ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: .35;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── 헤더 ── */
+    header {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 60px 24px 40px;
+    }
+    header::after {
+      content: '';
+      display: block;
+      width: 120px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      margin: 20px auto 0;
+      border-radius: 2px;
+    }
+    .title-main {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      letter-spacing: -.02em;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+    }
+    .title-sub {
+      margin-top: 10px;
+      font-size: clamp(.9rem, 2vw, 1.1rem);
+      color: var(--muted);
+      letter-spacing: .06em;
+      font-weight: 300;
+    }
+
+    /* ── 메인 컨테이너 ── */
+    main {
+      position: relative;
+      z-index: 5;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    /* ── 섹션 레이블 ── */
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: .75rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 40px 0 16px;
+      font-weight: 500;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── 메달 카드 (상위 6위) ── */
+    .medal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .medal-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 20px 18px;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .25s, box-shadow .25s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .medal-card:hover { transform: translateY(-4px); }
+
+    .medal-card.gold   { border-color: var(--gold);   box-shadow: 0 0 28px var(--glow-gold); }
+    .medal-card.silver { border-color: var(--silver);  box-shadow: 0 0 20px var(--glow-sil); }
+    .medal-card.bronze { border-color: var(--bronze);  box-shadow: 0 0 20px var(--glow-bro); }
+
+    /* 배경 빛 */
+    .medal-card.gold::before   { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #f5c84215 0%, transparent 60%); }
+    .medal-card.silver::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #b0bec510 0%, transparent 60%); }
+    .medal-card.bronze::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #cd7c3a12 0%, transparent 60%); }
+
+    .medal-badge {
+      font-size: 2rem;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .medal-rank {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      font-size: .7rem;
+      letter-spacing: .1em;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .gold   .medal-rank { background: #f5c84222; color: var(--gold); }
+    .silver .medal-rank { background: #b0bec520; color: var(--silver); }
+    .bronze .medal-rank { background: #cd7c3a20; color: var(--bronze); }
+
+    .card-name  { font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+    .card-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; line-height: 1.3; }
+    .card-desc  { font-size: .82rem; color: var(--muted); line-height: 1.55; margin-bottom: 14px;
+                  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card-algo  { font-size: .75rem; background: #ffffff0a; border: 1px solid var(--border);
+                  padding: 3px 10px; border-radius: 20px; display: inline-block; color: var(--accent); }
+    .card-views {
+      position: absolute;
+      bottom: 16px; right: 18px;
+      font-size: .78rem; color: var(--muted);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .card-views svg { opacity: .6; }
+
+    /* ── 테이블 ── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    thead tr {
+      background: #ffffff06;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      padding: 14px 16px;
+      text-align: left;
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #ffffff05; }
+    td {
+      padding: 13px 16px;
+      vertical-align: middle;
+    }
+    td.rank-cell { font-size: 1.1rem; text-align: center; width: 56px; }
+    td.views-cell { color: var(--accent); font-weight: 600; white-space: nowrap; }
+    td a {
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color .2s;
+    }
+    td a:hover { color: var(--accent); }
+    .algo-tag {
+      background: #4f8ef710;
+      border: 1px solid #4f8ef730;
+      color: var(--accent);
+      font-size: .72rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+    .desc-cell {
+      color: var(--muted);
+      font-size: .82rem;
+      max-width: 260px;
+    }
+    .name-cell { font-size: .85rem; color: var(--muted); }
+
+    /* ── 로딩 / 에러 ── */
+    .state-msg {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    .spinner {
+      display: inline-block;
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── 반응형 ── */
+    @media (max-width: 640px) {
+      th, td { padding: 10px 10px; }
+      .desc-cell { display: none; }
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <button onclick="enterAdmin()" class="admin-btn">관리자 모드</button>
-        <h1>나만의 프로그램 만들기 모음</h1>
-        <h3>2026학년도 다대중학교 2학년 정보</h3>
-    </header>
-    <table>
-        <thead>
-            <tr><th>순위</th><th>이름</th><th>작품명</th><th>설명</th><th>알고리즘</th><th>조회수</th></tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-    </table>
 
-    <script>
-        const SUPABASE_URL = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<header>
+  <div class="title-main">나만의 프로그램 만들기 모음</div>
+  <div class="title-sub">2026학년도 &nbsp;·&nbsp; 다대중학교 2학년 정보</div>
+</header>
 
-        function enterAdmin() {
-            const pw = prompt("관리자 비밀번호를 입력하세요.");
-            if (pw === "1234") { // 비밀번호 설정
-                window.location.href = 'admin.html';
-            } else if (pw !== null) {
-                alert("비밀번호가 올바르지 않습니다.");
-            }
-        }
+<main>
+  <div id="app">
+    <div class="state-msg">
+      <div class="spinner"></div><br>학생 작품을 불러오는 중…
+    </div>
+  </div>
+</main>
 
-        async function fetchWorks() {
-            const { data, error } = await supabase.from('students_work').select('*').order('views', { ascending: false });
-            if (error) return;
-            const tbody = document.getElementById('table-body');
-            data.forEach((item, index) => {
-                const tr = document.createElement('tr');
-                let medal = '';
-                if (index === 0) { medal = '🥇'; tr.className = 'medal-1'; }
-                else if (index < 3) { medal = '🥈'; tr.className = 'medal-2'; }
-                else if (index < 6) { medal = '🥉'; tr.className = 'medal-3'; }
-                
-                tr.innerHTML = `<td>${medal}</td><td>${item.name}</td>
-                <td><a href="students/${item.file_name}" target="_blank" onclick="updateView('${item.id}')">${item.title}</a></td>
-                <td>${item.description}</td><td>${item.algorithm}</td><td>${item.views}</td>`;
-                tbody.appendChild(tr);
-            });
-        }
-        async function updateView(id) { await supabase.rpc('increment_view', { row_id: id }); }
-        fetchWorks();
-    </script>
+<script>
+  /* ═══════════════════════════════════════════════
+     ★ 학생 목록 — 파일명과 정보를 여기에 추가하세요
+     ═══════════════════════════════════════════════
+     파일은 students/ 폴더에 위치해야 합니다.
+     예시를 참고해 실제 학생 정보로 교체하세요.
+  */
+  const STUDENTS = [
+    { file: "별자리.html", name: "김OO", title: "별자리",     desc: "마우스를 움직이면 별자리가 연결되는 인터랙티브 우주 지도", algo: "좌표 계산" },
+  ];
+
+  /* ═══════════════════════════════════════════════
+     Supabase 설정
+  */
+  const SUPABASE_URL = "https://sdhpzypjqmowhrhxvvsj.supabase.co/rest/v1/";
+  const SUPABASE_KEY = "sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc";
+  const TABLE = "views";   // Supabase 테이블명 (아래 SQL 참고)
+
+  /* ── Supabase 헬퍼 ── */
+  async function sbFetch(path, opts = {}) {
+    const res = await fetch(SUPABASE_URL + path, {
+      ...opts,
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": opts.prefer || "",
+        ...opts.headers,
+      },
+    });
+    if (!res.ok && res.status !== 404) throw new Error(await res.text());
+    return res.status === 204 ? null : res.json();
+  }
+
+  async function getViews(file) {
+    const rows = await sbFetch(`${TABLE}?file=eq.${encodeURIComponent(file)}&select=views`);
+    return (rows && rows[0]) ? rows[0].views : 0;
+  }
+
+  async function incrementViews(file) {
+    // upsert: 없으면 insert, 있으면 views + 1
+    const current = await getViews(file);
+    await sbFetch(TABLE, {
+      method: "POST",
+      prefer: "resolution=merge-duplicates",
+      body: JSON.stringify({ file, views: current + 1 }),
+    });
+  }
+
+  /* ── 뷰 카운트 일괄 조회 ── */
+  async function loadAllViews() {
+    try {
+      const rows = await sbFetch(`${TABLE}?select=file,views`);
+      const map = {};
+      (rows || []).forEach(r => { map[r.file] = r.views; });
+      return map;
+    } catch { return {}; }
+  }
+
+  /* ── 메달 이모지 ── */
+  const MEDALS = ["🥇", "🥈", "🥉"];
+  const MEDAL_CLASS = ["gold", "silver", "bronze"];
+  const MEDAL_LABEL = ["1위", "2위", "3위", "4위", "5위", "6위"];
+
+  /* ── 아이콘 SVG ── */
+  const eyeIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+
+  /* ── 렌더링 ── */
+  function render(students) {
+    const sorted = [...students].sort((a, b) => b.views - a.views);
+    const top6   = sorted.slice(0, 6);
+    const rest   = sorted.slice(6);
+
+    const app = document.getElementById("app");
+
+    /* 메달 카드 */
+    const medalHTML = `
+      <div class="section-label">🏆 명예의 전당 — TOP 6</div>
+      <div class="medal-grid">
+        ${top6.map((s, i) => {
+          const mc = i < 3 ? MEDAL_CLASS[i] : "bronze";
+          const badge = i < 3 ? MEDALS[i] : "🥉";
+          return `
+          <a class="medal-card ${mc}" href="students/${s.file}" target="_blank"
+             onclick="handleClick(event, '${s.file}')">
+            <div class="medal-badge">${badge}</div>
+            <div class="medal-rank">${MEDAL_LABEL[i]}</div>
+            <div class="card-name">${s.name}</div>
+            <div class="card-title">${s.title}</div>
+            <div class="card-desc">${s.desc}</div>
+            <span class="card-algo">${s.algo}</span>
+            <div class="card-views">${eyeIcon} ${s.views.toLocaleString()}</div>
+          </a>`;
+        }).join("")}
+      </div>`;
+
+    /* 나머지 테이블 */
+    const tableHTML = `
+      <div class="section-label">📋 전체 작품 목록</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:center">순위</th>
+              <th>이름</th>
+              <th>작품명</th>
+              <th>설명</th>
+              <th>알고리즘</th>
+              <th>조회수</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sorted.map((s, i) => {
+              const rankCell = i < 6
+                ? `<td class="rank-cell">${MEDALS[Math.min(i,2)]}</td>`
+                : `<td class="rank-cell"></td>`;
+              return `
+              <tr>
+                ${rankCell}
+                <td class="name-cell">${s.name}</td>
+                <td><a href="students/${s.file}" target="_blank"
+                       onclick="handleClick(event, '${s.file}')">${s.title}</a></td>
+                <td class="desc-cell">${s.desc}</td>
+                <td><span class="algo-tag">${s.algo}</span></td>
+                <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>`;
+
+    app.innerHTML = medalHTML + tableHTML;
+  }
+
+  /* ── 클릭 → 조회수 증가 ── */
+  window.handleClick = async function(e, file) {
+    try { await incrementViews(file); } catch(err) { console.warn(err); }
+  };
+
+  /* ── 초기 로드 ── */
+  (async () => {
+    try {
+      const viewMap = await loadAllViews();
+      const students = STUDENTS.map(s => ({
+        ...s,
+        views: viewMap[s.file] ?? 0,
+      }));
+      render(students);
+    } catch (err) {
+      document.getElementById("app").innerHTML =
+        `<div class="state-msg">⚠️ 데이터를 불러오지 못했습니다.<br><small>${err.message}</small></div>`;
+    }
+  })();
+</script>
 </body>
 </html>
-
-### 2. `admin.html` 오류 수정 (데이터 등록 로직)
-등록이 되지 않았던 가장 큰 이유는 **Supabase의 RLS(Row Level Security) 설정** 때문일 가능성이 높습니다. 코드 상에서도 에러 메시지를 명확히 출력하도록 보완했습니다.
-
-**해결 방법:**
-1.  Supabase Dashboard -> **Authentication** -> **Policies**로 이동합니다.
-2.  `students_work` 테이블을 선택하고 **Enable RLS**를 해제하거나, 혹은 `anon` 역할에 대해 `INSERT` 권한을 허용하는 Policy를 추가해야 합니다.
-    *   *SQL Editor에서 실행 가능:* `CREATE POLICY "Allow anon insert" ON public.students_work FOR INSERT WITH CHECK (true);`
-
-```javascript
-// admin.html 내의 저장 로직 수정 부분
-document.getElementById('work-form').onsubmit = async (e) => {
-    e.preventDefault();
-    
-    const payload = {
-        name: document.getElementById('student-name').value,
-        title: document.getElementById('work-title').value,
-        description: document.getElementById('work-desc').value,
-        algorithm: document.getElementById('work-algo').value,
-        file_name: document.getElementById('file-name').value,
-        views: 0 // 명시적으로 0 설정
-    };
-
-    // 로딩 표시 등 사용자 피드백 추가
-    console.log("저장 시도:", payload);
-
-    const { data, error } = await supabaseClient
-        .from('students_work')
-        .insert([payload]); // 배열 형태로 전달 필수
-
-    if (error) {
-        console.error('등록 에러 상세:', error);
-        alert('등록 실패! 사유: ' + error.message);
-    } else {
-        alert('성공적으로 등록되었습니다!');
-        closeModal();
-        loadData();
-    }
-};
-
-다대중학교 학생들의 정보 수업 프로젝트가 성공적으로 운영되기를 응원합니다! 추가로 궁금한 점이 있으면 언제든 말씀해 주세요.
