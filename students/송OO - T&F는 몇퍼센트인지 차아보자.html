@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T&F는 몇 퍼센트인지 찾아보자</title>
+
+<style>
+    body{
+        font-family: "맑은 고딕", sans-serif;
+        background:#f3f7ff;
+        text-align:center;
+        padding:40px;
+    }
+
+    .box{
+        background:white;
+        max-width:600px;
+        margin:auto;
+        padding:30px;
+        border-radius:20px;
+        box-shadow:0 0 15px rgba(0,0,0,0.1);
+    }
+
+    h1{
+        color:#4a67ff;
+    }
+
+    #question{
+        font-size:22px;
+        margin:30px 0;
+    }
+
+    button{
+        padding:15px 30px;
+        margin:10px;
+        border:none;
+        border-radius:10px;
+        font-size:18px;
+        cursor:pointer;
+    }
+
+    .tBtn{
+        background:#5da9ff;
+        color:white;
+    }
+
+    .fBtn{
+        background:#ff7c9c;
+        color:white;
+    }
+
+    #result{
+        font-size:22px;
+        margin-top:30px;
+        line-height:1.8;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+    <h1>T&F는 몇 퍼센트인지 찾아보자</h1>
+
+    <p>
+        질문에 답하고 나의 T와 F 성향 비율을 알아보세요!
+    </p>
+
+    <div id="question"></div>
+
+    <button class="tBtn" onclick="choose('T')">T 선택</button>
+    <button class="fBtn" onclick="choose('F')">F 선택</button>
+
+    <div id="result"></div>
+
+</div>
+
+<script>
+
+const questions = [
+    "친구가 고민을 말하면 해결 방법부터 알려준다.",
+    "상대방의 기분을 먼저 공감해준다.",
+    "논리적으로 판단하는 편이다.",
+    "감정을 중요하게 생각한다.",
+    "문제를 빠르게 해결하고 싶다."
+];
+
+let current = 0;
+let tScore = 0;
+let fScore = 0;
+
+const questionBox = document.getElementById("question");
+const resultBox = document.getElementById("result");
+
+showQuestion();
+
+function showQuestion(){
+    questionBox.innerText = questions[current];
+}
+
+function choose(type){
+
+    if(type === "T"){
+        tScore++;
+    }else{
+        fScore++;
+    }
+
+    current++;
+
+    if(current < questions.length){
+        showQuestion();
+    }else{
+        showResult();
+    }
+}
+
+function showResult(){
+
+    const total = tScore + fScore;
+
+    const tPercent = Math.round((tScore / total) * 100);
+    const fPercent = Math.round((fScore / total) * 100);
+
+    questionBox.style.display = "none";
+
+    document.querySelector(".tBtn").style.display = "none";
+    document.querySelector(".fBtn").style.display = "none";
+
+    let message = "";
+
+    if(tPercent > fPercent){
+        message = "논리적인 성향이 강합니다! 하지만 공감도 함께 중요해요 😊";
+    }else if(fPercent > tPercent){
+        message = "공감 능력이 뛰어난 성향입니다! 👍";
+    }else{
+        message = "논리와 공감의 균형이 잘 잡혀 있습니다! 🌟";
+    }
+
+    resultBox.innerHTML = `
+        <h2>결과</h2>
+        <p>T 비율 : ${tPercent}%</p>
+        <p>F 비율 : ${fPercent}%</p>
+        <p>${message}</p>
+    `;
+}
+
+</script>
+
+</body>
+</html>
