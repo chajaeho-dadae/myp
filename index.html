@@ -33,7 +33,6 @@
       overflow-x: hidden;
     }
 
-    /* ── 배경 그리드 패턴 ── */
     body::before {
       content: '';
       position: fixed;
@@ -47,7 +46,6 @@
       z-index: 0;
     }
 
-    /* ── 헤더 ── */
     header {
       position: relative;
       z-index: 10;
@@ -81,7 +79,6 @@
       font-weight: 300;
     }
 
-    /* ── 메인 컨테이너 ── */
     main {
       position: relative;
       z-index: 5;
@@ -90,7 +87,6 @@
       padding: 0 20px 80px;
     }
 
-    /* ── 섹션 레이블 ── */
     .section-label {
       display: flex;
       align-items: center;
@@ -109,7 +105,6 @@
       background: var(--border);
     }
 
-    /* ── 메달 카드 (상위 6위) ── */
     .medal-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -136,7 +131,6 @@
     .medal-card.silver { border-color: var(--silver);  box-shadow: 0 0 20px var(--glow-sil); }
     .medal-card.bronze { border-color: var(--bronze);  box-shadow: 0 0 20px var(--glow-bro); }
 
-    /* 배경 빛 */
     .medal-card.gold::before   { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #f5c84215 0%, transparent 60%); }
     .medal-card.silver::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #b0bec510 0%, transparent 60%); }
     .medal-card.bronze::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #cd7c3a12 0%, transparent 60%); }
@@ -174,7 +168,6 @@
     }
     .card-views svg { opacity: .6; }
 
-    /* ── 테이블 ── */
     .table-wrap {
       overflow-x: auto;
       border-radius: 14px;
@@ -228,14 +221,8 @@
       border-radius: 12px;
       white-space: nowrap;
     }
-    .desc-cell {
-      color: var(--muted);
-      font-size: .82rem;
-      max-width: 260px;
-    }
     .name-cell { font-size: .85rem; color: var(--muted); }
 
-    /* ── 로딩 / 에러 ── */
     .state-msg {
       text-align: center;
       padding: 60px 20px;
@@ -253,10 +240,8 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── 반응형 ── */
     @media (max-width: 640px) {
       th, td { padding: 10px 10px; }
-      .desc-cell { display: none; }
     }
   </style>
 </head>
@@ -277,58 +262,65 @@
 
 <script>
   /* ═══════════════════════════════════════════════
-     ★ 학생 목록 — 파일명과 정보를 여기에 추가하세요
+     ★ GitHub 저장소 설정 — 여기만 수정하세요
      ═══════════════════════════════════════════════
-     파일은 students/ 폴더에 위치해야 합니다.
-     예시를 참고해 실제 학생 정보로 교체하세요.
+     GITHUB_USER  : GitHub 사용자명 (예: "myschool")
+     GITHUB_REPO  : 저장소명      (예: "student-programs")
+     GITHUB_BRANCH: 브랜치명      (기본: "main")
+     FOLDER       : 학생 파일 폴더 (기본: "students")
+
+     파일명 규칙: "학생이름 - 프로그램이름.html"
   */
-  const STUDENTS = [
-    { file: "27 남OO - 회사원키우기.html", name: "남OO", title: "회사원키우기",     desc: "", algo: "" },
-    
-    { file: "21 이OO - 나의 퍼스널컬러 찾기!.html", name: "이OO", title: "나의 퍼스널컬러 찾기!",     desc: "", algo: "" },
-    { file: "21 염OO - 농사 게임.html", name: "염OO", title: "농사 게임",     desc: "", algo: "" },
-    
-    { file: "21 최OO - 배달 시뮬레이션.html", name: "최OO", title: "배달 시뮬레이션",     desc: "", algo: "" },
-    
-    { file: "26 최OO - 조선시대 신분.html", name: "최OO", title: "조선시대 신분",     desc: "", algo: "" },
-    { file: "27 김OO - MBTI로 알아보는 좋은 직업.html", name: "김OO", title: "MBTI로 알아보는 좋은 직업",     desc: "", algo: "" },
-    { file: "24 이OO - 순발력 테스트.html", name: "이OO", title: "순발력 테스트",     desc: "", algo: "" },
-
-    { file: "27 박OO - 시험D-1생존게임.html", name: "박OO", title: "시험D-1생존게임",     desc: "", algo: "" },
-    { file: "27 유OO - 만약에 시뮬레이터.html", name: "유OO", title: "만약에 시뮬레이터",     desc: "", algo: "" },
-    
-    { file: "21 조OO - 저녁메뉴추천.html", name: "조OO", title: "저녁메뉴추천",     desc: "", algo: "" },
-    
-    { file: "24 강OO - 축구복싱26.html", name: "강OO", title: "축구복싱26",     desc: "", algo: "" },
-    { file: "26 이OO - 저녁 메뉴 추천.html", name: "이OO", title: "저녁 메뉴 추천",     desc: "", algo: "" },
-
-    { file: "15 김OO - 야구게임.html", name: "김OO", title: "야구게임",     desc: "야구 게임을 했는데 재미가 있어서 플레이 하는 사람이 직접 투수와 타자를 모두 해 본다.", algo: "" },
-    { file: "21 강OO - 바퀴벌레 잡기 게임.html", name: "강OO", title: "바퀴벌레 잡기 게임",     desc: "", algo: "" },
-    { file: "21 고OO - 친구 잡기.html", name: "고OO", title: "친구 잡기",     desc: "", algo: "" },
-
-    { file: "21 박OO - 오얏나무 키우기.html", name: "박OO", title: "오얏나무 키우기",     desc: "", algo: "" },
-    { file: "24 강OO - 자신의 퍼스널 컬러에 맞는 화장품 추천.html", name: "강OO", title: "자신의 퍼스널 컬러에 맞는 화장품 추천",     desc: "", algo: "" },
-
-
-    
-    { file: "OO.html", name: "OO", title: "",     desc: "", algo: "" },
-    { file: "OO.html", name: "OO", title: "",     desc: "", algo: "" },
-    { file: "OO.html", name: "OO", title: "",     desc: "", algo: "" },
-    { file: "OO.html", name: "OO", title: "",     desc: "", algo: "" },
-    { file: "OO.html", name: "OO", title: "",     desc: "", algo: "" },
-    { file: "OO.html", name: "OO", title: "",     desc: "", algo: "" },
-    { file: "OO.html", name: "OO", title: "",     desc: "", algo: "" },
-    { file: "OO.html", name: "OO", title: "",     desc: "", algo: "" },
-    { file: "OO.html", name: "OO", title: "",     desc: "", algo: "" },
-    
-  ];
+  const GITHUB_USER   = "YOUR_GITHUB_USERNAME";   // ← 수정
+  const GITHUB_REPO   = "YOUR_REPO_NAME";          // ← 수정
+  const GITHUB_BRANCH = "main";
+  const FOLDER        = "students";
 
   /* ═══════════════════════════════════════════════
      Supabase 설정
   */
   const SUPABASE_URL = "https://sdhpzypjqmowhrhxvvsj.supabase.co/rest/v1/";
   const SUPABASE_KEY = "sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc";
-  const TABLE = "views";   // Supabase 테이블명 (아래 SQL 참고)
+  const TABLE = "views";
+
+  /* ── GitHub API: students/ 폴더 파일 목록 조회 ── */
+  async function fetchStudentsFromGitHub() {
+    const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FOLDER}?ref=${GITHUB_BRANCH}`;
+    const res = await fetch(url, {
+      headers: { "Accept": "application/vnd.github+json" }
+    });
+    if (!res.ok) throw new Error(`GitHub API 오류: ${res.status} ${res.statusText}`);
+    const items = await res.json();
+
+    // .html 파일만 필터링하고 이름/제목 파싱
+    return items
+      .filter(item => item.type === "file" && item.name.endsWith(".html"))
+      .map(item => {
+        const filename = item.name; // "학생이름 - 프로그램이름.html"
+        const base = filename.replace(/\.html$/i, ""); // 확장자 제거
+
+        // " - " 구분자로 이름과 제목 분리
+        const dashIdx = base.indexOf(" - ");
+        let name, title;
+        if (dashIdx !== -1) {
+          name  = base.slice(0, dashIdx).trim();
+          title = base.slice(dashIdx + 3).trim();
+        } else {
+          // 구분자가 없으면 파일명 전체를 제목으로
+          name  = "";
+          title = base;
+        }
+
+        return {
+          file: filename,
+          name,
+          title,
+          desc: "",
+          algo: "",
+          views: 0,
+        };
+      });
+  }
 
   /* ── Supabase 헬퍼 ── */
   async function sbFetch(path, opts = {}) {
@@ -352,7 +344,6 @@
   }
 
   async function incrementViews(file) {
-    // upsert: 없으면 insert, 있으면 views + 1
     const current = await getViews(file);
     await sbFetch(TABLE, {
       method: "POST",
@@ -361,7 +352,6 @@
     });
   }
 
-  /* ── 뷰 카운트 일괄 조회 ── */
   async function loadAllViews() {
     try {
       const rows = await sbFetch(`${TABLE}?select=file,views`);
@@ -371,19 +361,16 @@
     } catch { return {}; }
   }
 
-  /* ── 메달 이모지 ── */
-  const MEDALS = ["🥇", "🥈", "🥉"];
+  /* ── 메달 / 아이콘 ── */
+  const MEDALS      = ["🥇", "🥈", "🥉"];
   const MEDAL_CLASS = ["gold", "silver", "bronze"];
   const MEDAL_LABEL = ["1위", "2위", "3위", "4위", "5위", "6위"];
-
-  /* ── 아이콘 SVG ── */
   const eyeIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 
   /* ── 렌더링 ── */
   function render(students) {
     const sorted = [...students].sort((a, b) => b.views - a.views);
     const top6   = sorted.slice(0, 6);
-    const rest   = sorted.slice(6);
 
     const app = document.getElementById("app");
 
@@ -392,23 +379,23 @@
       <div class="section-label">🏆 명예의 전당 — TOP 6</div>
       <div class="medal-grid">
         ${top6.map((s, i) => {
-          const mc = i < 3 ? MEDAL_CLASS[i] : "bronze";
+          const mc    = i < 3 ? MEDAL_CLASS[i] : "bronze";
           const badge = i < 3 ? MEDALS[i] : "🥉";
           return `
-          <a class="medal-card ${mc}" href="students/${s.file}" target="_blank"
+          <a class="medal-card ${mc}" href="${FOLDER}/${s.file}" target="_blank"
              onclick="handleClick(event, '${s.file}')">
             <div class="medal-badge">${badge}</div>
             <div class="medal-rank">${MEDAL_LABEL[i]}</div>
             <div class="card-name">${s.name}</div>
             <div class="card-title">${s.title}</div>
             <div class="card-desc">${s.desc}</div>
-            <span class="card-algo">${s.algo}</span>
+            ${s.algo ? `<span class="card-algo">${s.algo}</span>` : ""}
             <div class="card-views">${eyeIcon} ${s.views.toLocaleString()}</div>
           </a>`;
         }).join("")}
       </div>`;
 
-    /* 나머지 테이블 */
+    /* 전체 테이블 */
     const tableHTML = `
       <div class="section-label">📋 전체 작품 목록</div>
       <div class="table-wrap">
@@ -418,24 +405,20 @@
               <th style="text-align:center">순위</th>
               <th>이름</th>
               <th>작품명</th>
-              <th>설명</th>
-              <th>알고리즘</th>
               <th>조회수</th>
             </tr>
           </thead>
           <tbody>
             ${sorted.map((s, i) => {
-              const rankCell = i < 6
-                ? `<td class="rank-cell">${MEDALS[Math.min(i,2)]}</td>`
-                : `<td class="rank-cell"></td>`;
+              const rankCell = i < 3
+                ? `<td class="rank-cell">${MEDALS[i]}</td>`
+                : `<td class="rank-cell" style="color:var(--muted);font-size:.85rem">${i + 1}</td>`;
               return `
               <tr>
                 ${rankCell}
                 <td class="name-cell">${s.name}</td>
-                <td><a href="students/${s.file}" target="_blank"
+                <td><a href="${FOLDER}/${s.file}" target="_blank"
                        onclick="handleClick(event, '${s.file}')">${s.title}</a></td>
-                <td class="desc-cell">${s.desc}</td>
-                <td><span class="algo-tag">${s.algo}</span></td>
                 <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
               </tr>`;
             }).join("")}
@@ -454,15 +437,29 @@
   /* ── 초기 로드 ── */
   (async () => {
     try {
+      // GitHub에서 파일 목록 가져오기
+      const students = await fetchStudentsFromGitHub();
+
+      // Supabase에서 조회수 병합
       const viewMap = await loadAllViews();
-      const students = STUDENTS.map(s => ({
-        ...s,
-        views: viewMap[s.file] ?? 0,
-      }));
+      students.forEach(s => { s.views = viewMap[s.file] ?? 0; });
+
+      if (students.length === 0) {
+        document.getElementById("app").innerHTML =
+          `<div class="state-msg">📂 <code>${FOLDER}/</code> 폴더에 .html 파일이 없습니다.</div>`;
+        return;
+      }
+
       render(students);
     } catch (err) {
       document.getElementById("app").innerHTML =
-        `<div class="state-msg">⚠️ 데이터를 불러오지 못했습니다.<br><small>${err.message}</small></div>`;
+        `<div class="state-msg">
+          ⚠️ 데이터를 불러오지 못했습니다.<br>
+          <small style="margin-top:8px;display:block">${err.message}</small>
+          <small style="margin-top:6px;display:block;color:#4f8ef7">
+            index.html 상단의 GITHUB_USER, GITHUB_REPO 값을 확인해주세요.
+          </small>
+        </div>`;
     }
   })();
 </script>
