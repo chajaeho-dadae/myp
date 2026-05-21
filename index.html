@@ -379,8 +379,8 @@
       <div class="section-label">🏆 명예의 전당 — TOP 6</div>
       <div class="medal-grid">
         ${top6.map((s, i) => {
-          const mc    = i < 3 ? MEDAL_CLASS[i] : "bronze";
-          const badge = i < 3 ? MEDALS[i] : "🥉";
+          const mc    = i < 4 ? MEDAL_CLASS[i] : "bronze";
+          const badge = i < 4 ? MEDALS[i] : "🥉";
           return `
           <a class="medal-card ${mc}" href="${FOLDER}/${s.file}" target="_blank"
              onclick="handleClick(event, '${s.file}')">
