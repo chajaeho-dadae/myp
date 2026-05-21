@@ -1,0 +1,121 @@
+export default function PersonalColorGame() {
+  const products = {
+    "봄 웜": {
+      틴트: "롬앤 쥬시 래스팅 틴트 22 포멜로 스킨",
+      블러셔: "페리페라 맑게 물든 선샤인 치크 05",
+      쿠션: "클리오 킬커버 더 뉴 파운웨어 쿠션 란제리"
+    },
+    "여름 쿨": {
+      틴트: "롬앤 듀이풀 워터 틴트 03 이프 로즈",
+      블러셔: "릴리바이레드 러브빔 치크 02",
+      쿠션: "에스쁘아 프로 테일러 비벨벳 쿠션 아이보리"
+    },
+    "가을 웜": {
+      틴트: "페리페라 잉크 무드 글로이 틴트 11 브라운 헤븐",
+      블러셔: "투쿨포스쿨 아트클래스 바이로댕 블러셔",
+      쿠션: "웨이크메이크 워터 벨벳 커버 쿠션 내추럴"
+    },
+    "겨울 쿨": {
+      틴트: "롬앤 블러 퍼지 틴트 06 모브 휩",
+      블러셔: "페리페라 퓨어 블러쉬드 선샤인 치크 12",
+      쿠션: "헤라 블랙 쿠션 21N1"
+    }
+  };
+
+  const [step, setStep] = React.useState(0);
+  const [color, setColor] = React.useState("");
+  const [item, setItem] = React.useState("");
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pink-100 to-yellow-50 flex items-center justify-center p-6">
+      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-2xl text-center">
+        <h1 className="text-4xl font-bold text-pink-500 mb-6">
+          💄 퍼스널 컬러 화장품 추천 게임 💄
+        </h1>
+
+        {step === 0 && (
+          <div>
+            <p className="text-lg mb-6">퍼스널 컬러에 맞는 올리브영 추천템 찾기 ✨</p>
+            <button
+              onClick={() => setStep(1)}
+              className="bg-pink-500 hover:bg-pink-600 text-white px-8 py-4 rounded-2xl text-lg"
+            >
+              게임 시작하기
+            </button>
+          </div>
+        )}
+
+        {step === 1 && (
+          <div>
+            <h2 className="text-2xl font-bold mb-6">1️⃣ 퍼스널 컬러 선택</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.keys(products).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => {
+                    setColor(c);
+                    setStep(2);
+                  }}
+                  className="bg-pink-400 hover:bg-pink-500 text-white p-4 rounded-2xl text-lg"
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div>
+            <h2 className="text-2xl font-bold mb-6">2️⃣ 화장품 종류 선택</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.keys(products[color]).map((i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setItem(i);
+                    setStep(3);
+                  }}
+                  className="bg-purple-400 hover:bg-purple-500 text-white p-4 rounded-2xl text-lg"
+                >
+                  {i}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div>
+            <h2 className="text-3xl font-bold mb-6">✨ 추천 결과 ✨</h2>
+
+            <div className="bg-pink-50 p-8 rounded-3xl shadow-md">
+              <p className="text-xl mb-3 font-semibold">선택한 퍼스널 컬러</p>
+              <p className="text-2xl text-pink-500 font-bold mb-6">{color}</p>
+
+              <p className="text-xl mb-3 font-semibold">추천 {item}</p>
+              <p className="text-2xl text-purple-500 font-bold">
+                {products[color][item]}
+              </p>
+
+              <p className="mt-6 text-gray-600">
+                🛍️ 올리브영에서 구매 가능한 추천 제품이에요!
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setStep(0);
+                setColor("");
+                setItem("");
+              }}
+              className="mt-8 bg-pink-500 hover:bg-pink-600 text-white px-8 py-4 rounded-2xl text-lg"
+            >
+              다시 하기
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

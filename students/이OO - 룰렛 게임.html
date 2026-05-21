@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>룰렛 게임 - Web Version</title>
+    <style>
+        body { background: linear-gradient(to bottom, #0f1432, #192350); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; color: white; font-family: 'Malgun Gothic', sans-serif; overflow: hidden; }
+        canvas { box-shadow: 0 0 50px rgba(0,0,0,0.5); border-radius: 50%; background-color: #0f1432; }
+        #ui { position: absolute; bottom: 50px; text-align: center; }
+        button { padding: 15px 40px; font-size: 20px; cursor: pointer; background: #3c8ce6; color: white; border: 2px solid #ffd700; border-radius: 30px; transition: 0.3s; }
+        button:hover { background: #5aaaff; }
+        button:disabled { background: #50506e; cursor: default; border-color: #c8c8d2; }
+        #result { margin-top: 20px; font-size: 42px; font-weight: bold; min-height: 50px; text-shadow: 2px 2px 4px black; }
+    </style>
+</head>
+<body>
+    <h1 id="title" style="color: #ccccff;">룰렛 게임</h1>
+    <canvas id="rouletteCanvas" width="600" height="600"></canvas>
+    <div id="ui">
+        <div id="hint" style="color: #a0a0c8; margin-bottom: 10px;">버튼을 눌러 SPIN!</div>
+        <button id="spinBtn">SPIN!</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('rouletteCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const resultDiv = document.getElementById('result');
+
+        const items = ["1등", "2등", "3등", "꽝", "꽝", "꽝", "행운", "꽝"];
+        const colors = ["#e74c3c", "#f39c12", "#2ecc71", "#3498db", "#9b59b2", "#1abc9c", "#e64980", "#27ae60"];
+        
+        let angle = 0;
+        let speed = 0;
+        let isSpinning = false;
+        const decel = 0.985; // 감속 계수
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const radius = 250;
+
+            // 룰렛 원판 그리기
+            items.forEach((item, i) => {
+                const segAngle = (2 * Math.PI) / items.length;
+                const startAngle = angle + i * segAngle;
+                
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, startAngle, startAngle + segAngle);
+                ctx.fillStyle = colors[i];
+                ctx.fill();
+                ctx.strokeStyle = "rgba(255,255,255,0.5)";
+                ctx.stroke();
+
+                // 텍스트 그리기
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(startAngle + segAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "white";
+                ctx.font = "bold 20px Arial";
+                ctx.fillText(item, radius - 30, 10);
+                ctx.restore();
+            });
+
+            // 포인터 (화살표)
+            ctx.fillStyle = "#dc2828";
+            ctx.beginPath();
+            ctx.moveTo(cx - 15, cy - radius - 10);
+            ctx.lineTo(cx + 15, cy - radius - 10);
+            ctx.lineTo(cx, cy - radius + 30);
+            ctx.fill();
+            ctx.strokeStyle = "#ffd700";
+            ctx.stroke();
+
+            if (isSpinning) {
+                speed *= decel;
+                angle += speed;
+
+                if (speed < 0.002) {
+                    isSpinning = false;
+                    speed = 0;
+                    spinBtn.disabled = false;
+                    determineResult();
+                }
+            }
+            requestAnimationFrame(draw);
+        }
+
+        function determineResult() {
+            // 12시 방향( -PI/2 ) 기준 인덱스 계산
+            const netAngle = (1.5 * Math.PI - angle) % (2 * Math.PI);
+            const positiveAngle = netAngle < 0 ? netAngle +

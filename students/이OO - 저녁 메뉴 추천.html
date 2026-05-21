@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>음식 추천 프로그램</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family:'Pretendard', sans-serif;
+    background:linear-gradient(135deg,#ffecd2,#fcb69f);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.container{
+    width:700px;
+    background:white;
+    padding:40px;
+    border-radius:25px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.25);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:30px;
+    color:#ff6b35;
+}
+
+.section{
+    margin-bottom:25px;
+}
+
+label{
+    display:block;
+    margin-bottom:10px;
+    font-size:20px;
+    font-weight:bold;
+    color:#333;
+}
+
+select, input{
+    width:100%;
+    padding:15px;
+    font-size:18px;
+    border-radius:12px;
+    border:2px solid #ddd;
+}
+
+button{
+    width:100%;
+    padding:18px;
+    font-size:22px;
+    border:none;
+    border-radius:15px;
+    background:#ff6b35;
+    color:white;
+    cursor:pointer;
+    margin-top:15px;
+    transition:0.2s;
+}
+
+button:hover{
+    transform:scale(1.03);
+}
+
+#result{
+    margin-top:30px;
+    padding:25px;
+    background:#fff3eb;
+    border-radius:20px;
+    font-size:22px;
+    text-align:center;
+    line-height:1.7;
+    min-height:120px;
+}
+
+.food{
+    font-size:36px;
+    color:#d62828;
+    font-weight:bold;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>🍔 음식 추천 프로그램 🍜</h1>
+
+    <div class="section">
+        <label>현재 배고픔 지수</label>
+        <select id="hungry">
+            <option>조금 배고픔</option>
+            <option>배고픔</option>
+            <option>매우 배고픔</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <label>먹고 싶은 음식 종류</label>
+        <select id="type">
+            <option>한식</option>
+            <option>중식</option>
+            <option>일식</option>
+            <option>양식</option>
+            <option>분식</option>
+            <option>패스트푸드</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <label>원하는 맛</label>
+        <select id="taste">
+            <option>매운맛</option>
+            <option>달콤한맛</option>
+            <option>짭짤한맛</option>
+            <option>고소한맛</option>
+            <option>시원한맛</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <label>예산 선택</label>
+        <select id="budget">
+            <option>5000원 이하</option>
+            <option>10000원 이하</option>
+            <option>20000원 이하</option>
+            <option>상관 없음</option>
+        </select>
+    </div>
+
+    <button onclick="recommendFood()">음식 추천 받기</button>
+
+    <button onclick="recommendRandom()">🎲 랜덤 추천</button>
+
+    <div id="result">
+        원하는 조건을 선택하고 음식 추천을 받아보세요!
+    </div>
+
+</div>
+
+<script>
+
+const foods = [
+
+{
+    name:"김치찌개",
+    type:"한식",
+    taste:"매운맛",
+    budget:"10000원 이하"
+},
+
+{
+    name:"떡볶이",
+    type:"분식",
+    taste:"매운맛",
+    budget:"5000원 이하"
+},
+
+{
+    name:"짜장면",
+    type:"중식",
+    taste:"짭짤한맛",
+    budget:"10000원 이하"
+},
+
+{
+    name:"초밥",
+    type:"일식",
+    taste:"고소한맛",
+    budget:"20000원 이하"
+},
+
+{
+    name:"햄버거",
+    type:"패스트푸드",
+    taste:"짭짤한맛",
+    budget:"10000원 이하"
+},
+
+{
+    name:"파스타",
+    type:"양식",
+    taste:"고소한맛",
+    budget:"20000원 이하"
+},
+
+{
+    name:"냉면",
+    type:"한식",
+    taste:"시원한맛",
+    budget:"10000원 이하"
+},
+
+{
+    name:"탕후루",
+    type:"분식",
+    taste:"달콤한맛",
+    budget:"5000원 이하"
+},
+
+{
+    name:"마라탕",
+    type:"중식",
+    taste:"매운맛",
+    budget:"20000원 이하"
+},
+
+{
+    name:"치킨",
+    type:"패스트푸드",
+    taste:"짭짤한맛",
+    budget:"20000원 이하"
+}
+
+];
+
+function recommendFood(){
+
+    const hungry = document.getElementById("hungry").value;
+    const type = document.getElementById("type").value;
+    const taste = document.getElementById("taste").value;
+    const budget = document.getElementById("budget").value;
+
+    const result = document.getElementById("result");
+
+    let filtered = foods.filter(food => {
+
+        const typeMatch = food.type === type;
+        const tasteMatch = food.taste === taste;
+
+        const budgetMatch =
+            budget === "상관 없음" ||
+            food.budget === budget;
+
+        return typeMatch && tasteMatch && budgetMatch;
+
+    });
+
+    if(filtered.length === 0){
+
+        result.innerHTML = `
+            😥 조건에 맞는 음식이 없습니다.<br>
+            다른 조건으로 다시 추천받아보세요!
+        `;
+
+        return;
+    }
+
+    const randomFood =
+        filtered[Math.floor(Math.random() * filtered.length)];
+
+    result.innerHTML = `
+        🍽️ 추천 음식 🍽️<br><br>
+
+        <div class="food">${randomFood.name}</div>
+
+        <br>
+
+        배고픔 지수 : ${hungry}<br>
+        음식 종류 : ${randomFood.type}<br>
+        음식 맛 : ${randomFood.taste}<br>
+        예산 : ${randomFood.budget}<br><br>
+
+        😋 맛있게 드세요!
+    `;
+}
+
+function recommendRandom(){
+
+    const result = document.getElementById("result");
+
+    const randomFood =
+        foods[Math.floor(Math.random() * foods.length)];
+
+    result.innerHTML = `
+        🎲 랜덤 추천 음식 🎲<br><br>
+
+        <div class="food">${randomFood.name}</div>
+
+        <br>
+
+        음식 종류 : ${randomFood.type}<br>
+        음식 맛 : ${randomFood.taste}<br>
+        예산 : ${randomFood.budget}<br><br>
+
+        🍴 오늘은 이 메뉴 어떠세요?
+    `;
+}
+
+</script>
+
+</body>
+</html>
