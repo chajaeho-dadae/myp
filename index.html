@@ -262,8 +262,7 @@
 
 <script>
   /* ═══════════════════════════════════════════════
-     ★ GitHub 저장소 설정 — 여기만 수정하세요
-     ═══════════════════════════════════════════════
+     
      GITHUB_USER  : GitHub 사용자명 (예: "myschool")
      GITHUB_REPO  : 저장소명      (예: "student-programs")
      GITHUB_BRANCH: 브랜치명      (기본: "main")
@@ -379,8 +378,8 @@
       <div class="section-label">🏆 명예의 전당 — TOP 6</div>
       <div class="medal-grid">
         ${top6.map((s, i) => {
-          const mc    = i < 4 ? MEDAL_CLASS[i] : "bronze";
-          const badge = i < 4 ? MEDALS[i] : "🥉";
+          const mc    = i < 3 ? MEDAL_CLASS[i] : "bronze";
+          const badge = i < 3 ? MEDALS[i] : "🥉";
           return `
           <a class="medal-card ${mc}" href="${FOLDER}/${s.file}" target="_blank"
              onclick="handleClick(event, '${s.file}')">
