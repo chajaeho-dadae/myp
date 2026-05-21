@@ -262,7 +262,8 @@
 
 <script>
   /* ═══════════════════════════════════════════════
-     
+     ★ GitHub 저장소 설정 — 여기만 수정하세요
+     ═══════════════════════════════════════════════
      GITHUB_USER  : GitHub 사용자명 (예: "myschool")
      GITHUB_REPO  : 저장소명      (예: "student-programs")
      GITHUB_BRANCH: 브랜치명      (기본: "main")
@@ -270,8 +271,8 @@
 
      파일명 규칙: "학생이름 - 프로그램이름.html"
   */
-  const GITHUB_USER   = "chajaeho-dadae";   // ← 수정
-  const GITHUB_REPO   = "myp";          // ← 수정
+  const GITHUB_USER   = "YOUR_GITHUB_USERNAME";   // ← 수정
+  const GITHUB_REPO   = "YOUR_REPO_NAME";          // ← 수정
   const GITHUB_BRANCH = "main";
   const FOLDER        = "students";
 
@@ -337,16 +338,35 @@
     return res.status === 204 ? null : res.json();
   }
 
-  async function getViews(file) {
-    const rows = await sbFetch(`${TABLE}?file=eq.${encodeURIComponent(file)}&select=views`);
-    return (rows && rows[0]) ? rows[0].views : 0;
-  }
-
   async function incrementViews(file) {
     await sbFetch("rpc/increment_views", {
       method: "POST",
       body: JSON.stringify({ p_file: file }),
     });
+  }
+
+  /* ── 중복 클릭 방지 (24시간 쿨다운) ──
+     localStorage에 { 파일명: 마지막클릭시각(ms) } 형태로 기록.
+     같은 브라우저에서 24시간 내 동일 작품 재클릭 시 카운트 안 함.
+  */
+  const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24시간
+  const LS_KEY = "viewed_works";
+
+  function canCount(file) {
+    try {
+      const record = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+      const last = record[file];
+      if (!last) return true;                          // 처음 보는 작품
+      return Date.now() - last > COOLDOWN_MS;          // 24시간 지났으면 허용
+    } catch { return true; }
+  }
+
+  function markViewed(file) {
+    try {
+      const record = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+      record[file] = Date.now();
+      localStorage.setItem(LS_KEY, JSON.stringify(record));
+    } catch { /* 시크릿 모드 등 localStorage 차단 시 무시 */ }
   }
 
   async function loadAllViews() {
@@ -426,8 +446,10 @@
     app.innerHTML = medalHTML + tableHTML;
   }
 
-  /* ── 클릭 → 조회수 증가 ── */
+  /* ── 클릭 → 조회수 증가 (24시간 중복 방지) ── */
   window.handleClick = async function(e, file) {
+    if (!canCount(file)) return;   // 24시간 내 재클릭 → 무시
+    markViewed(file);              // 먼저 기록 (연속 클릭 차단)
     try { await incrementViews(file); } catch(err) { console.warn(err); }
   };
 
