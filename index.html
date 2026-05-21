@@ -343,11 +343,9 @@
   }
 
   async function incrementViews(file) {
-    const current = await getViews(file);
-    await sbFetch(TABLE, {
+    await sbFetch("rpc/increment_views", {
       method: "POST",
-      prefer: "resolution=merge-duplicates",
-      body: JSON.stringify({ file, views: current + 1 }),
+      body: JSON.stringify({ p_file: file }),
     });
   }
 
