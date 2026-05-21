@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>짝사랑 성공률 테스트</title>
+  <style>
+    body{
+      font-family: "Pretendard", sans-serif;
+      background: linear-gradient(135deg,#ffd6e7,#ffe9f3);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      margin:0;
+    }
+
+    .container{
+      background:white;
+      width:400px;
+      padding:30px;
+      border-radius:25px;
+      box-shadow:0 8px 20px rgba(0,0,0,0.15);
+      text-align:center;
+    }
+
+    h1{
+      color:#ff4f8b;
+      margin-bottom:20px;
+    }
+
+    input, select{
+      width:90%;
+      padding:12px;
+      margin:10px 0;
+      border:2px solid #ffc2d6;
+      border-radius:12px;
+      font-size:16px;
+    }
+
+    button{
+      background:#ff4f8b;
+      color:white;
+      border:none;
+      padding:12px 20px;
+      border-radius:15px;
+      font-size:16px;
+      cursor:pointer;
+      margin-top:15px;
+      transition:0.2s;
+    }
+
+    button:hover{
+      background:#ff2f73;
+      transform:scale(1.05);
+    }
+
+    .question{
+      font-size:20px;
+      margin-bottom:20px;
+      color:#444;
+    }
+
+    .choice-btn{
+      display:block;
+      width:100%;
+      margin:10px 0;
+      background:#ff8db3;
+    }
+
+    .result{
+      font-size:24px;
+      margin-top:20px;
+      color:#ff2f73;
+      font-weight:bold;
+    }
+
+    .tip{
+      margin-top:15px;
+      font-size:18px;
+      color:#555;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <h1>💕 짝사랑 성공률 테스트 💕</h1>
+  <button onclick="startTest()">시작하기</button>
+</div>
+
+<script>
+  let score = 0;
+  let currentQuestion = 0;
+
+  const questions = [
+    {
+      q: "최근 그 사람이 먼저 말을 건 적이 있나요?",
+      choices: [
+        ["네", 20],
+        ["아니요", 0]
+      ]
+    },
+    {
+      q: "최근 눈이 자주 마주친다고 느끼나요?",
+      choices: [
+        ["네", 20],
+        ["아니요", 0]
+      ]
+    },
+    {
+      q: "다른 사람보다 나에게 더 친절한가요?",
+      choices: [
+        ["예", 20],
+        ["아니요", 0],
+        ["모르겠음", 10]
+      ]
+    },
+    {
+      q: "주변 친구들이 둘 사이를 의심한 적이 있나요?",
+      choices: [
+        ["네", 20],
+        ["아니요", 0]
+      ]
+    },
+    {
+      q: "인스타그램 맞팔이 되어있나요?",
+      choices: [
+        ["네", 10],
+        ["아니요", 0],
+        ["인스타그램이 없습니다", 5]
+      ]
+    },
+    {
+      q: "그 사람이 유독 나에게만 장난을 치나요?",
+      choices: [
+        ["예", 10],
+        ["아니요", 0],
+        ["모르겠음", 5]
+      ]
+    }
+  ];
+
+  function startTest(){
+    document.getElementById("app").innerHTML = `
+      <h1>💖 정보 입력 💖</h1>
+      <input type="text" id="myName" placeholder="내 이름">
+      <input type="text" id="loveName" placeholder="상대방 이름">
+
+      <select id="gender">
+        <option>성별 선택</option>
+        <option>여자</option>
+        <option>남자</option>
+      </select>
+
+      <button onclick="showQuestion()">다음</button>
+    `;
+  }
+
+  function showQuestion(){
+    if(currentQuestion >= questions.length){
+      showResult();
+      return;
+    }
+
+    let q = questions[currentQuestion];
+
+    let html = `
+      <div class="question">${q.q}</div>
+    `;
+
+    q.choices.forEach(choice => {
+      html += `
+        <button class="choice-btn"
+          onclick="selectAnswer(${choice[1]})">
+          ${choice[0]}
+        </button>
+      `;
+    });
+
+    document.getElementById("app").innerHTML = html;
+  }
+
+  function selectAnswer(point){
+    score += point;
+    currentQuestion++;
+    showQuestion();
+  }
+
+  function showResult(){
+    let myName = document.getElementById("myName")?.value || "당신";
+    let loveName = document.getElementById("loveName")?.value || "상대방";
+
+    let emoji = "";
+    let tip = "";
+
+    if(score <= 30){
+      emoji = "😢";
+      tip = "조금 더 친해질 기회를 만들어 보세요!";
+    }
+    else if(score <= 60){
+      emoji = "💪";
+      tip = "가능성이 있어요! 대화를 더 자주 해보세요!";
+    }
+    else{
+      emoji = "🎉";
+      tip = "서로 좋은 감정이 있을 가능성이 높아요!";
+    }
+
+    document.getElementById("app").innerHTML = `
+      <h1>${emoji} 결과 ${emoji}</h1>
+      <div class="result">
+        ${myName} ❤️ ${loveName}<br><br>
+        성공률: ${score}%
+      </div>
+
+      <div class="tip">
+        ${tip}
+      </div>
+
+      <button onclick="location.reload()">다시하기</button>
+    `;
+  }
+</script>
+
+</body>
+</html>
