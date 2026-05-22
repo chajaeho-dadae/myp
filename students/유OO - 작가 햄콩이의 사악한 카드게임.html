@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>작가햄콩이의 사악한 카드게임</title>
+<style>
+body{
+    margin:0;
+    background:#1a1a1a;
+    color:white;
+    font-family:sans-serif;
+    overflow:hidden;
+}
+#game{
+    width:100vw;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+}
+#top{
+    display:flex;
+    justify-content:space-around;
+    padding:10px;
+    background:#222;
+}
+.enemy{
+    border:2px solid #666;
+    border-radius:10px;
+    padding:10px;
+    width:180px;
+    text-align:center;
+    background:#2e2e2e;
+}
+#table{
+    flex:1;
+    position:relative;
+    background:linear-gradient(#3d2b1f,#24160f);
+}
+#deck,#special,#playArea{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    width:140px;
+    height:180px;
+    border:3px solid white;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    cursor:pointer;
+}
+#deck{ left:15%; background:#444;}
+#playArea{ left:43%; background:#5a3c2f;}
+#special{ right:15%; background:#553366;}
+#hand{
+    height:250px;
+    background:#111;
+    display:flex;
+    gap:10px;
+    padding:10px;
+    overflow-x:auto;
+}
+.card{
+    min-width:180px;
+    height:220px;
+    background:#f2f2f2;
+    color:black;
+    border-radius:12px;
+    padding:10px;
+    cursor:pointer;
+    border:4px solid black;
+}
+.card:hover{
+    transform:scale(1.05);
+}
+.star1{border-color:gray;}
+.star2{border-color:green;}
+.star3{border-color:blue;}
+.star4{border-color:purple;}
+.star5{border-color:gold;}
+.curse{border-color:red;background:#330000;color:white;}
+.special{border-color:cyan;background:#002244;color:white;}
+button{
+    padding:8px 12px;
+    margin-top:5px;
+}
+#log{
+    position:absolute;
+    right:10px;
+    bottom:10px;
+    width:350px;
+    height:200px;
+    overflow:auto;
+    background:rgba(0,0,0,0.7);
+    padding:10px;
+    border-radius:10px;
+}
+</style>
+</head>
+<body>
+
+<div id="game">
+
+<div id="top">
+    <div class="enemy" id="aBox">A<br>HP: <span id="aHp">100</span></div>
+    <div class="enemy" id="bBox">B<br>HP: <span id="bHp">100</span></div>
+    <div class="enemy" id="cBox">C<br>HP: <span id="cHp">100</span></div>
+</div>
+
+<div id="table">
+    <div id="deck">카드 더미</div>
+    <div id="playArea">카드 내는곳</div>
+    <div id="special">스페셜 카드</div>
+    <div id="log"></div>
+</div>
+
+<div id="hand"></div>
+
+</div>
+
+<script>
+const logDiv = document.getElementById("log");
+
+function log(text){
+    logDiv.innerHTML += text + "<br>";
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+const player = {
+    name:"플레이어",
+    hp:100,
+    maxHp:100,
+    hand:[],
+    damageMulti:1,
+    block:false
+};
+
+const enemies = {
+    a:{name:"A",hp:100,maxHp:100},
+    b:{name:"B",hp:100,maxHp:100},
+    c:{name:"C",hp:100,maxHp:100}
+};
+
+const cards = [
+{
+name:"커피",
+star:"star1",
+desc:"체력 20회복",
+effect:(target,user)=>{
+    user.hp=Math.min(user.maxHp,user.hp+20);
+    log(user.name+" 체력 20회복!");
+}
+},
+{
+name:"강타",
+star:"star2",
+desc:"30 데미지",
+effect:(target,user)=>{
+    damage(target,30*user.damageMulti);
+}
+},
+{
+name:"플린트락 권총",
+star:"star2",
+desc:"40 데미지",
+effect:(target,user)=>{
+    damage(target,40*user.damageMulti);
+}
+},
+{
+name:"회전참수",
+star:"star3",
+desc:"50 데미지",
+effect:(target,user)=>{
+    damage(target,50*user.damageMulti);
+}
+},
+{
+name:"급류",
+star:"star3",
+desc:"60 데미지",
+effect:(target,user)=>{
+    damage(target,60*user.damageMulti);
+}
+},
+{
+name:"낙뢰",
+star:"star3",
+desc:"70 데미지",
+effect:(target,user)=>{
+    damage(target,70*user.damageMulti);
+}
+},
+{
+name:"녹건",
+star:"star3",
+desc:"75000 데미지",
+effect:(target,user)=>{
+    damage(target,75000);
+}
+},
+{
+name:"스트라이크",
+star:"star5",
+desc:"100 데미지 + 양옆 70",
+effect:(target,user)=>{
+    damage(target,100);
+    Object.values(enemies).forEach(e=>{
+        if(e!==target){
+            damage(e,70);
+        }
+    });
+}
+},
+{
+name:"군악대원의 완벽한연주",
+star:"star5",
+desc:"3턴간 데미지 2배",
+effect:(target,user)=>{
+    user.damageMulti=2;
+    log("데미지 2배!");
+}
+},
+{
+name:"감천쇄묘",
+star:"star5",
+desc:"모두 60데미지",
+effect:(target,user)=>{
+    Object.values(enemies).forEach(e=>{
+        damage(e,60);
+    });
+}
+},
+{
+name:"회천월극",
+star:"star5",
+desc:"모두에게 100 데미지",
+effect:(target,user)=>{
+    Object.values(enemies).forEach(e=>{
+        damage(e,100);
+    });
+}
+},
+{
+name:"4계절-영원",
+star:"special",
+desc:"데미지 40배",
+effect:(target,user)=>{
+    user.damageMulti=40;
+    log("40배 강화!");
+}
+},
+{
+name:"절대각성",
+star:"special",
+desc:"즉시 승리",
+effect:(target,user)=>{
+    alert("절대각성 발동! 플레이어 승리!");
+}
+},
+{
+name:"시계는 내일을가리킨다",
+star:"curse",
+desc:"사용 즉시 죽음",
+effect:(target,user)=>{
+    user.hp=0;
+    log("저주 발동!");
+}
+}
+];
+
+function drawCard(){
+    const card = cards[Math.floor(Math.random()*cards.length)];
+    player.hand.push(card);
+    renderHand();
+}
+
+function renderHand(){
+    const hand = document.getElementById("hand");
+    hand.innerHTML="";
+
+    player.hand.forEach((card,index)=>{
+        const div = document.createElement("div");
+        div.className="card "+card.star;
+
+        div.innerHTML=`
+        <h3>${card.name}</h3>
+        <p>${card.desc}</p>
+        <button>사용</button>
+        `;
+
+        div.querySelector("button").onclick=()=>{
+            useCard(index);
+        };
+
+        hand.appendChild(div);
+    });
+}
+
+function useCard(index){
+    const card = player.hand[index];
+
+    const yes = confirm(card.name + "\n(" + card.desc + ")\n사용하시겠습니까?");
+    if(!yes)return;
+
+    let targetName = prompt("누구에게 사용할까요?\na / b / c");
+
+    if(!["a","b","c"].includes(targetName)){
+        alert("잘못 선택했습니다.");
+        return;
+    }
+
+    const target = enemies[targetName];
+
+    card.effect(target,player);
+
+    player.hand.splice(index,1);
+
+    updateUI();
+
+    setTimeout(aiTurn,1000);
+}
+
+function damage(target,amount){
+    target.hp -= amount;
+    if(target.hp<0)target.hp=0;
+
+    log(target.name+" 에게 "+amount+" 피해!");
+
+    if(target.hp<=0){
+        log(target.name+" 사망!");
+    }
+
+    updateUI();
+}
+
+function updateUI(){
+    document.getElementById("aHp").innerText=enemies.a.hp;
+    document.getElementById("bHp").innerText=enemies.b.hp;
+    document.getElementById("cHp").innerText=enemies.c.hp;
+
+    if(player.hp<=0){
+        alert("패배했습니다!");
+    }
+
+    const alive = Object.values(enemies).filter(e=>e.hp>0);
+
+    if(alive.length===0){
+        alert("승리!");
+    }
+}
+
+function aiTurn(){
+
+    const aliveAI = Object.entries(enemies).filter(([k,v])=>v.hp>0);
+
+    if(aliveAI.length===0)return;
+
+    aliveAI.forEach(([key,ai])=>{
+
+        const attack = Math.floor(Math.random()*30)+10;
+
+        player.hp -= attack;
+
+        log(ai.name+"가 당신에게 "+attack+" 데미지!");
+
+        if(player.hp<=0){
+            alert("패배했습니다!");
+        }
+    });
+}
+
+document.getElementById("deck").onclick=()=>{
+    if(player.hand.length===0){
+        for(let i=0;i<4;i++) drawCard();
+    }else{
+        drawCard();
+    }
+};
+
+document.getElementById("special").onclick=()=>{
+    const specialCards = cards.filter(c=>c.star==="special");
+    const card = specialCards[Math.floor(Math.random()*specialCards.length)];
+    player.hand.push(card);
+    renderHand();
+    log("스페셜 카드 획득!");
+};
+
+for(let i=0;i<4;i++) drawCard();
+
+updateUI();
+
+log("게임 시작!");
+</script>
+
+</body>
+</html>
