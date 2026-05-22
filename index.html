@@ -379,9 +379,9 @@
   }
 
   /* ── 메달 / 아이콘 ── */
-  const MEDALS      = ["🥇", "🥈", "🥉"];
-  const MEDAL_CLASS = ["gold", "silver", "bronze"];
-  const MEDAL_LABEL = ["1위", "2위", "3위", "4위", "5위", "6위"];
+  const MEDALS      = ["🥇", "🥈", "🥈", "🥉", "🥉", "🥉"];
+  const MEDAL_CLASS = ["gold", "silver", "silver", "bronze", "bronze", "bronze"];
+  const MEDAL_LABEL = ["1위", "2위", "2위", "3위", "3위", "3위"];
   const eyeIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 
   /* ── 렌더링 ── */
@@ -427,7 +427,7 @@
           </thead>
           <tbody>
             ${sorted.map((s, i) => {
-              const rankCell = i < 3
+              const rankCell = i < 6
                 ? `<td class="rank-cell">${MEDALS[i]}</td>`
                 : `<td class="rank-cell" style="color:var(--muted);font-size:.85rem">${i + 1}</td>`;
               return `
