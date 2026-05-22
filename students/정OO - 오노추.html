@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>오늘 들을 노래 추천</title>
+
+  <style>
+    body {
+      text-align: center;
+      margin-top: 100px;
+      font-family: Arial;
+      background-color: #f2f2f2;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    button {
+      padding: 15px 30px;
+      font-size: 20px;
+      border: none;
+      border-radius: 10px;
+      background-color: skyblue;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: deepskyblue;
+    }
+
+    #result {
+      margin-top: 30px;
+      font-size: 28px;
+      color: darkblue;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🎵 오늘 들을 노래 추천 🎵</h1>
+
+  <button onclick="recommendSong()">
+    노래 추천
+  </button>
+
+  <div id="result"></div>
+
+  <script>
+
+    // 노래 목록
+    const songs = [
+      "봄날",
+      "Hype Boy",
+      "Ditto",
+      "Butter",
+      "사건의 지평선",
+      "빌려온 고양이",
+      "Magnetic",
+      "REDRED",
+      "Cherish(My Love)"
+    ];
+
+    // 추천 함수
+    function recommendSong() {
+
+      // 무작위 숫자 생성
+      const randomIndex =
+        Math.floor(Math.random() * songs.length);
+
+      // 노래 선택
+      const song = songs[randomIndex];
+
+      // 화면 출력
+      document.getElementById("result").innerText =
+        "오늘의 추천 노래: " + song;
+    }
+
+  </script>
+
+</body>
+</html>

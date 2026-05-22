@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>👗 옷 스타일 추천 테스트 👕</title>
+
+<style>
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  font-family:'Pretendard', sans-serif;
+  background:linear-gradient(135deg,#f6e7d8,#f8efe7,#efe2d3);
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  overflow:hidden;
+}
+
+.container{
+  width:90%;
+  max-width:520px;
+  background:rgba(255,255,255,0.75);
+  backdrop-filter:blur(10px);
+  border-radius:30px;
+  padding:40px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.08);
+  text-align:center;
+}
+
+h1{
+  color:#5e4636;
+  margin-bottom:10px;
+}
+
+.sub{
+  color:#8a6f5c;
+  margin-bottom:30px;
+}
+
+.question-page{
+  display:none;
+  animation:fade 0.4s ease;
+}
+
+.question-page.active{
+  display:block;
+}
+
+@keyframes fade{
+  from{
+    opacity:0;
+    transform:translateY(10px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+.progress{
+  margin-bottom:20px;
+  color:#8a6f5c;
+  font-size:15px;
+}
+
+.question{
+  font-size:24px;
+  margin-bottom:25px;
+  color:#4d3a2d;
+  line-height:1.6;
+}
+
+.option-btn{
+  width:100%;
+  margin-bottom:15px;
+  padding:16px;
+  border:none;
+  border-radius:18px;
+  background:#fff7f0;
+  color:#5c4638;
+  font-size:16px;
+  cursor:pointer;
+  transition:0.25s;
+}
+
+.option-btn:hover{
+  background:#e7cdb7;
+  transform:scale(1.02);
+}
+
+.result-box{
+  display:none;
+  animation:fade 0.5s ease;
+}
+
+.result-title{
+  font-size:30px;
+  margin-bottom:20px;
+  color:#5c4332;
+}
+
+.result-content{
+  background:#fff7f0;
+  padding:25px;
+  border-radius:20px;
+  line-height:2;
+  color:#5c4332;
+  font-size:17px;
+}
+
+.restart-btn{
+  margin-top:25px;
+  padding:15px 25px;
+  border:none;
+  border-radius:15px;
+  background:#cfa98a;
+  color:white;
+  font-size:16px;
+  cursor:pointer;
+}
+
+.restart-btn:hover{
+  background:#b88f71;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>👗 옷 스타일 추천 테스트 👕</h1>
+
+  <div class="sub">
+    ✨ 나한테 어울리는 스타일 찾기 ✨
+  </div>
+
+  <!-- 질문 1 -->
+  <div class="question-page active" id="page1">
+
+    <div class="progress">1 / 4</div>
+
+    <div class="question">
+      🧍 성별을 선택해주세요!
+    </div>
+
+    <button class="option-btn"
+      onclick="saveAnswer('gender','남자',2)">
+      👦 남자
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('gender','여자',2)">
+      👧 여자
+    </button>
+
+  </div>
+
+  <!-- 질문 2 -->
+  <div class="question-page" id="page2">
+
+    <div class="progress">2 / 4</div>
+
+    <div class="question">
+      🌈 평소 추구하는 이미지는?
+    </div>
+
+    <button class="option-btn"
+      onclick="saveAnswer('image','힙한 스트릿',3)">
+      🔥 힙한 스트릿
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('image','청순 첫사랑',3)">
+      🤍 청순 첫사랑
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('image','깔끔한 꾸안꾸',3)">
+      ✨ 깔끔한 꾸안꾸
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('image','화려한 풀매',3)">
+      💎 화려한 풀매
+    </button>
+
+  </div>
+
+  <!-- 질문 3 -->
+  <div class="question-page" id="page3">
+
+    <div class="progress">3 / 4</div>
+
+    <div class="question">
+      👚 옷장에 가장 많은 옷은?
+    </div>
+
+    <button class="option-btn"
+      onclick="saveAnswer('closet','후드티 / 추리닝',4)">
+      🧢 후드티 / 추리닝
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('closet','니트 / 가디건',4)">
+      🧶 니트 / 가디건
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('closet','맨투맨 / 청바지',4)">
+      👖 맨투맨 / 청바지
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('closet','교복',4)">
+      🎒 교복
+    </button>
+
+  </div>
+
+  <!-- 질문 4 -->
+  <div class="question-page" id="page4">
+
+    <div class="progress">4 / 4</div>
+
+    <div class="question">
+      📸 어떤 핏이 가장 잘 어울리나요?
+    </div>
+
+    <button class="option-btn"
+      onclick="saveAnswer('fit','오버핏','result')">
+      🛹 오버핏
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('fit','정핏','result')">
+      👔 정핏
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('fit','슬림핏','result')">
+      ✨ 슬림핏
+    </button>
+
+    <button class="option-btn"
+      onclick="saveAnswer('fit','크롭핏','result')">
+      💖 크롭핏
+    </button>
+
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-box" id="resultBox">
+
+    <div class="result-title" id="resultTitle"></div>
+
+    <div class="result-content" id="resultContent"></div>
+
+    <button class="restart-btn" onclick="location.reload()">
+      🔄 다시 테스트하기
+    </button>
+
+  </div>
+
+</div>
+
+<script>
+
+const answers = {};
+
+function saveAnswer(key, value, next){
+
+  answers[key] = value;
+
+  document.querySelectorAll('.question-page')
+    .forEach(page => page.classList.remove('active'));
+
+  if(next === 'result'){
+    showResult();
+  }else{
+    document.getElementById('page' + next)
+      .classList.add('active');
+  }
+}
+
+function showResult(){
+
+  const image = answers.image;
+  const closet = answers.closet;
+  const fit = answers.fit;
+
+  let title = "";
+  let content = "";
+
+  // 힙한 스타일
+  if(
+    image === "힙한 스트릿" ||
+    closet === "후드티 / 추리닝" ||
+    fit === "오버핏"
+  ){
+
+    title = "🔥 힙한 스트릿 스타일 🔥";
+
+    content = `
+      🧢 오버핏 후드티<br>
+      👖 와이드 팬츠<br>
+      🕶️ 빈티지 데님<br>
+      ⛓️ 체인 액세서리<br>
+      👟 스트릿 운동화<br><br>
+
+      💡 추천 포인트<br>
+      편하면서도 힙한 분위기를 만들 수 있어요 😎
+    `;
+  }
+
+  // 꾸안꾸 스타일
+  else if(
+    image === "깔끔한 꾸안꾸" ||
+    closet === "맨투맨 / 청바지" ||
+    fit === "정핏"
+  ){
+
+    title = "✨ 맨투맨 & 청바지 꾸안꾸 스타일 ✨";
+
+    content = `
+      👕 깔끔한 맨투맨<br>
+      👖 일자핏 청바지<br>
+      🤍 심플한 운동화<br>
+      🎧 자연스러운 레이어드<br><br>
+
+      💡 추천 포인트<br>
+      꾸민 듯 안 꾸민 듯 자연스럽고 센스 있는 스타일 😌
+    `;
+  }
+
+  // 니트 스타일
+  else{
+
+    title = "🧶 가디건 & 니트 꾸민 스타일 🧶";
+
+    content = `
+      🤍 포근한 니트<br>
+      🧥 가디건 레이어드<br>
+      ☕ 감성적인 컬러감<br>
+      👞 슬랙스 코디<br>
+      ✨ 깔끔한 액세서리<br><br>
+
+      💡 추천 포인트<br>
+      최대한 꾸민 느낌의 감성 스타일 🌷
+    `;
+  }
+
+  document.getElementById("resultBox").style.display = "block";
+
+  document.getElementById("resultTitle").innerHTML = title;
+
+  document.getElementById("resultContent").innerHTML = content;
+}
+
+</script>
+
+</body>
+</html>
