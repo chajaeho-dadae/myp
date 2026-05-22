@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 교실 방탈출</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'맑은 고딕',sans-serif;
+}
+
+body{
+    overflow:hidden;
+    background:#111;
+}
+
+/* 전체 */
+#game{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    overflow:hidden;
+    perspective:1200px;
+}
+
+/* 카메라 움직임 */
+#scene{
+    position:absolute;
+    width:1600px;
+    height:900px;
+    transform-style:preserve-3d;
+    transition:transform 0.15s linear;
+}
+
+/* 교실 */
+.wall{
+    position:absolute;
+    width:1600px;
+    height:650px;
+    background:
+    linear-gradient(to bottom,#f5f2ea,#ddd2c0);
+}
+
+.floor{
+    position:absolute;
+    top:650px;
+    width:1600px;
+    height:250px;
+    background:
+    repeating-linear-gradient(
+        90deg,
+        #9b7448 0px,
+        #9b7448 80px,
+        #7c5938 80px,
+        #7c5938 84px
+    );
+}
+
+/* 창문 */
+.window{
+    position:absolute;
+    top:90px;
+    left:60px;
+    width:280px;
+    height:170px;
+    background:linear-gradient(to bottom,#8ed2ff,#dff4ff);
+    border:10px solid #777;
+    cursor:pointer;
+}
+
+/* 칠판 */
+.blackboard{
+    position:absolute;
+    top:70px;
+    left:450px;
+    width:550px;
+    height:180px;
+    background:#1d4a29;
+    border:10px solid #8a6239;
+    color:white;
+    padding:20px;
+    font-size:36px;
+    cursor:pointer;
+}
+
+/* 책상 */
+.desk{
+    position:absolute;
+    width:160px;
+    height:90px;
+    background:#8b5d33;
+    border:4px solid #5a3817;
+    border-radius:4px;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.desk:hover{
+    transform:translateY(-5px);
+}
+
+/* 의자 */
+.chair{
+    position:absolute;
+    width:70px;
+    height:40px;
+    background:#355988;
+}
+
+/* 위치 */
+#desk1{ left:350px; top:420px; }
+#desk2{ left:600px; top:420px; }
+#desk3{ left:850px; top:420px; }
+
+#desk4{ left:350px; top:580px; }
+#desk5{ left:600px; top:580px; }
+#desk6{ left:850px; top:580px; }
+
+#chair1{ left:395px; top:520px; }
+#chair2{ left:645px; top:520px; }
+#chair3{ left:895px; top:520px; }
+
+#chair4{ left:395px; top:680px; }
+#chair5{ left:645px; top:680px; }
+#chair6{ left:895px; top:680px; }
+
+/* 교사용 책상 */
+.teacherDesk{
+    position:absolute;
+    top:300px;
+    left:650px;
+    width:260px;
+    height:100px;
+    background:#704621;
+    border:5px solid #45240c;
+    cursor:pointer;
+}
+
+/* 사물함 */
+.locker{
+    position:absolute;
+    top:300px;
+    right:120px;
+    width:170px;
+    height:320px;
+    background:#8d97a4;
+    border:5px solid #59616a;
+    cursor:pointer;
+}
+
+/* 문 */
+.door{
+    position:absolute;
+    left:60px;
+    top:300px;
+    width:140px;
+    height:340px;
+    background:#5a3920;
+    border:5px solid #2d1607;
+    cursor:pointer;
+}
+
+.door::before{
+    content:'';
+    position:absolute;
+    width:15px;
+    height:15px;
+    background:gold;
+    border-radius:50%;
+    right:10px;
+    top:160px;
+}
+
+/* HUD */
+#hud{
+    position:fixed;
+    top:15px;
+    left:15px;
+    z-index:99999;
+    background:rgba(0,0,0,0.7);
+    color:white;
+    padding:15px;
+    border-radius:10px;
+    width:260px;
+}
+
+#inventory{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.item{
+    background:#444;
+    padding:6px 10px;
+    border-radius:5px;
+}
+
+/* 메시지 */
+#message{
+    position:fixed;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    width:70%;
+    background:rgba(0,0,0,0.75);
+    color:white;
+    padding:16px;
+    border-radius:10px;
+    text-align:center;
+    z-index:99999;
+}
+
+/* 비밀번호 */
+#passwordBox{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:white;
+    padding:30px;
+    border-radius:10px;
+    text-align:center;
+    display:none;
+    z-index:999999;
+}
+
+#passwordBox input{
+    width:180px;
+    padding:12px;
+    font-size:24px;
+    margin-top:15px;
+    text-align:center;
+}
+
+#passwordBox button{
+    margin-top:15px;
+    padding:10px 20px;
+    border:none;
+    background:#2e8bff;
+    color:white;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+/* 엔딩 */
+#ending{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.9);
+    color:white;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    z-index:9999999;
+}
+
+#ending h1{
+    font-size:70px;
+    margin-bottom:20px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+<div id="scene">
+
+<div class="wall"></div>
+<div class="floor"></div>
+
+<div class="window"></div>
+
+<div class="blackboard" id="blackboard">
+8 + 4 = ?<br><br>
+힌트 : 더하기 계산
+</div>
+
+<div class="teacherDesk" id="teacherDesk"></div>
+
+<div class="desk" id="desk1"></div>
+<div class="desk" id="desk2"></div>
+<div class="desk" id="desk3"></div>
+
+<div class="desk" id="desk4"></div>
+<div class="desk" id="desk5"></div>
+<div class="desk" id="desk6"></div>
+
+<div class="chair" id="chair1"></div>
+<div class="chair" id="chair2"></div>
+<div class="chair" id="chair3"></div>
+
+<div class="chair" id="chair4"></div>
+<div class="chair" id="chair5"></div>
+<div class="chair" id="chair6"></div>
+
+<div class="locker" id="locker"></div>
+
+<div class="door" id="door"></div>
+
+</div>
+
+<!-- HUD -->
+<div id="hud">
+<h2>🎮 교실 탈출</h2>
+
+<p>⏱ 시간 : <span id="time">0</span>초</p>
+
+<p style="margin-top:10px;">
+🕹 이동 : WASD / 방향키
+</p>
+
+<div id="inventory"></div>
+</div>
+
+<!-- 메시지 -->
+<div id="message">
+교실 안을 움직이며 단서를 찾으세요.
+</div>
+
+<!-- 비밀번호 -->
+<div id="passwordBox">
+
+<h2>🔒 비밀번호 입력</h2>
+
+<input type="text" id="passwordInput">
+
+<br>
+
+<button onclick="checkPassword()">
+확인
+</button>
+
+</div>
+
+<!-- 엔딩 -->
+<div id="ending">
+
+<h1>🎉 탈출 성공!</h1>
+
+<h2 id="finalTime"></h2>
+
+<button onclick="location.reload()">
+다시 시작
+</button>
+
+</div>
+
+</div>
+
+<script>
+/* 이동 시스템 */
+const scene=document.getElementById("scene");
+
+let cameraX=0;
+let cameraY=0;
+
+const speed=12;
+
+const keys={};
+
+document.addEventListener("keydown",(e)=>{
+keys[e.key.toLowerCase()]=true;
+});
+
+document.addEventListener("keyup",(e)=>{
+keys[e.key.toLowerCase()]=false;
+});
+
+function move(){
+
+if(keys["a"] || keys["arrowleft"]){
+cameraX+=speed;
+}
+
+if(keys["d"] || keys["arrowright"]){
+cameraX-=speed;
+}
+
+if(keys["w"] || keys["arrowup"]){
+cameraY+=speed;
+}
+
+if(keys["s"] || keys["arrowdown"]){
+cameraY-=speed;
+}
+
+scene.style.transform=
+`translate(${cameraX}px,${cameraY}px)`;
+
+requestAnimationFrame(move);
+}
+
+move();
+
+/* 게임 시스템 */
+let seconds=0;
+
+setInterval(()=>{
+seconds++;
+document.getElementById("time").innerText=seconds;
+},1000);
+
+let noteFound=false;
+let keyFound=false;
+
+const inventory=[];
+
+function addItem(name){
+
+inventory.push(name);
+
+const inv=document.getElementById("inventory");
+
+inv.innerHTML="";
+
+inventory.forEach(item=>{
+
+const div=document.createElement("div");
+
+div.className="item";
+
+div.innerText=item;
+
+inv.appendChild(div);
+
+});
+}
+
+function show(text){
+document.getElementById("message").innerHTML=text;
+}
+
+/* 칠판 */
+document.getElementById("blackboard").onclick=()=>{
+
+show(`
+칠판 문제:<br><br>
+8 + 4 = ?
+`);
+
+};
+
+/* 책상 */
+document.getElementById("desk1").onclick=()=>{
+
+if(!noteFound){
+
+noteFound=true;
+
+addItem("찢어진 쪽지 📄");
+
+show(`
+서랍 안에서 쪽지를 발견했다.<br><br>
+"비밀번호는 칠판 문제의 답이다."
+`);
+
+}else{
+
+show("빈 서랍이다.");
+
+}
+
+};
+
+/* 창문 */
+document.querySelector(".window").onclick=()=>{
+
+show("창밖으로 운동장이 보인다.");
+
+};
+
+/* 교사용 책상 */
+document.getElementById("teacherDesk").onclick=()=>{
+
+show("교과서와 출석부가 놓여 있다.");
+
+};
+
+/* 사물함 */
+document.getElementById("locker").onclick=()=>{
+
+document.getElementById("passwordBox").style.display="block";
+
+};
+
+/* 비밀번호 확인 */
+function checkPassword(){
+
+const value=document.getElementById("passwordInput").value;
+
+if(value==="12"){
+
+document.getElementById("passwordBox").style.display="none";
+
+if(!keyFound){
+
+keyFound=true;
+
+addItem("교실 열쇠 🔑");
+
+show("사물함이 열렸다! 열쇠 획득!");
+
+}
+
+}else{
+
+show("❌ 비밀번호가 틀렸다.");
+
+}
+
+}
+
+/* 문 */
+document.getElementById("door").onclick=()=>{
+
+if(keyFound){
+
+document.getElementById("ending").style.display="flex";
+
+document.getElementById("finalTime").innerHTML=
+`탈출 시간 : ${seconds}초`;
+
+}else{
+
+show("문이 잠겨 있다.");
+
+}
+
+};
+</script>
+
+</body>
+</html>
