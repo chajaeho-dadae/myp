@@ -2,252 +2,604 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI를 활용한 나만의 프로그램 만들기</title>
-
-  <link
-    href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Black+Han+Sans&display=swap"
-    rel="stylesheet"
-  />
-
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet"/>
   <style>
     :root {
-      --bg: #0d0f14;
-      --surface: #151820;
-      --card: #1c2030;
-      --border: #252a3a;
-      --accent: #4f8ef7;
-      --accent2: #7c5cfc;
-      --text: #e8ecf5;
-      --muted: #6b7490;
-      --gold: #f5c842;
-      --silver: #b0bec5;
-      --bronze: #cd7c3a;
+      --bg:        #0d0f14;
+      --surface:   #151820;
+      --card:      #1c2030;
+      --border:    #252a3a;
+      --accent:    #4f8ef7;
+      --accent2:   #7c5cfc;
+      --text:      #e8ecf5;
+      --muted:     #6b7490;
+      --gold:      #f5c842;
+      --silver:    #b0bec5;
+      --bronze:    #cd7c3a;
+      --glow-gold: #f5c84255;
+      --glow-sil:  #b0bec540;
+      --glow-bro:  #cd7c3a40;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: "Noto Sans KR", sans-serif;
+      font-family: 'Noto Sans KR', sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: .35;
+      pointer-events: none;
+      z-index: 0;
     }
 
     header {
+      position: relative;
+      z-index: 10;
       text-align: center;
       padding: 60px 24px 40px;
     }
-
-    .title-main {
-      font-family: "Black Han Sans", sans-serif;
-      font-size: 3rem;
+    header::after {
+      content: '';
+      display: block;
+      width: 120px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      margin: 20px auto 0;
+      border-radius: 2px;
     }
-
+    .title-main {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      letter-spacing: -.02em;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+    }
     .title-sub {
       margin-top: 10px;
+      font-size: clamp(.9rem, 2vw, 1.1rem);
       color: var(--muted);
+      letter-spacing: .06em;
+      font-weight: 300;
     }
 
     main {
+      position: relative;
+      z-index: 5;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 0 20px 80px;
     }
 
-    .state-msg {
-      text-align: center;
-      padding: 60px;
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: .75rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
       color: var(--muted);
+      margin: 40px 0 16px;
+      font-weight: 500;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
     }
 
     .medal-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: 16px;
+      margin-bottom: 8px;
     }
 
     .medal-card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 20px;
-      text-decoration: none;
-      color: white;
+      padding: 22px 20px 18px;
       position: relative;
-      transition: 0.2s;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .25s, box-shadow .25s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
     }
+    .medal-card:hover { transform: translateY(-4px); }
 
-    .medal-card:hover {
-      transform: translateY(-4px);
+    .medal-card.gold   { border-color: var(--gold);   box-shadow: 0 0 28px var(--glow-gold); }
+    .medal-card.silver { border-color: var(--silver);  box-shadow: 0 0 20px var(--glow-sil); }
+    .medal-card.bronze { border-color: var(--bronze);  box-shadow: 0 0 20px var(--glow-bro); }
+
+    .medal-card.gold::before   { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #f5c84215 0%, transparent 60%); }
+    .medal-card.silver::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #b0bec510 0%, transparent 60%); }
+    .medal-card.bronze::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #cd7c3a12 0%, transparent 60%); }
+
+    .medal-badge { font-size: 2rem; line-height: 1; margin-bottom: 10px; }
+    .medal-rank {
+      position: absolute; top: 18px; right: 18px;
+      font-size: .7rem; letter-spacing: .1em; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
     }
+    .gold   .medal-rank { background: #f5c84222; color: var(--gold); }
+    .silver .medal-rank { background: #b0bec520; color: var(--silver); }
+    .bronze .medal-rank { background: #cd7c3a20; color: var(--bronze); }
 
-    .gold {
-      border-color: var(--gold);
-    }
-
-    .silver {
-      border-color: var(--silver);
-    }
-
-    .bronze {
-      border-color: var(--bronze);
-    }
-
-    .card-title {
-      font-size: 1.1rem;
-      font-weight: bold;
-      margin-top: 8px;
-    }
-
-    .card-name {
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
+    .card-name  { font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+    .card-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; line-height: 1.3; }
+    .card-desc  { font-size: .82rem; color: var(--muted); line-height: 1.55; margin-bottom: 14px;
+                  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card-algo  { font-size: .75rem; background: #ffffff0a; border: 1px solid var(--border);
+                  padding: 3px 10px; border-radius: 20px; display: inline-block; color: var(--accent); }
     .card-views {
-      margin-top: 12px;
-      color: var(--accent);
-      font-size: 0.9rem;
+      position: absolute; bottom: 16px; right: 18px;
+      font-size: .78rem; color: var(--muted);
+      display: flex; align-items: center; gap: 5px;
     }
+    .card-views svg { opacity: .6; }
+
+    /* ── 테이블 ── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    thead tr { background: #ffffff06; border-bottom: 1px solid var(--border); }
+    th {
+      padding: 14px 16px; text-align: left;
+      font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); font-weight: 600; white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #ffffff05; }
+    td { padding: 13px 16px; vertical-align: middle; }
+    td.rank-cell  { font-size: 1.1rem; text-align: center; width: 56px; }
+    td.views-cell { color: var(--accent); font-weight: 600; white-space: nowrap; }
+    td a { color: var(--text); text-decoration: none; font-weight: 500; transition: color .2s; }
+    td a:hover { color: var(--accent); }
+    .name-cell { font-size: .85rem; color: var(--muted); }
+
+    /* ── 별점 셀 ── */
+    td.star-cell { white-space: nowrap; min-width: 140px; }
+
+    .star-widget {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 5px;
+      user-select: none;
+    }
+
+    /* 별 5개를 담는 행 — 마우스 이벤트는 여기서 처리 */
+    .star-row {
+      display: flex;
+      gap: 3px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    /* 각 별 SVG 크기 */
+    .star-row svg {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      pointer-events: none;   /* mousemove는 .star-row에서 일괄 처리 */
+      transition: transform .1s;
+    }
+    .star-row:hover svg { transform: scale(1.12); }
+
+    .star-avg {
+      font-size: .74rem;
+      color: var(--muted);
+      letter-spacing: .02em;
+      padding-left: 2px;
+    }
+    .star-avg span { color: var(--gold); font-weight: 700; }
+
+    /* 로딩 / 에러 */
+    .state-msg {
+      text-align: center; padding: 60px 20px;
+      color: var(--muted); font-size: .9rem;
+    }
+    .spinner {
+      display: inline-block; width: 28px; height: 28px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 640px) { th, td { padding: 10px 10px; } }
   </style>
 </head>
-
 <body>
 
 <header>
   <div class="title-main">AI를 활용한 나만의 프로그램 만들기</div>
-  <div class="title-sub">2026학년도 · 정보</div>
+  <div class="title-sub">2026학년도 &nbsp;·&nbsp; 정보</div>
 </header>
 
 <main>
   <div id="app">
     <div class="state-msg">
-      학생 작품을 불러오는 중…
+      <div class="spinner"></div><br>학생 작품을 불러오는 중…
     </div>
   </div>
 </main>
 
 <script>
-  const GITHUB_USER = "chajaeho-dadae";
-  const GITHUB_REPO = "myp";
+  /* ═══════════════════════════════════════════════
+  */
+  const GITHUB_USER   = "chajaeho-dadae";   // ← 수정
+  const GITHUB_REPO   = "myp";          // ← 수정
   const GITHUB_BRANCH = "main";
-  const FOLDER = "students";
+  const FOLDER        = "students";
 
+  /* ═══════════════════════════════════════════════
+     Supabase 설정
+  */
+  const SUPABASE_URL   = "https://sdhpzypjqmowhrhxvvsj.supabase.co/rest/v1/";
+  const SUPABASE_KEY   = "sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc";
+  const TABLE          = "views";
+  const RATINGS_TABLE  = "ratings";
+
+  /* ════════════════════════════════════════════════
+     GitHub API — students/ 폴더 파일 목록
+  */
   async function fetchStudentsFromGitHub() {
-    const url =
-      `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FOLDER}?ref=${GITHUB_BRANCH}`;
-
-    const res = await fetch(url, {
-      headers: {
-        Accept: "application/vnd.github+json"
-      }
-    });
-
-    if (!res.ok) {
-      throw new Error(`GitHub API 오류: ${res.status}`);
-    }
-
+    const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FOLDER}?ref=${GITHUB_BRANCH}`;
+    const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
+    if (!res.ok) throw new Error(`GitHub API 오류: ${res.status} ${res.statusText}`);
     const items = await res.json();
 
     return items
-      .filter(item =>
-        item.type === "file" &&
-        item.name.endsWith(".html")
-      )
+      .filter(item => item.type === "file" && item.name.endsWith(".html"))
       .map(item => {
-
-        const filename = item.name;
-        const base = filename.replace(/\.html$/i, "");
-
-        const dashIdx = base.indexOf(" - ");
-
-        let name = "";
-        let title = base;
-
-        if (dashIdx !== -1) {
-          name = base.slice(0, dashIdx).trim();
-          title = base.slice(dashIdx + 3).trim();
-        }
-
-        return {
-          file: filename,
-          name,
-          title,
-          views: 0
-        };
+        const base     = item.name.replace(/\.html$/i, "");
+        const dashIdx  = base.indexOf(" - ");
+        const name     = dashIdx !== -1 ? base.slice(0, dashIdx).trim() : "";
+        const title    = dashIdx !== -1 ? base.slice(dashIdx + 3).trim() : base;
+        return { file: item.name, name, title, desc: "", views: 0, avgRating: null };
       });
   }
 
-  function render(students) {
-
-    const sorted = [...students];
-
-    const medals = ["🥇", "🥈", "🥉"];
-
-    const html = `
-      <div class="medal-grid">
-        ${sorted.map((s, i) => `
-          <a
-            class="medal-card ${
-              i === 0 ? "gold" :
-              i === 1 ? "silver" :
-              "bronze"
-            }"
-            href="${FOLDER}/${s.file}"
-            target="_blank"
-          >
-            <div>${medals[i] || "🏅"}</div>
-
-            <div class="card-name">${s.name}</div>
-
-            <div class="card-title">
-              ${s.title}
-            </div>
-
-            <div class="card-views">
-              조회수 ${s.views}
-            </div>
-          </a>
-        `).join("")}
-      </div>
-    `;
-
-    document.getElementById("app").innerHTML = html;
+  /* ════════════════════════════════════════════════
+     Supabase 헬퍼
+  */
+  async function sbFetch(path, opts = {}) {
+    const res = await fetch(SUPABASE_URL + path, {
+      ...opts,
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": opts.prefer || "",
+        ...opts.headers,
+      },
+    });
+    if (!res.ok && res.status !== 404) throw new Error(await res.text());
+    return res.status === 204 ? null : res.json();
   }
 
-  (async () => {
+  /* ── 조회수 ── */
+  async function incrementViews(file) {
+    await sbFetch("rpc/increment_views", {
+      method: "POST",
+      body: JSON.stringify({ p_file: file }),
+    });
+  }
 
+  async function loadAllViews() {
     try {
+      const rows = await sbFetch(`${TABLE}?select=file,views`);
+      const map = {};
+      (rows || []).forEach(r => { map[r.file] = r.views; });
+      return map;
+    } catch { return {}; }
+  }
 
+  /* ── 별점 ── */
+  async function submitRating(file, score) {
+    /*
+      ratings 테이블 구조:
+        id    bigint  (PK, generated always as identity)
+        file  text
+        score int2    (1~5)
+      ※ 한 행에 하나의 평점을 쌓아서 평균을 냄 (upsert X)
+    */
+    await sbFetch(RATINGS_TABLE, {
+      method: "POST",
+      prefer: "return=minimal",
+      body: JSON.stringify({ file, score }),
+    });
+  }
+
+  async function loadAllRatings() {
+    try {
+      const rows = await sbFetch(`${RATINGS_TABLE}?select=file,score`);
+      const acc  = {};
+      (rows || []).forEach(r => {
+        if (!acc[r.file]) acc[r.file] = { sum: 0, cnt: 0 };
+        acc[r.file].sum += r.score;
+        acc[r.file].cnt += 1;
+      });
+      const avg = {};
+      Object.keys(acc).forEach(f => { avg[f] = acc[f].sum / acc[f].cnt; });
+      return avg;
+    } catch { return {}; }
+  }
+
+  /* ════════════════════════════════════════════════
+     24시간 조회수 중복 방지
+  */
+  const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+  const LS_KEY      = "viewed_works";
+
+  function canCount(file) {
+    try {
+      const r = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+      return !r[file] || Date.now() - r[file] > COOLDOWN_MS;
+    } catch { return true; }
+  }
+  function markViewed(file) {
+    try {
+      const r = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+      r[file] = Date.now();
+      localStorage.setItem(LS_KEY, JSON.stringify(r));
+    } catch {}
+  }
+
+  /* ════════════════════════════════════════════════
+     별점 localStorage (내가 매긴 점수 기억)
+  */
+  const LS_RATING_KEY = "my_ratings";
+
+  function getMyRating(file) {
+    try {
+      const r = JSON.parse(localStorage.getItem(LS_RATING_KEY) || "{}");
+      return r[file] ?? null;
+    } catch { return null; }
+  }
+  function saveMyRating(file, score) {
+    try {
+      const r = JSON.parse(localStorage.getItem(LS_RATING_KEY) || "{}");
+      r[file] = score;
+      localStorage.setItem(LS_RATING_KEY, JSON.stringify(r));
+    } catch {}
+  }
+
+  /* ════════════════════════════════════════════════
+     별 SVG 생성
+     filled: true  → 속이 찬 별 (금색)
+     filled: false → 빈 별 (테두리만)
+  */
+  function starSVG(filled) {
+    return `<svg viewBox="0 0 24 24"
+      fill="${filled ? "var(--gold)" : "none"}"
+      stroke="var(--gold)" stroke-width="1.8" stroke-linejoin="round">
+      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+    </svg>`;
+  }
+
+  /* ── 별 행 전체를 n개 채운 상태로 그리기 ── */
+  function paintStars(row, n) {
+    row.querySelectorAll("svg").forEach((svg, i) => {
+      const filled = i < n;
+      svg.setAttribute("fill", filled ? "var(--gold)" : "none");
+    });
+  }
+
+  /* ════════════════════════════════════════════════
+     별점 위젯 HTML 생성
+     — 마우스 이벤트는 JS에서 addEventListener로 붙임
+  */
+  function buildStarWidget(file, avg) {
+    const safeid  = file.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const avgText = avg !== null
+      ? `<div class="star-avg">평균 <span>${avg.toFixed(1)}</span>점</div>`
+      : `<div class="star-avg" style="opacity:.45">아직 평점 없음</div>`;
+
+    const stars = [1,2,3,4,5]
+      .map(() => starSVG(false))
+      .join("");
+
+    return `<div class="star-widget" id="sw-${safeid}" data-file="${file}">
+      <div class="star-row" data-file="${file}">${stars}</div>
+      ${avgText}
+    </div>`;
+  }
+
+  /* ════════════════════════════════════════════════
+     별점 이벤트 — 렌더 후 일괄 등록
+  */
+  function attachStarEvents() {
+    document.querySelectorAll(".star-row").forEach(row => {
+      const file = row.dataset.file;
+
+      /* 초기 상태: 내가 이미 매긴 점수가 있으면 표시 */
+      const myScore = getMyRating(file);
+      if (myScore) paintStars(row, myScore);
+
+      /* mousemove — 마우스 X 위치로 몇 번째 별인지 계산 */
+      row.addEventListener("mousemove", e => {
+        const rect  = row.getBoundingClientRect();
+        const x     = e.clientX - rect.left;           // row 왼쪽 끝 기준 X
+        const ratio = Math.max(0, Math.min(1, x / rect.width));
+        const hover = Math.ceil(ratio * 5);             // 1~5
+        paintStars(row, hover);
+      });
+
+      /* mouseleave — 내 점수 or 빈 별로 복원 */
+      row.addEventListener("mouseleave", () => {
+        const saved = getMyRating(file);
+        paintStars(row, saved ?? 0);
+      });
+
+      /* click — 별점 확정 & Supabase 전송 */
+      row.addEventListener("click", async e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        /* 현재 hover 상태에서 채워진 별 개수 = 점수 */
+        const svgs  = [...row.querySelectorAll("svg")];
+        const score = svgs.filter(s => s.getAttribute("fill") !== "none").length;
+        if (score === 0) return;
+
+        saveMyRating(file, score);
+        paintStars(row, score);
+
+        try {
+          await submitRating(file, score);
+
+          /* 평균 재조회 후 텍스트 업데이트 */
+          const avgMap = await loadAllRatings();
+          const newAvg = avgMap[file] ?? null;
+          const widget = row.closest(".star-widget");
+          const avgEl  = widget && widget.querySelector(".star-avg");
+          if (avgEl) {
+            avgEl.style.opacity = "1";
+            avgEl.innerHTML = newAvg !== null
+              ? `평균 <span>${newAvg.toFixed(1)}</span>점`
+              : `아직 평점 없음`;
+          }
+        } catch(err) { console.warn("별점 저장 실패", err); }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════
+     메달 / 아이콘 상수
+  */
+  const MEDALS      = ["🥇", "🥈", "🥈", "🥉", "🥉", "🥉"];
+  const MEDAL_CLASS = ["gold", "silver", "silver", "bronze", "bronze", "bronze"];
+  const MEDAL_LABEL = ["1위", "2위", "2위", "3위", "3위", "3위"];
+  const eyeIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="2">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/></svg>`;
+
+  /* ════════════════════════════════════════════════
+     렌더링
+  */
+  function render(students) {
+    const sorted = [...students].sort((a, b) => b.views - a.views);
+    const top6   = sorted.slice(0, 6);
+    const app    = document.getElementById("app");
+
+    /* 메달 카드 */
+    const medalHTML = `
+      <div class="section-label">🏆 명예의 전당 — TOP 6</div>
+      <div class="medal-grid">
+        ${top6.map((s, i) => `
+          <a class="medal-card ${MEDAL_CLASS[i]}" href="${FOLDER}/${s.file}" target="_blank"
+             onclick="handleClick(event,'${s.file}')">
+            <div class="medal-badge">${MEDALS[i]}</div>
+            <div class="medal-rank">${MEDAL_LABEL[i]}</div>
+            <div class="card-name">${s.name}</div>
+            <div class="card-title">${s.title}</div>
+            <div class="card-desc">${s.desc}</div>
+            <div class="card-views">${eyeIcon} ${s.views.toLocaleString()}</div>
+          </a>`).join("")}
+      </div>`;
+
+    /* 전체 테이블 */
+    const tableHTML = `
+      <div class="section-label">📋 전체 작품 목록</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:center">순위</th>
+              <th>이름</th>
+              <th>작품명</th>
+              <th>조회수</th>
+              <th>별점</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sorted.map((s, i) => `
+              <tr>
+                <td class="rank-cell">
+                  ${i < 6
+                    ? MEDALS[i]
+                    : `<span style="color:var(--muted);font-size:.85rem">${i+1}</span>`}
+                </td>
+                <td class="name-cell">${s.name}</td>
+                <td>
+                  <a href="${FOLDER}/${s.file}" target="_blank"
+                     onclick="handleClick(event,'${s.file}')">${s.title}</a>
+                </td>
+                <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
+                <td class="star-cell">${buildStarWidget(s.file, s.avgRating)}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+
+    app.innerHTML = medalHTML + tableHTML;
+
+    /* HTML 삽입 후 이벤트 연결 */
+    attachStarEvents();
+  }
+
+  /* ── 작품 클릭 → 조회수 증가 ── */
+  window.handleClick = async function(e, file) {
+    if (!canCount(file)) return;
+    markViewed(file);
+    try { await incrementViews(file); } catch(err) { console.warn(err); }
+  };
+
+  /* ════════════════════════════════════════════════
+     초기 로드
+  */
+  (async () => {
+    try {
       const students = await fetchStudentsFromGitHub();
+      const [viewMap, ratingMap] = await Promise.all([loadAllViews(), loadAllRatings()]);
+      students.forEach(s => {
+        s.views     = viewMap[s.file]    ?? 0;
+        s.avgRating = ratingMap[s.file]  ?? null;
+      });
 
       if (students.length === 0) {
         document.getElementById("app").innerHTML =
-          `<div class="state-msg">
-            students 폴더에 html 파일이 없습니다.
-          </div>`;
+          `<div class="state-msg">📂 <code>${FOLDER}/</code> 폴더에 .html 파일이 없습니다.</div>`;
         return;
       }
-
       render(students);
-
     } catch (err) {
-
       document.getElementById("app").innerHTML =
         `<div class="state-msg">
-          오류 발생<br>
-          ${err.message}
+          ⚠️ 데이터를 불러오지 못했습니다.<br>
+          <small style="margin-top:8px;display:block">${err.message}</small>
+          <small style="margin-top:6px;display:block;color:#4f8ef7">
+            index.html 상단의 GITHUB_USER, GITHUB_REPO 값을 확인해주세요.
+          </small>
         </div>`;
     }
-
   })();
 </script>
-
 </body>
 </html>
