@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>미래의 결혼할 나이는?</title>
+
+<style>
+    body{
+        font-family: sans-serif;
+        background-color:#ffeef5;
+        text-align:center;
+        padding:40px;
+    }
+
+    .box{
+        background:white;
+        width:400px;
+        margin:auto;
+        padding:30px;
+        border-radius:20px;
+        box-shadow:0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h1{
+        color:#ff4d88;
+    }
+
+    .question{
+        margin:20px 0;
+    }
+
+    button{
+        padding:10px 20px;
+        margin:10px;
+        border:none;
+        border-radius:10px;
+        background:#ff4d88;
+        color:white;
+        cursor:pointer;
+        font-size:16px;
+    }
+
+    button:hover{
+        background:#ff1f66;
+    }
+
+    #result{
+        margin-top:20px;
+        font-size:20px;
+        font-weight:bold;
+        color:#333;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="box">
+    <h1>💍 미래의 결혼할 나이는?</h1>
+
+    <div class="question">
+        <p>Q1. 사람들과 대화하는 것을 좋아하나요?</p>
+        <button onclick="addScore(-2)">YES</button>
+        <button onclick="addScore(2)">NO</button>
+    </div>
+
+    <div class="question">
+        <p>Q2. 연락을 자주 하는 편인가요?</p>
+        <button onclick="addScore(-2)">YES</button>
+        <button onclick="addScore(2)">NO</button>
+    </div>
+
+    <div class="question">
+        <p>Q3. 혼자 있는 시간을 좋아하나요?</p>
+        <button onclick="addScore(3)">YES</button>
+        <button onclick="addScore(-1)">NO</button>
+    </div>
+
+    <div class="question">
+        <p>Q4. 연애에 관심이 많나요?</p>
+        <button onclick="addScore(-3)">YES</button>
+        <button onclick="addScore(2)">NO</button>
+    </div>
+
+    <button onclick="showResult()">결과 보기</button>
+
+    <div id="result"></div>
+</div>
+
+<script>
+    let score = 0;
+
+    function addScore(value){
+        score += value;
+    }
+
+    function showResult(){
+        let marryAge = 30 + score;
+        let message = "";
+
+        if(marryAge <= 25){
+            message = "빠른 결혼 스타일이네요!";
+        }
+        else if(marryAge <= 32){
+            message = "평균적인 결혼 스타일이네요!";
+        }
+        else{
+            message = "천천히 인연을 찾는 스타일이네요!";
+        }
+
+        document.getElementById("result").innerHTML =
+        "당신의 예상 결혼 나이는 <br>" +
+        marryAge + "세 입니다! 💖<br><br>" +
+        message;
+    }
+</script>
+
+</body>
+</html>

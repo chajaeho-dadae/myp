@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>🐧 슈퍼 펭귄 게임</title>
+
+<style>
+
+body{
+    margin:0;
+    overflow:hidden;
+    background:#87CEEB;
+    font-family:sans-serif;
+}
+
+canvas{
+    display:block;
+    margin:auto;
+    background:linear-gradient(#87CEEB,#E0FFFF);
+}
+
+</style>
+</head>
+
+<body>
+
+<canvas id="game" width="1000" height="500"></canvas>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+/////////////////////////////////////////////////
+// 게임 변수
+/////////////////////////////////////////////////
+
+let score = 0;
+let gameOver = false;
+
+/////////////////////////////////////////////////
+// 펭귄
+/////////////////////////////////////////////////
+
+const penguin = {
+
+    x:120,
+    y:320,
+
+    width:60,
+    height:70,
+
+    velocityY:0,
+    gravity:0.8,
+
+    jumping:false
+};
+
+/////////////////////////////////////////////////
+// 장애물
+/////////////////////////////////////////////////
+
+let obstacles = [];
+
+function createObstacle(){
+
+    obstacles.push({
+
+        x:1000,
+        y:340,
+
+        width:40,
+        height:80
+    });
+}
+
+setInterval(createObstacle,1800);
+
+/////////////////////////////////////////////////
+// 물고기
+/////////////////////////////////////////////////
+
+let fishes = [];
+
+function createFish(){
+
+    fishes.push({
+
+        x:1000,
+        y:250 + Math.random()*100,
+
+        width:30,
+        height:30
+    });
+}
+
+setInterval(createFish,2500);
+
+/////////////////////////////////////////////////
+// 눈 효과
+/////////////////////////////////////////////////
+
+let snowflakes = [];
+
+for(let i=0;i<80;i++){
+
+    snowflakes.push({
+
+        x:Math.random()*1000,
+        y:Math.random()*500,
+
+        size:Math.random()*4+1,
+        speed:Math.random()*2+1
+    });
+}
+
+/////////////////////////////////////////////////
+// 키 입력
+/////////////////////////////////////////////////
+
+document.addEventListener("keydown",(e)=>{
+
+    if((e.code === "Space" || e.code === "ArrowUp")
+       && !penguin.jumping){
+
+        penguin.velocityY = -15;
+        penguin.jumping = true;
+    }
+
+    // 다시 시작
+    if(e.code === "Enter" && gameOver){
+
+        location.reload();
+    }
+});
+
+/////////////////////////////////////////////////
+// 충돌
+/////////////////////////////////////////////////
+
+function collision(a,b){
+
+    return(
+
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+    );
+}
+
+/////////////////////////////////////////////////
+// 업데이트
+/////////////////////////////////////////////////
+
+function update(){
+
+    if(gameOver) return;
+
+    //////////////////////////////////////////////////
+    // 중력
+    //////////////////////////////////////////////////
+
+    penguin.velocityY += penguin.gravity;
+    penguin.y += penguin.velocityY;
+
+    if(penguin.y >= 320){
+
+        penguin.y = 320;
+        penguin.velocityY = 0;
+        penguin.jumping = false;
+    }
+
+    //////////////////////////////////////////////////
+    // 장애물
+    //////////////////////////////////////////////////
+
+    obstacles.forEach((obs,index)=>{
+
+        obs.x -= 7;
+
+        if(collision(penguin,obs)){
+
+            gameOver = true;
+        }
+
+        if(obs.x + obs.width < penguin.x
+           && !obs.passed){
+
+            score++;
+            obs.passed = true;
+        }
+
+        if(obs.x < -50){
+
+            obstacles.splice(index,1);
+        }
+    });
+
+    //////////////////////////////////////////////////
+    // 물고기
+    //////////////////////////////////////////////////
+
+    fishes.forEach((fish,index)=>{
+
+        fish.x -= 6;
+
+        if(collision(penguin,fish)){
+
+            score += 5;
+            fishes.splice(index,1);
+        }
+
+        if(fish.x < -50){
+
+            fishes.splice(index,1);
+        }
+    });
+
+    //////////////////////////////////////////////////
+    // 눈
+    //////////////////////////////////////////////////
+
+    snowflakes.forEach((snow)=>{
+
+        snow.y += snow.speed;
+
+        if(snow.y > 500){
+
+            snow.y = 0;
+            snow.x = Math.random()*1000;
+        }
+    });
+}
+
+/////////////////////////////////////////////////
+// 그리기
+/////////////////////////////////////////////////
+
+function draw(){
+
+    ctx.clearRect(0,0,1000,500);
+
+    //////////////////////////////////////////////////
+    // 하늘
+    //////////////////////////////////////////////////
+
+    ctx.fillStyle = "#87CEEB";
+    ctx.fillRect(0,0,1000,500);
+
+    //////////////////////////////////////////////////
+    // 눈
+    //////////////////////////////////////////////////
+
+    snowflakes.forEach((snow)=>{
+
+        ctx.fillStyle = "white";
+
+        ctx.beginPath();
+        ctx.arc(
+            snow.x,
+            snow.y,
+            snow.size,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+    });
+
+    //////////////////////////////////////////////////
+    // 바닥ㅐ
+    //////////////////////////////////////////////////
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,420,1000,80);
+
+    //////////////////////////////////////////////////
+    // 배경 산
+    //////////////////////////////////////////////////
+
+    ctx.fillStyle = "#d0f0ff";
+
+    ctx.beginPath();
+    ctx.moveTo(0,420);
+    ctx.lineTo(150,200);
+    ctx.lineTo(300,420);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(250,420);
+    ctx.lineTo(450,180);
+    ctx.lineTo(650,420);
+    ctx.fill();
+
+    //////////////////////////////////////////////////
+    // 펭귄
+    //////////////////////////////////////////////////
+
+    // 몸
+    ctx.fillStyle = "black";
+
+    ctx.beginPath();
+    ctx.ellipse(
+        penguin.x+30,
+        penguin.y+35,
+        25,
+        35,
+        0,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+    // 배
+    ctx.fillStyle = "white";
+
+    ctx.beginPath();
+    ctx.ellipse(
+        penguin.x+30,
+        penguin.y+40,
+        15,
+        20,
+        0,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+    // 눈
+    ctx.fillStyle = "white";
+
+    ctx.beginPath();
+    ctx.arc(penguin.x+20,penguin.y+20,5,0,Math.PI*2);
+    ctx.arc(penguin.x+40,penguin.y+20,5,0,Math.PI*2);
+
+    ctx.fill();
+
+    // 눈동자
+    ctx.fillStyle = "black";
+
+    ctx.beginPath();
+    ctx.arc(penguin.x+20,penguin.y+20,2,0,Math.PI*2);
+    ctx.arc(penguin.x+40,penguin.y+20,2,0,Math.PI*2);
+
+    ctx.fill();
+
+    // 부리
+    ctx.fillStyle = "orange";
+
+    ctx.beginPath();
+
+    ctx.moveTo(penguin.x+30,penguin.y+28);
+    ctx.lineTo(penguin.x+22,penguin.y+35);
+    ctx.lineTo(penguin.x+38,penguin.y+35);
+
+    ctx.fill();
+
+    //////////////////////////////////////////////////
+    // 장애물
+    //////////////////////////////////////////////////
+
+    obstacles.forEach((obs)=>{
+
+        ctx.fillStyle = "#66ccff";
+
+        ctx.fillRect(
+            obs.x,
+            obs.y,
+            obs.width,
+            obs.height
+        );
+
+        // 얼음 반짝이
+        ctx.fillStyle = "white";
+
+        ctx.fillRect(
+            obs.x+5,
+            obs.y+10,
+            10,
+            20
+        );
+    });
+
+    //////////////////////////////////////////////////
+    // 물고기
+    //////////////////////////////////////////////////
+
+    fishes.forEach((fish)=>{
+
+        ctx.fillStyle = "orange";
+
+        ctx.beginPath();
+        ctx.ellipse(
+            fish.x,
+            fish.y,
+            15,
+            8,
+            0,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+
+        // 꼬리
+        ctx.beginPath();
+
+        ctx.moveTo(fish.x-15,fish.y);
+        ctx.lineTo(fish.x-25,fish.y-8);
+        ctx.lineTo(fish.x-25,fish.y+8);
+
+        ctx.fill();
+    });
+
+    //////////////////////////////////////////////////
+    // 점수
+    //////////////////////////////////////////////////
+
+    ctx.fillStyle = "black";
+    ctx.font = "35px sans-serif";
+
+    ctx.fillText("점수 : " + score,30,50);
+
+    //////////////////////////////////////////////////
+    // 게임 오버
+    //////////////////////////////////////////////////
+
+    if(gameOver){
+
+        ctx.fillStyle = "red";
+        ctx.font = "70px sans-serif";
+
+        ctx.fillText("GAME OVER",250,200);
+
+        ctx.fillStyle = "black";
+        ctx.font = "35px sans-serif";
+
+        ctx.fillText(
+            "Enter 키를 눌러 다시 시작",
+            250,
+            260
+        );
+    }
+}
+
+/////////////////////////////////////////////////
+// 반복
+/////////////////////////////////////////////////
+
+function gameLoop(){
+
+    update();
+    draw();
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+
+</script>
+
+</body>
+</html>
