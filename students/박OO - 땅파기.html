@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>땅파기 게임</title>
+
+<style>
+    body{
+        background:#222;
+        color:white;
+        font-family:Arial;
+        text-align:center;
+        padding:20px;
+    }
+
+    h1{
+        color:gold;
+    }
+
+    .box{
+        background:#333;
+        padding:20px;
+        border-radius:10px;
+        margin:15px auto;
+        width:350px;
+    }
+
+    button{
+        padding:10px 20px;
+        margin:5px;
+        font-size:16px;
+        border:none;
+        border-radius:8px;
+        cursor:pointer;
+    }
+
+    .start{ background:#4CAF50; color:white; }
+    .buy{ background:#2196F3; color:white; }
+    .dig{ background:#FF9800; color:white; }
+    .upgrade{ background:#9C27B0; color:white; }
+
+    #log{
+        height:200px;
+        overflow-y:auto;
+        background:black;
+        padding:10px;
+        text-align:left;
+        border-radius:8px;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>⛏️ 땅파기 게임 ⛏️</h1>
+
+<div class="box">
+    <p>코인: <span id="coin">0</span></p>
+    <p>깊이: <span id="depth">0</span> m</p>
+    <p>삽 레벨: <span id="shovelLevel">0</span></p>
+    <p>삽 보유: <span id="hasShovel">없음</span></p>
+</div>
+
+<div class="box">
+    <button class="start" onclick="startGame()">게임 시작</button>
+    <button class="buy" onclick="buyShovel()">삽 구매 (50코인)</button>
+    <button class="dig" onclick="toggleDig()">땅파기 시작/중지</button>
+    <button class="upgrade" onclick="upgradeShovel()">삽 강화</button>
+</div>
+
+<div class="box">
+    <h3>게임 로그</h3>
+    <div id="log"></div>
+</div>
+
+<script>
+
+let coins = 0;
+let depth = 0;
+let shovelLevel = 0;
+let hasShovel = false;
+
+let digging = false;
+let digInterval;
+
+const coinText = document.getElementById("coin");
+const depthText = document.getElementById("depth");
+const shovelLevelText = document.getElementById("shovelLevel");
+const hasShovelText = document.getElementById("hasShovel");
+const log = document.getElementById("log");
+
+function updateUI(){
+    coinText.innerText = coins;
+    depthText.innerText = depth;
+    shovelLevelText.innerText = shovelLevel;
+    hasShovelText.innerText = hasShovel ? "있음" : "없음";
+}
+
+function addLog(text){
+    log.innerHTML += text + "<br>";
+    log.scrollTop = log.scrollHeight;
+}
+
+function startGame(){
+    coins = 50;
+    depth = 0;
+    shovelLevel = 0;
+    hasShovel = false;
+
+    updateUI();
+
+    addLog("🎮 게임 시작!");
+    addLog("💰 시작 코인 50 지급!");
+}
+
+function buyShovel(){
+
+    if(hasShovel){
+        addLog("이미 삽을 가지고 있습니다.");
+        return;
+    }
+
+    if(coins >= 50){
+        coins -= 50;
+        hasShovel = true;
+        shovelLevel = 1;
+
+        updateUI();
+
+        addLog("⛏️ 삽 구매 완료!");
+    }else{
+        addLog("코인이 부족합니다.");
+    }
+}
+
+function toggleDig(){
+
+    if(!hasShovel){
+        addLog("삽이 없습니다!");
+        return;
+    }
+
+    if(digging){
+        clearInterval(digInterval);
+        digging = false;
+        addLog("⛔ 땅파기 중지");
+        return;
+    }
+
+    digging = true;
+
+    let speed = Math.max(100, 1000 - shovelLevel * 150);
+
+    addLog("⛏️ 땅파기 시작!");
+
+    digInterval = setInterval(() => {
+
+        depth += 1;
+
+        let earned = 10;
+        coins += earned;
+
+        updateUI();
+
+        // 500m마다 특수 아이템
+        if(depth % 500 === 0){
+
+            const items = [
+                "🔥 용암석 - 채굴속도 증가!",
+                "💎 다이아 결정 - 보너스 1000코인!",
+                "⚡ 번개 광석 - 강화비용 감소!",
+                "👑 황금 유물 - 희귀 아이템 발견!"
+            ];
+
+            let item = items[Math.floor(Math.random()*items.length)];
+
+            addLog("🎁 특수 아이템 발견!");
+            addLog(item);
+
+            if(item.includes("1000코인")){
+                coins += 1000;
+            }
+
+            updateUI();
+        }
+
+    }, speed);
+}
+
+function upgradeShovel(){
+
+    if(!hasShovel){
+        addLog("삽이 없습니다.");
+        return;
+    }
+
+    let cost = shovelLevel * 100;
+
+    if(coins >= cost){
+
+        coins -= cost;
+        shovelLevel++;
+
+        updateUI();
+
+        addLog("⬆️ 삽 강화 성공! 현재 레벨: " + shovelLevel);
+
+        // 속도 재적용
+        if(digging){
+            clearInterval(digInterval);
+            digging = false;
+            toggleDig();
+        }
+
+    }else{
+        addLog("강화 비용 부족! 필요 코인: " + cost);
+    }
+}
+
+updateUI();
+
+</script>
+
+</body>
+</html>
