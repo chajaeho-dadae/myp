@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>몰래 과자 먹기 게임</title>
+
+<style>
+    body{
+        margin:0;
+        font-family:sans-serif;
+        background:#dcefff;
+        overflow:hidden;
+    }
+
+    #game{
+        width:100vw;
+        height:100vh;
+        position:relative;
+    }
+
+    .screen{
+        position:absolute;
+        width:100%;
+        height:100%;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        flex-direction:column;
+        background:#000000cc;
+        color:white;
+        font-size:48px;
+        z-index:10;
+        cursor:pointer;
+    }
+
+    #classroom{
+        width:100%;
+        height:100%;
+        display:none;
+        position:relative;
+        background:#f5deb3;
+    }
+
+    /* 칠판 */
+    #board{
+        position:absolute;
+        top:30px;
+        left:50%;
+        transform:translateX(-50%);
+        width:500px;
+        height:120px;
+        background:#1e5b34;
+        border:8px solid #7b4f2b;
+        color:white;
+        font-size:40px;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+    }
+
+    /* 선생님 */
+    #teacher{
+        position:absolute;
+        top:170px;
+        left:50%;
+        transform:translateX(-50%);
+        font-size:120px;
+        transition:0.2s;
+    }
+
+    /* 책상 */
+    #desk{
+        position:absolute;
+        bottom:60px;
+        left:50%;
+        transform:translateX(-50%);
+        width:700px;
+        height:180px;
+        background:#8b5a2b;
+        border-radius:15px;
+        border:6px solid #5a3517;
+    }
+
+    /* 책 */
+    #book{
+        position:absolute;
+        top:15px;
+        left:50%;
+        transform:translateX(-50%);
+        width:500px;
+        height:60px;
+        background:#2d5eff;
+        border-radius:8px;
+        color:white;
+        text-align:center;
+        line-height:60px;
+        font-size:30px;
+    }
+
+    /* 과자 버튼 */
+    #snacks{
+        position:absolute;
+        bottom:15px;
+        width:100%;
+        display:flex;
+        justify-content:space-around;
+    }
+
+    .snack{
+        width:110px;
+        height:70px;
+        border:none;
+        border-radius:12px;
+        font-size:18px;
+        cursor:pointer;
+        font-weight:bold;
+    }
+
+    .snack:hover{
+        transform:scale(1.05);
+    }
+
+    /* UI */
+    #ui{
+        position:absolute;
+        top:20px;
+        left:20px;
+        width:300px;
+        color:black;
+        font-size:24px;
+    }
+
+    .barBox{
+        width:250px;
+        height:25px;
+        background:#ccc;
+        margin-bottom:15px;
+        border-radius:10px;
+        overflow:hidden;
+    }
+
+    .bar{
+        height:100%;
+        width:0%;
+        transition:0.2s;
+    }
+
+    #susBar{
+        background:red;
+    }
+
+    #scoreBar{
+        background:limegreen;
+    }
+
+    #message{
+        position:absolute;
+        top:50%;
+        left:50%;
+        transform:translate(-50%, -50%);
+        font-size:70px;
+        color:white;
+        display:none;
+        z-index:20;
+        text-shadow:3px 3px 5px black;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <!-- 시작 화면 -->
+    <div id="startScreen" class="screen">
+        🍪 몰래 과자 먹기 게임 🍪
+        <div style="font-size:28px; margin-top:20px;">
+            클릭해서 시작
+        </div>
+    </div>
+
+    <!-- 게임 -->
+    <div id="classroom">
+
+        <div id="board">수업 중...</div>
+
+        <div id="teacher">👨‍🏫</div>
+
+        <div id="ui">
+            의심도
+            <div class="barBox">
+                <div class="bar" id="susBar"></div>
+            </div>
+
+            목표 점수 : <span id="scoreText">0</span> / 200
+            <div class="barBox">
+                <div class="bar" id="scoreBar"></div>
+            </div>
+        </div>
+
+        <div id="desk">
+            <div id="book">📘 책으로 가려진 책상</div>
+
+            <div id="snacks">
+                <button class="snack" onclick="eatSnack('마이쮸',1,5)">마이쮸<br>1점</button>
+                <button class="snack" onclick="eatSnack('칸쵸',3,10)">칸쵸<br>3점</button>
+                <button class="snack" onclick="eatSnack('오레오',5,15)">오레오<br>5점</button>
+                <button class="snack" onclick="eatSnack('새우깡',10,25)">새우깡<br>10점</button>
+                <button class="snack" onclick="eatSnack('초코파이',20,40)">초코파이<br>20점</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="message"></div>
+
+</div>
+
+<script>
+let suspicion = 0;
+let score = 0;
+
+let teacherWatching = false;
+let gameRunning = false;
+
+const susBar = document.getElementById("susBar");
+const scoreBar = document.getElementById("scoreBar");
+const scoreText = document.getElementById("scoreText");
+const teacher = document.getElementById("teacher");
+const classroom = document.getElementById("classroom");
+const startScreen = document.getElementById("startScreen");
+const message = document.getElementById("message");
+
+startScreen.addEventListener("click", startGame);
+
+function startGame(){
+
+    suspicion = 0;
+    score = 0;
+    teacherWatching = false;
+    gameRunning = true;
+
+    updateUI();
+
+    startScreen.style.display = "none";
+    classroom.style.display = "block";
+    message.style.display = "none";
+
+    teacher.textContent = "👨‍🏫";
+
+    teacherLoop();
+}
+
+function updateUI(){
+
+    susBar.style.width = suspicion + "%";
+
+    let scorePercent = (score / 200) * 100;
+    scoreBar.style.width = scorePercent + "%";
+
+    scoreText.textContent = score;
+}
+
+function eatSnack(name, points, sus){
+
+    if(!gameRunning) return;
+
+    // 선생님이 뒤돌아봤는데 먹으면 실패
+    if(teacherWatching){
+        gameOver();
+        return;
+    }
+
+    score += points;
+    suspicion += sus;
+
+    if(suspicion > 100){
+        suspicion = 100;
+    }
+
+    updateUI();
+
+    // 목표 달성
+    if(score >= 200){
+        clearGame();
+        return;
+    }
+
+    // 의심 MAX면 뒤돌아보기
+    if(suspicion >= 100){
+        teacherTurn();
+    }
+}
+
+function teacherTurn(){
+
+    teacherWatching = true;
+    teacher.textContent = "😠";
+
+    // 2초 동안 감시
+    setTimeout(() => {
+
+        teacherWatching = false;
+        suspicion = 0;
+        updateUI();
+
+        teacher.textContent = "👨‍🏫";
+
+    }, 2000);
+}
+
+function teacherLoop(){
+
+    if(!gameRunning) return;
+
+    // 랜덤하게 가끔 뒤돌아봄
+    let randomTime = Math.random() * 5000 + 4000;
+
+    setTimeout(() => {
+
+        if(!gameRunning) return;
+
+        // 낮은 확률로 랜덤 감시
+        if(Math.random() < 0.35 && !teacherWatching){
+            teacherTurn();
+        }
+
+        teacherLoop();
+
+    }, randomTime);
+}
+
+function gameOver(){
+
+    gameRunning = false;
+
+    message.innerHTML = "💥 게임 오버 💥";
+    message.style.display = "block";
+
+    setTimeout(() => {
+        resetToStart();
+    }, 3000);
+}
+
+function clearGame(){
+
+    gameRunning = false;
+
+    message.innerHTML = "🎉 클리어!! 🎉";
+    message.style.display = "block";
+
+    setTimeout(() => {
+        resetToStart();
+    }, 5000);
+}
+
+function resetToStart(){
+
+    classroom.style.display = "none";
+    startScreen.style.display = "flex";
+    message.style.display = "none";
+}
+</script>
+
+</body>
+</html>
