@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>퍼스널 컬러 화장품 추천</title>
+
+  <style>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family:'Pretendard', sans-serif;
+    }
+
+    body{
+      background:#f6f7fb;
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:20px;
+    }
+
+    .app{
+      width:100%;
+      max-width:420px;
+      background:white;
+      border-radius:24px;
+      overflow:hidden;
+      box-shadow:0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .header{
+      background:linear-gradient(135deg,#ff8fb1,#ffc2d1);
+      padding:28px 20px;
+      color:white;
+      text-align:center;
+    }
+
+    .header h1{
+      font-size:24px;
+      margin-bottom:8px;
+    }
+
+    .screen{
+      display:none;
+      padding:24px 20px;
+    }
+
+    .active{
+      display:block;
+    }
+
+    h2{
+      margin-bottom:18px;
+      font-size:20px;
+      color:#333;
+    }
+
+    .btn{
+      width:100%;
+      padding:14px;
+      border:none;
+      border-radius:14px;
+      background:#ff5c8a;
+      color:white;
+      font-size:16px;
+      cursor:pointer;
+      margin-top:14px;
+      transition:0.2s;
+    }
+
+    .btn:hover{
+      background:#ff3d74;
+    }
+
+    .option-group{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .option{
+      border:2px solid #eee;
+      border-radius:14px;
+      padding:14px;
+      cursor:pointer;
+      transition:0.2s;
+    }
+
+    .option:hover{
+      border-color:#ff7ca4;
+    }
+
+    .option.selected{
+      border-color:#ff5c8a;
+      background:#fff0f5;
+    }
+
+    .result-card{
+      background:#fff5f8;
+      border-radius:18px;
+      padding:18px;
+      margin-top:18px;
+      text-align:center;
+    }
+
+    .result-card img{
+      width:100%;
+      border-radius:14px;
+      margin-bottom:14px;
+    }
+
+    .product-name{
+      font-size:18px;
+      font-weight:bold;
+      margin-bottom:10px;
+      color:#333;
+    }
+
+    .link-btn{
+      display:inline-block;
+      padding:12px 18px;
+      border-radius:12px;
+      background:#ff5c8a;
+      color:white;
+      text-decoration:none;
+      margin-top:10px;
+    }
+
+    .small{
+      font-size:13px;
+      color:#777;
+      margin-top:12px;
+      text-align:center;
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="header">
+    <h1>💄 퍼스널 컬러 추천</h1>
+    <p>나에게 맞는 화장품 찾기</p>
+  </div>
+
+  <!-- 시작 화면 -->
+  <div class="screen active" id="startScreen">
+    <h2>퍼스널 컬러 기반 화장품 추천</h2>
+
+    <p style="line-height:1.6; color:#555;">
+      자신의 퍼스널 컬러와 피부 타입을 선택하면
+      어울리는 화장품을 추천해드립니다.
+    </p>
+
+    <button class="btn" onclick="nextScreen('colorScreen')">
+      시작하기
+    </button>
+  </div>
+
+  <!-- 퍼스널 컬러 -->
+  <div class="screen" id="colorScreen">
+    <h2>퍼스널 컬러 선택</h2>
+
+    <div class="option-group" id="colorOptions">
+      <div class="option" onclick="selectOption(this,'spring')">🌸 봄 웜톤</div>
+      <div class="option" onclick="selectOption(this,'summer')">❄️ 여름 쿨톤</div>
+      <div class="option" onclick="selectOption(this,'autumn')">🍁 가을 웜톤</div>
+      <div class="option" onclick="selectOption(this,'winter')">🖤 겨울 쿨톤</div>
+    </div>
+
+    <button class="btn" onclick="showDiagnosis()">
+      퍼스널 컬러 진단하기
+    </button>
+
+    <button class="btn" onclick="nextScreen('skinScreen')">
+      다음
+    </button>
+  </div>
+
+  <!-- 피부 타입 -->
+  <div class="screen" id="skinScreen">
+    <h2>피부 타입 선택</h2>
+
+    <div class="option-group" id="skinOptions">
+      <div class="option" onclick="selectSkin(this,'dry')">건성</div>
+      <div class="option" onclick="selectSkin(this,'oily')">지성</div>
+      <div class="option" onclick="selectSkin(this,'combo')">복합성</div>
+      <div class="option" onclick="selectSkin(this,'sensitive')">민감성</div>
+    </div>
+
+    <button class="btn" onclick="nextScreen('productScreen')">
+      다음
+    </button>
+  </div>
+
+  <!-- 제품 종류 -->
+  <div class="screen" id="productScreen">
+    <h2>추천 받고 싶은 제품</h2>
+
+    <div class="option-group" id="productOptions">
+      <div class="option" onclick="selectProduct(this,'lip')">립스틱</div>
+      <div class="option" onclick="selectProduct(this,'cushion')">쿠션</div>
+      <div class="option" onclick="selectProduct(this,'blusher')">블러셔</div>
+    </div>
+
+    <button class="btn" onclick="showResult()">
+      추천 받기
+    </button>
+  </div>
+
+  <!-- 결과 -->
+  <div class="screen" id="resultScreen">
+    <h2>추천 결과</h2>
+
+    <div class="result-card">
+      <img id="productImage" src="" alt="화장품">
+
+      <div class="product-name" id="productName"></div>
+
+      <p id="productDesc"></p>
+
+      <a id="productLink"
+         class="link-btn"
+         target="_blank">
+        제품 보러가기
+      </a>
+    </div>
+
+    <button class="btn" onclick="restartApp()">
+      다시 추천받기
+    </button>
+
+    <div class="small">
+      퍼스널 컬러 기반 추천 결과입니다 💕
+    </div>
+  </div>
+
+</div>
+
+<script>
+
+  let userData = {
+    color:'',
+    skin:'',
+    product:''
+  };
+
+  function nextScreen(id){
+    document.querySelectorAll('.screen').forEach(screen=>{
+      screen.classList.remove('active');
+    });
+
+    document.getElementById(id).classList.add('active');
+  }
+
+  function selectOption(el,value){
+    document.querySelectorAll('#colorOptions .option').forEach(o=>{
+      o.classList.remove('selected');
+    });
+
+    el.classList.add('selected');
+    userData.color = value;
+  }
+
+  function selectSkin(el,value){
+    document.querySelectorAll('#skinOptions .option').forEach(o=>{
+      o.classList.remove('selected');
+    });
+
+    el.classList.add('selected');
+    userData.skin = value;
+  }
+
+  function selectProduct(el,value){
+    document.querySelectorAll('#productOptions .option').forEach(o=>{
+      o.classList.remove('selected');
+    });
+
+    el.classList.add('selected');
+    userData.product = value;
+  }
+
+  function showDiagnosis(){
+    alert(
+      "간단 진단 TIP 💡\n\n" +
+      "봄 웜톤 : 밝고 화사한 색이 잘 어울림\n" +
+      "여름 쿨톤 : 부드럽고 차가운 색이 어울림\n" +
+      "가을 웜톤 : 딥하고 차분한 색이 어울림\n" +
+      "겨울 쿨톤 : 선명하고 강한 색이 어울림"
+    );
+  }
+
+  function showResult(){
+
+    const result = {
+      spring:{
+        lip:{
+          name:'롬앤 쥬시 래스팅 틴트 22호',
+          desc:'봄 웜톤에게 잘 어울리는 코랄 컬러',
+          image:'https://images.unsplash.com/photo-1586495777744-4413f21062fa?q=80&w=1200&auto=format&fit=crop',
+          link:'https://www.romand.co.kr/'
+        },
+
+        cushion:{
+          name:'클리오 킬커버 쿠션',
+          desc:'화사한 피부 표현 추천',
+          image:'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=1200&auto=format&fit=crop',
+          link:'https://clubclio.co.kr/'
+        },
+
+        blusher:{
+          name:'페리페라 블러셔',
+          desc:'생기있는 피치 컬러 추천',
+          image:'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=1200&auto=format&fit=crop',
+          link:'https://www.peripera.com/'
+        }
+      },
+
+      summer:{
+        lip:{
+          name:'롬앤 베어그레이프',
+          desc:'여름 쿨톤 MLBB 컬러',
+          image:'https://images.unsplash.com/photo-1619451334792-150fd785ee74?q=80&w=1200&auto=format&fit=crop',
+          link:'https://www.romand.co.kr/'
+        },
+
+        cushion:{
+          name:'헤라 블랙 쿠션',
+          desc:'세미 매트 피부 표현',
+          image:'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=1200&auto=format&fit=crop',
+          link:'https://www.hera.com/'
+        },
+
+        blusher:{
+          name:'릴리바이레드 블러셔',
+          desc:'라벤더 핑크 추천',
+          image:'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1200&auto=format&fit=crop',
+          link:'https://lilybyred.com/'
+        }
+      }
+    };
+
+    let tone = userData.color || 'spring';
+    let item = userData.product || 'lip';
+
+    let selected = result[tone][item];
+
+    document.getElementById('productName').innerText = selected.name;
+    document.getElementById('productDesc').innerText = selected.desc;
+    document.getElementById('productImage').src = selected.image;
+    document.getElementById('productLink').href = selected.link;
+
+    nextScreen('resultScreen');
+  }
+
+  function restartApp(){
+    location.reload();
+  }
+
+</script>
+
+</body>
+</html>
