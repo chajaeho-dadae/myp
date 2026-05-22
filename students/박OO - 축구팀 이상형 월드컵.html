@@ -1,0 +1,836 @@
+<style>
+
+body{
+   margin:0;
+   padding:0;
+   font-family:'맑은 고딕', sans-serif;
+   background:linear-gradient(to bottom, #0D47A1, #1976D2, #42A5F5);
+   color:white;
+   text-align:center;
+}
+
+/* 상단 */
+
+header{
+   padding:20px;
+   background:rgba(0,0,0,0.2);
+}
+
+h1{
+   font-size:50px;
+}
+
+.subtitle{
+   font-size:22px;
+}
+
+/* 시작 화면 */
+
+#startScreen{
+   margin-top:120px;
+}
+
+#startBtn{
+   padding:20px 40px;
+   font-size:30px;
+   border:none;
+   border-radius:20px;
+   cursor:pointer;
+   background:yellow;
+   color:#0D47A1;
+   font-weight:bold;
+   transition:0.3s;
+}
+
+#startBtn:hover{
+   transform:scale(1.1);
+}
+
+/* 게임 화면 */
+
+#gameScreen{
+   display:none;
+}
+
+#round{
+   margin-top:20px;
+   font-size:35px;
+   font-weight:bold;
+}
+
+.musicBtn{
+   margin-top:20px;
+   padding:12px 24px;
+   font-size:18px;
+   border:none;
+   border-radius:10px;
+   cursor:pointer;
+   font-weight:bold;
+}
+
+/* 가로 배치 */
+
+.team-container{
+   display:flex;
+   flex-direction:row; /* 가로 배치 */
+   justify-content:center;
+   align-items:center;
+   gap:50px;
+   margin-top:70px;
+}
+
+/* 팀 카드 */
+
+.team{
+   width:350px;
+   height:240px;
+   background:white;
+   color:#0D47A1;
+   border-radius:20px;
+   display:flex;
+   justify-content:center;
+   align-items:center;
+   text-align:center;
+   font-size:32px;
+   font-weight:bold;
+   cursor:pointer;
+   transition:0.3s;
+   box-shadow:0 5px 15px rgba(0,0,0,0.4);
+}
+
+.team:hover{
+   background:yellow;
+   transform:scale(1.08);
+}
+
+/* VS */
+
+.vs{
+   font-size:50px;
+   font-weight:bold;
+   color:yellow;
+}
+
+/* 우승 */
+
+#winner{
+   margin-top:50px;
+   font-size:50px;
+   color:yellow;
+   font-weight:bold;
+}
+
+/* 랭킹 */
+
+#ranking{
+   margin-top:50px;
+   font-size:25px;
+   line-height:40px;
+}
+
+/* 하단 */
+
+footer{
+   margin-top:70px;
+   padding:20px;
+   background:rgba(0,0,0,0.2);
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+   <h1>⚽ 축구팀 이상형 월드컵 ⚽</h1>
+
+   <div class="subtitle">
+       가장 좋아하는 축구팀을 선택하세요!
+   </div>
+</header>
+
+<!-- 시작 화면 -->
+
+<div id="startScreen">
+
+   <h2>🏆 월드컵 시작하기 🏆</h2>
+
+   <button id="startBtn" onclick="startGame()">
+       시작하기
+   </button>
+
+</div>
+
+<!-- 게임 화면 -->
+
+<div id="gameScreen">
+
+   <div id="round">64강</div>
+
+   <button class="musicBtn" onclick="playMusic()">
+       🎵 배경음악 재생
+   </button>
+
+   <!-- 가로 선택 -->
+
+   <div class="team-container">
+
+       <div class="team"
+       id="team1"
+       onclick="selectTeam(0)">
+       </div>
+
+       <div class="vs">
+           VS
+       </div>
+
+       <div class="team"
+       id="team2"
+       onclick="selectTeam(1)">
+       </div>
+
+   </div>
+
+   <div id="winner"></div>
+
+   <div id="ranking"></div>
+
+</div>
+
+<footer>
+⚽ 박지완의 축구팀 이상형 월드컵 ⚽
+</footer>
+
+<!-- 배경음악 -->
+
+<audio id="bgm" loop>
+   <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+
+/* 유명 축구팀 64개 */
+
+const teams = [
+
+"레알 마드리드",
+"바르셀로나",
+"맨체스터 시티",
+"맨체스터 유나이티드",
+"리버풀",
+"첼시",
+"아스널",
+"토트넘",
+"뉴캐슬",
+"에버튼",
+"아스톤 빌라",
+"바이에른 뮌헨",
+"도르트문트",
+"레버쿠젠",
+"유벤투스",
+"인터 밀란",
+"AC 밀란",
+"나폴리",
+"AS 로마",
+"라치오",
+"파리 생제르맹",
+"모나코",
+"리옹",
+"마르세유",
+"AT 마드리드",
+"세비야",
+"발렌시아",
+"비야레알",
+"아약스",
+"PSV",
+"벤피카",
+"포르투",
+"셀틱",
+"레인저스",
+"갈라타사라이",
+"페네르바체",
+"알 나스르",
+"알 힐랄",
+"인터 마이애미",
+"LA 갤럭시",
+"플라멩구",
+"산투스",
+"리버 플레이트",
+"보카 주니어스",
+"울산 현대",
+"전북 현대",
+"FC 서울",
+"수원 삼성",
+"가시마 앤틀러스",
+"요코하마 마리노스",
+"고베",
+"시드니 FC",
+"멜버른 시티",
+"토론토 FC",
+"클럽 아메리카",
+"몬테레이",
+"티그레스",
+"브라이튼",
+"웨스트햄",
+"레스터 시티",
+"리즈 유나이티드",
+"피오렌티나",
+"스포르팅",
+"브라가"
+
+];
+
+let currentRound = [...teams];
+let nextRound = [];
+let currentMatch = 0;
+
+const rankings = {};
+
+/* 섞기 */
+
+function shuffle(array){
+
+   for(let i=array.length-1; i>0; i--){
+
+       const j =
+       Math.floor(Math.random()*(i+1));
+
+       [array[i], array[j]] =
+       [array[j], array[i]];
+   }
+}
+
+shuffle(currentRound);
+
+/* 시작 */
+
+function startGame(){
+
+   document.getElementById("startScreen")
+   .style.display = "none";
+
+   document.getElementById("gameScreen")
+   .style.display = "block";
+
+   showMatch();
+}
+
+/* 경기 보여주기 */
+
+function showMatch(){
+
+   if(currentMatch >= currentRound.length){
+
+       if(nextRound.length === 1){
+
+           document.getElementById("winner")
+           .innerHTML =
+           "🏆 우승 팀 : " + nextRound[0];
+
+           document.querySelector(".team-container")
+           .style.display = "none";
+
+           document.getElementById("round")
+           .innerHTML =
+           "🎉 대회 종료 🎉";
+
+           showRanking();
+
+           return;
+       }
+
+       currentRound = [...nextRound];
+
+       nextRound = [];
+
+       currentMatch = 0;
+
+       document.getElementById("round")
+       .innerHTML =
+       "⚽ " + currentRound.length + "강 ⚽";
+   }
+
+   document.getElementById("team1")
+   .innerHTML =
+   currentRound[currentMatch];
+
+   document.getElementById("team2")
+   .innerHTML =
+   currentRound[currentMatch + 1];
+}
+
+/* 팀 선택 */
+
+function selectTeam(choice){
+
+   const selected =
+   currentRound[currentMatch + choice];
+
+   nextRound.push(selected);
+
+   if(rankings[selected]){
+
+       rankings[selected]++;
+
+   }else{
+
+       rankings[selected] = 1;
+   }
+
+   currentMatch += 2;
+
+   showMatch();
+}
+
+/* 음악 */
+
+function playMusic(){
+
+   document.getElementById("bgm").play();
+}
+
+/* 랭킹 */
+
+function showRanking(){
+
+   let sorted =
+   Object.entries(rankings)
+   .sort((a,b)=>b[1]-a[1]);
+
+   let text =
+   "<h2>🔥 인기 팀 TOP10 🔥</h2>";
+
+   for(let i=0; i<10 && i<sorted.length; i++){
+
+       text +=
+       (i+1) + "위 : "
+       + sorted[i][0]
+       + " (" + sorted[i][1] + "표)<br>";
+   }
+
+   document.getElementById("ranking")
+   .innerHTML = text;
+}
+
+</script>
+
+</body>
+</html>
+<style>
+
+body{
+   margin:0;
+   padding:0;
+   font-family:'맑은 고딕', sans-serif;
+   background:linear-gradient(to bottom, #0D47A1, #1976D2, #42A5F5);
+   color:white;
+   text-align:center;
+}
+
+/* 상단 */
+
+header{
+   padding:20px;
+   background:rgba(0,0,0,0.2);
+}
+
+h1{
+   font-size:50px;
+}
+
+.subtitle{
+   font-size:22px;
+}
+
+/* 시작 화면 */
+
+#startScreen{
+   margin-top:120px;
+}
+
+#startBtn{
+   padding:20px 40px;
+   font-size:30px;
+   border:none;
+   border-radius:20px;
+   cursor:pointer;
+   background:yellow;
+   color:#0D47A1;
+   font-weight:bold;
+   transition:0.3s;
+}
+
+#startBtn:hover{
+   transform:scale(1.1);
+}
+
+/* 게임 화면 */
+
+#gameScreen{
+   display:none;
+}
+
+#round{
+   margin-top:20px;
+   font-size:35px;
+   font-weight:bold;
+}
+
+.musicBtn{
+   margin-top:20px;
+   padding:12px 24px;
+   font-size:18px;
+   border:none;
+   border-radius:10px;
+   cursor:pointer;
+   font-weight:bold;
+}
+
+/* 가로 배치 */
+
+.team-container{
+   display:flex;
+   flex-direction:row; /* 가로 배치 */
+   justify-content:center;
+   align-items:center;
+   gap:50px;
+   margin-top:70px;
+}
+
+/* 팀 카드 */
+
+.team{
+   width:350px;
+   height:240px;
+   background:white;
+   color:#0D47A1;
+   border-radius:20px;
+   display:flex;
+   justify-content:center;
+   align-items:center;
+   text-align:center;
+   font-size:32px;
+   font-weight:bold;
+   cursor:pointer;
+   transition:0.3s;
+   box-shadow:0 5px 15px rgba(0,0,0,0.4);
+}
+
+.team:hover{
+   background:yellow;
+   transform:scale(1.08);
+}
+
+/* VS */
+
+.vs{
+   font-size:50px;
+   font-weight:bold;
+   color:yellow;
+}
+
+/* 우승 */
+
+#winner{
+   margin-top:50px;
+   font-size:50px;
+   color:yellow;
+   font-weight:bold;
+}
+
+/* 랭킹 */
+
+#ranking{
+   margin-top:50px;
+   font-size:25px;
+   line-height:40px;
+}
+
+/* 하단 */
+
+footer{
+   margin-top:70px;
+   padding:20px;
+   background:rgba(0,0,0,0.2);
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+   <h1>⚽ 축구팀 이상형 월드컵 ⚽</h1>
+
+   <div class="subtitle">
+       가장 좋아하는 축구팀을 선택하세요!
+   </div>
+</header>
+
+<!-- 시작 화면 -->
+
+<div id="startScreen">
+
+   <h2>🏆 월드컵 시작하기 🏆</h2>
+
+   <button id="startBtn" onclick="startGame()">
+       시작하기
+   </button>
+
+</div>
+
+<!-- 게임 화면 -->
+
+<div id="gameScreen">
+
+   <div id="round">64강</div>
+
+   <button class="musicBtn" onclick="playMusic()">
+       🎵 배경음악 재생
+   </button>
+
+   <!-- 가로 선택 -->
+
+   <div class="team-container">
+
+       <div class="team"
+       id="team1"
+       onclick="selectTeam(0)">
+       </div>
+
+       <div class="vs">
+           VS
+       </div>
+
+       <div class="team"
+       id="team2"
+       onclick="selectTeam(1)">
+       </div>
+
+   </div>
+
+   <div id="winner"></div>
+
+   <div id="ranking"></div>
+
+</div>
+
+<footer>
+⚽ 박지완의 축구팀 이상형 월드컵 ⚽
+</footer>
+
+<!-- 배경음악 -->
+
+<audio id="bgm" loop>
+   <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+
+/* 유명 축구팀 64개 */
+
+const teams = [
+
+"레알 마드리드",
+"바르셀로나",
+"맨체스터 시티",
+"맨체스터 유나이티드",
+"리버풀",
+"첼시",
+"아스널",
+"토트넘",
+"뉴캐슬",
+"에버튼",
+"아스톤 빌라",
+"바이에른 뮌헨",
+"도르트문트",
+"레버쿠젠",
+"유벤투스",
+"인터 밀란",
+"AC 밀란",
+"나폴리",
+"AS 로마",
+"라치오",
+"파리 생제르맹",
+"모나코",
+"리옹",
+"마르세유",
+"AT 마드리드",
+"세비야",
+"발렌시아",
+"비야레알",
+"아약스",
+"PSV",
+"벤피카",
+"포르투",
+"셀틱",
+"레인저스",
+"갈라타사라이",
+"페네르바체",
+"알 나스르",
+"알 힐랄",
+"인터 마이애미",
+"LA 갤럭시",
+"플라멩구",
+"산투스",
+"리버 플레이트",
+"보카 주니어스",
+"울산 현대",
+"전북 현대",
+"FC 서울",
+"수원 삼성",
+"가시마 앤틀러스",
+"요코하마 마리노스",
+"고베",
+"시드니 FC",
+"멜버른 시티",
+"토론토 FC",
+"클럽 아메리카",
+"몬테레이",
+"티그레스",
+"브라이튼",
+"웨스트햄",
+"레스터 시티",
+"리즈 유나이티드",
+"피오렌티나",
+"스포르팅",
+"브라가"
+
+];
+
+let currentRound = [...teams];
+let nextRound = [];
+let currentMatch = 0;
+
+const rankings = {};
+
+/* 섞기 */
+
+function shuffle(array){
+
+   for(let i=array.length-1; i>0; i--){
+
+       const j =
+       Math.floor(Math.random()*(i+1));
+
+       [array[i], array[j]] =
+       [array[j], array[i]];
+   }
+}
+
+shuffle(currentRound);
+
+/* 시작 */
+
+function startGame(){
+
+   document.getElementById("startScreen")
+   .style.display = "none";
+
+   document.getElementById("gameScreen")
+   .style.display = "block";
+
+   showMatch();
+}
+
+/* 경기 보여주기 */
+
+function showMatch(){
+
+   if(currentMatch >= currentRound.length){
+
+       if(nextRound.length === 1){
+
+           document.getElementById("winner")
+           .innerHTML =
+           "🏆 우승 팀 : " + nextRound[0];
+
+           document.querySelector(".team-container")
+           .style.display = "none";
+
+           document.getElementById("round")
+           .innerHTML =
+           "🎉 대회 종료 🎉";
+
+           showRanking();
+
+           return;
+       }
+
+       currentRound = [...nextRound];
+
+       nextRound = [];
+
+       currentMatch = 0;
+
+       document.getElementById("round")
+       .innerHTML =
+       "⚽ " + currentRound.length + "강 ⚽";
+   }
+
+   document.getElementById("team1")
+   .innerHTML =
+   currentRound[currentMatch];
+
+   document.getElementById("team2")
+   .innerHTML =
+   currentRound[currentMatch + 1];
+}
+
+/* 팀 선택 */
+
+function selectTeam(choice){
+
+   const selected =
+   currentRound[currentMatch + choice];
+
+   nextRound.push(selected);
+
+   if(rankings[selected]){
+
+       rankings[selected]++;
+
+   }else{
+
+       rankings[selected] = 1;
+   }
+
+   currentMatch += 2;
+
+   showMatch();
+}
+
+/* 음악 */
+
+function playMusic(){
+
+   document.getElementById("bgm").play();
+}
+
+/* 랭킹 */
+
+function showRanking(){
+
+   let sorted =
+   Object.entries(rankings)
+   .sort((a,b)=>b[1]-a[1]);
+
+   let text =
+   "<h2>🔥 인기 팀 TOP10 🔥</h2>";
+
+   for(let i=0; i<10 && i<sorted.length; i++){
+
+       text +=
+       (i+1) + "위 : "
+       + sorted[i][0]
+       + " (" + sorted[i][1] + "표)<br>";
+   }
+
+   document.getElementById("ranking")
+   .innerHTML = text;
+}
+
+</script>
+
+</body>
+</html>
