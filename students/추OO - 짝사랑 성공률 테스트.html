@@ -1,226 +1,452 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>짝사랑 성공률 테스트</title>
-  <style>
-    body{
-      font-family: "Pretendard", sans-serif;
-      background: linear-gradient(135deg,#ffd6e7,#ffe9f3);
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:100vh;
-      margin:0;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>짝사랑 성공률 테스트</title>
 
-    .container{
-      background:white;
-      width:400px;
-      padding:30px;
-      border-radius:25px;
-      box-shadow:0 8px 20px rgba(0,0,0,0.15);
-      text-align:center;
-    }
+<style>
 
-    h1{
-      color:#ff4f8b;
-      margin-bottom:20px;
-    }
+body{
+    margin:0;
+    font-family:'Pretendard',sans-serif;
+    background:linear-gradient(135deg,#ffd6e7,#ffeef6);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
 
-    input, select{
-      width:90%;
-      padding:12px;
-      margin:10px 0;
-      border:2px solid #ffc2d6;
-      border-radius:12px;
-      font-size:16px;
-    }
+.container{
+    width:430px;
+    background:white;
+    padding:30px;
+    border-radius:25px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.15);
+    text-align:center;
+}
 
-    button{
-      background:#ff4f8b;
-      color:white;
-      border:none;
-      padding:12px 20px;
-      border-radius:15px;
-      font-size:16px;
-      cursor:pointer;
-      margin-top:15px;
-      transition:0.2s;
-    }
+h1{
+    color:#ff3b7f;
+}
 
-    button:hover{
-      background:#ff2f73;
-      transform:scale(1.05);
-    }
+input,select{
+    width:90%;
+    padding:12px;
+    margin:10px 0;
+    border-radius:12px;
+    border:2px solid #ffc4d7;
+    font-size:15px;
+}
 
-    .question{
-      font-size:20px;
-      margin-bottom:20px;
-      color:#444;
-    }
+button{
+    background:#ff5b95;
+    color:white;
+    border:none;
+    padding:12px 18px;
+    margin:8px;
+    border-radius:15px;
+    cursor:pointer;
+    font-size:16px;
+    transition:0.2s;
+}
 
-    .choice-btn{
-      display:block;
-      width:100%;
-      margin:10px 0;
-      background:#ff8db3;
-    }
+button:hover{
+    background:#ff2f73;
+    transform:scale(1.05);
+}
 
-    .result{
-      font-size:24px;
-      margin-top:20px;
-      color:#ff2f73;
-      font-weight:bold;
-    }
+.question{
+    font-size:22px;
+    color:#444;
+    margin-bottom:20px;
+}
 
-    .tip{
-      margin-top:15px;
-      font-size:18px;
-      color:#555;
-    }
-  </style>
+.result{
+    font-size:28px;
+    color:#ff2f73;
+    font-weight:bold;
+    margin-top:15px;
+}
+
+.tip{
+    margin-top:20px;
+    line-height:1.7;
+    color:#555;
+}
+
+.rankBox{
+    background:#fff2f7;
+    padding:15px;
+    border-radius:15px;
+    margin-top:20px;
+    text-align:left;
+}
+
+.rankItem{
+    padding:8px;
+    border-bottom:1px solid #ffc7da;
+}
+
+</style>
 </head>
+
 <body>
 
 <div class="container" id="app">
-  <h1>💕 짝사랑 성공률 테스트 💕</h1>
-  <button onclick="startTest()">시작하기</button>
+
+<h1>💕 짝사랑 성공률 테스트 💕</h1>
+
+<p>
+상대방과의 가능성을 AI가 분석해드립니다!
+</p>
+
+<button onclick="startTest()">시작하기</button>
+
 </div>
 
 <script>
-  let score = 0;
-  let currentQuestion = 0;
 
-  const questions = [
-    {
-      q: "최근 그 사람이 먼저 말을 건 적이 있나요?",
-      choices: [
-        ["네", 20],
-        ["아니요", 0]
-      ]
-    },
-    {
-      q: "최근 눈이 자주 마주친다고 느끼나요?",
-      choices: [
-        ["네", 20],
-        ["아니요", 0]
-      ]
-    },
-    {
-      q: "다른 사람보다 나에게 더 친절한가요?",
-      choices: [
-        ["예", 20],
-        ["아니요", 0],
-        ["모르겠음", 10]
-      ]
-    },
-    {
-      q: "주변 친구들이 둘 사이를 의심한 적이 있나요?",
-      choices: [
-        ["네", 20],
-        ["아니요", 0]
-      ]
-    },
-    {
-      q: "인스타그램 맞팔이 되어있나요?",
-      choices: [
-        ["네", 10],
-        ["아니요", 0],
-        ["인스타그램이 없습니다", 5]
-      ]
-    },
-    {
-      q: "그 사람이 유독 나에게만 장난을 치나요?",
-      choices: [
-        ["예", 10],
-        ["아니요", 0],
-        ["모르겠음", 5]
-      ]
-    }
-  ];
+let myName="";
+let loveName="";
+let score=0;
+let current=0;
 
-  function startTest(){
-    document.getElementById("app").innerHTML = `
-      <h1>💖 정보 입력 💖</h1>
-      <input type="text" id="myName" placeholder="내 이름">
-      <input type="text" id="loveName" placeholder="상대방 이름">
+let ranking = JSON.parse(localStorage.getItem("loveRanking")) || [];
 
-      <select id="gender">
-        <option>성별 선택</option>
-        <option>여자</option>
-        <option>남자</option>
-      </select>
+const questions = [
 
-      <button onclick="showQuestion()">다음</button>
-    `;
-  }
+{
+q:"최근 그 사람이 먼저 말을 건 적이 있나요?",
+choices:[
+["네",17],
+["아니요",3]
+]
+},
 
-  function showQuestion(){
-    if(currentQuestion >= questions.length){
-      showResult();
-      return;
-    }
+{
+q:"최근 눈이 자주 마주친다고 느끼나요?",
+choices:[
+["네",18],
+["아니요",2]
+]
+},
 
-    let q = questions[currentQuestion];
+{
+q:"다른 사람보다 나에게 더 친절한가요?",
+choices:[
+["예",20],
+["아니요",2],
+["모르겠음",10]
+]
+},
 
-    let html = `
-      <div class="question">${q.q}</div>
-    `;
+{
+q:"주변 친구들이 둘 사이를 의심한 적이 있나요?",
+choices:[
+["네",15],
+["아니요",4]
+]
+},
 
-    q.choices.forEach(choice => {
-      html += `
-        <button class="choice-btn"
-          onclick="selectAnswer(${choice[1]})">
-          ${choice[0]}
-        </button>
-      `;
-    });
+{
+q:"인스타그램 맞팔이 되어있나요?",
+choices:[
+["네",12],
+["아니요",2],
+["인스타그램이 없습니다",7]
+]
+},
 
-    document.getElementById("app").innerHTML = html;
-  }
+{
+q:"그 사람이 유독 나에게만 장난을 치나요?",
+choices:[
+["예",15],
+["아니요",2],
+["모르겠음",8]
+]
+}
 
-  function selectAnswer(point){
-    score += point;
-    currentQuestion++;
-    showQuestion();
-  }
+];
 
-  function showResult(){
-    let myName = document.getElementById("myName")?.value || "당신";
-    let loveName = document.getElementById("loveName")?.value || "상대방";
+function startTest(){
 
-    let emoji = "";
-    let tip = "";
+score=0;
+current=0;
 
-    if(score <= 30){
-      emoji = "😢";
-      tip = "조금 더 친해질 기회를 만들어 보세요!";
-    }
-    else if(score <= 60){
-      emoji = "💪";
-      tip = "가능성이 있어요! 대화를 더 자주 해보세요!";
-    }
-    else{
-      emoji = "🎉";
-      tip = "서로 좋은 감정이 있을 가능성이 높아요!";
-    }
+document.getElementById("app").innerHTML=`
 
-    document.getElementById("app").innerHTML = `
-      <h1>${emoji} 결과 ${emoji}</h1>
-      <div class="result">
-        ${myName} ❤️ ${loveName}<br><br>
-        성공률: ${score}%
-      </div>
+<h1>💖 정보 입력 💖</h1>
 
-      <div class="tip">
-        ${tip}
-      </div>
+<input type="text" id="myname" placeholder="내 이름">
 
-      <button onclick="location.reload()">다시하기</button>
-    `;
-  }
+<input type="text" id="lovename" placeholder="상대방 이름">
+
+<select id="gender">
+<option>성별 선택</option>
+<option>여자</option>
+<option>남자</option>
+</select>
+
+<button onclick="saveInfo()">다음</button>
+
+`;
+
+}
+
+function saveInfo(){
+
+myName=document.getElementById("myname").value;
+loveName=document.getElementById("lovename").value;
+
+showQuestion();
+
+}
+
+function showQuestion(){
+
+if(current>=questions.length){
+showResult();
+return;
+}
+
+let q=questions[current];
+
+let html=`
+<div class="question">${q.q}</div>
+`;
+
+q.choices.forEach(choice=>{
+
+html+=`
+<button onclick="choose(${choice[1]})">
+${choice[0]}
+</button>
+`;
+
+});
+
+document.getElementById("app").innerHTML=html;
+
+}
+
+function choose(point){
+
+score += point;
+current++;
+
+showQuestion();
+
+}
+
+function showResult(){
+
+let percent = score + Math.floor(Math.random()*6);
+
+if(percent>100){
+percent=100;
+}
+
+window.currentPercent = percent;
+
+let emoji="";
+let advice="";
+let color="";
+let item="";
+let place="";
+
+if(percent<=30){
+
+emoji="😢";
+
+advice="조금 더 가까워질 시간이 필요해요! 먼저 가볍게 인사를 하거나 공통 관심사를 찾아보세요.";
+
+color="하늘색 💙";
+item="캐릭터 키링";
+place="카페 ☕";
+
+}
+
+else if(percent<=60){
+
+emoji="💪";
+
+advice="가능성이 있어요! 대화를 자주 걸고 연락을 조금씩 늘려보세요.";
+
+color="연핑크 💗";
+item="향수";
+place="학교 매점 🍞";
+
+}
+
+else{
+
+emoji="🎉";
+
+advice="서로 호감이 있을 가능성이 높아요! 용기 내서 더 가까워져 보세요.";
+
+color="빨간색 ❤️";
+item="팔찌";
+place="놀이공원 🎡";
+
+}
+
+document.getElementById("app").innerHTML=`
+
+<h1>${emoji} 결과 ${emoji}</h1>
+
+<div class="result">
+
+${myName} ❤️ ${loveName}
+
+<br><br>
+
+성공률 ${percent}%
+
+</div>
+
+<div class="tip">
+
+<b>💌 조언</b><br>
+${advice}
+
+<br><br>
+
+<b>🎨 행운의 색</b><br>
+${color}
+
+<br><br>
+
+<b>🎁 행운의 물건</b><br>
+${item}
+
+<br><br>
+
+<b>📍 행운의 장소</b><br>
+${place}
+
+</div>
+
+<!-- 여기!! 다시하기 옆에 랭킹보기 버튼 -->
+<button onclick="restart()">다시하기</button>
+
+<button onclick="showRanking()">
+랭킹보기
+</button>
+
+`;
+
+}
+
+function restart(){
+
+location.reload();
+
+}
+
+function showRanking(){
+
+let html=`
+
+<div style="text-align:right;">
+<button onclick="askRanking()">랭킹등재</button>
+</div>
+
+<h1>🏆 인기 랭킹 🏆</h1>
+
+<div class="rankBox">
+
+`;
+
+if(ranking.length===0){
+
+html += `<p>아직 랭킹이 없습니다!</p>`;
+
+}
+
+else{
+
+ranking.forEach((r,index)=>{
+
+html += `
+
+<div class="rankItem">
+
+${index+1}위 - ${r.name} ❤️ ${r.percent}%
+
+</div>
+
+`;
+
+});
+
+}
+
+html += `
+
+</div>
+
+<button onclick="restart()">메인으로</button>
+
+`;
+
+document.getElementById("app").innerHTML=html;
+
+}
+
+function askRanking(){
+
+document.getElementById("app").innerHTML=`
+
+<h1>🏅 랭킹 등재</h1>
+
+<p>
+랭킹에 등재하시겠습니까?
+</p>
+
+<button onclick="confirmRanking()">예</button>
+
+<button onclick="restart()">아니요</button>
+
+`;
+
+}
+
+function confirmRanking(){
+
+document.getElementById("app").innerHTML=`
+
+<h1>⚠️ 안내</h1>
+
+<p>
+랭킹에 등재되면 각 사람의 성공 확률이 모든 사람에게 공개됩니다.
+</p>
+
+<button onclick="saveRanking()">예</button>
+
+<button onclick="restart()">아니요</button>
+
+`;
+
+}
+
+function saveRanking(){
+
+let hiddenName = loveName.charAt(0) + "##";
+
+ranking.push({
+name:hiddenName,
+percent:window.currentPercent
+});
+
+ranking.sort((a,b)=>b.percent-a.percent);
+
+localStorage.setItem("loveRanking",JSON.stringify(ranking));
+
+showRanking();
+
+}
+
 </script>
 
 </body>
