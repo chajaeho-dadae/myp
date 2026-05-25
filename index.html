@@ -206,7 +206,7 @@
       width: 22px;
       height: 22px;
       flex-shrink: 0;
-      pointer-events: none;   /* mousemove는 .star-row에서 일괄 처리 */
+      pointer-events: none;
       transition: transform .1s;
     }
     .star-row:hover svg { transform: scale(1.12); }
@@ -218,6 +218,24 @@
       padding-left: 2px;
     }
     .star-avg span { color: var(--gold); font-weight: 700; }
+
+    /* ── 별점 오픈 예고 배너 ── */
+    .rating-soon-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #1c2030, #252a3a);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent2);
+      border-radius: 10px;
+      padding: 14px 20px;
+      margin: 20px 0 0;
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    .rating-soon-banner .banner-icon { font-size: 1.3rem; }
+    .rating-soon-banner strong { color: var(--text); font-weight: 600; }
+    .rating-soon-banner .banner-date { color: var(--accent); font-weight: 700; margin-left: 4px; }
 
     /* 로딩 / 에러 */
     .state-msg {
@@ -251,9 +269,23 @@
 
 <script>
   /* ═══════════════════════════════════════════════
+     ★ 별점 오픈 날짜 설정
+        이 날짜 00:00:00 이후부터 별점 기능이 활성화됩니다.
+        형식: "YYYY-MM-DD"  (예: "2026-06-01")
   */
-  const GITHUB_USER   = "chajaeho-dadae";   // ← 수정
-  const GITHUB_REPO   = "myp";          // ← 수정
+  const RATING_OPEN_DATE = "2026-08-31";   // ← 원하는 날짜로 변경
+
+  /* 별점 활성화 여부 (전역 플래그) */
+  const RATING_ENABLED = (() => {
+    const open = new Date(RATING_OPEN_DATE + "T00:00:00");
+    return Date.now() >= open.getTime();
+  })();
+
+  /* ═══════════════════════════════════════════════
+     GitHub 설정
+  */
+  const GITHUB_USER   = "chajaeho-dadae";
+  const GITHUB_REPO   = "myp";
   const GITHUB_BRANCH = "main";
   const FOLDER        = "students";
 
@@ -322,13 +354,6 @@
 
   /* ── 별점 ── */
   async function submitRating(file, score) {
-    /*
-      ratings 테이블 구조:
-        id    bigint  (PK, generated always as identity)
-        file  text
-        score int2    (1~5)
-      ※ 한 행에 하나의 평점을 쌓아서 평균을 냄 (upsert X)
-    */
     await sbFetch(RATINGS_TABLE, {
       method: "POST",
       prefer: "return=minimal",
@@ -337,6 +362,7 @@
   }
 
   async function loadAllRatings() {
+    if (!RATING_ENABLED) return {};   // 비활성화 시 호출 자체 생략
     try {
       const rows = await sbFetch(`${RATINGS_TABLE}?select=file,score`);
       const acc  = {};
@@ -392,8 +418,6 @@
 
   /* ════════════════════════════════════════════════
      별 SVG 생성
-     filled: true  → 속이 찬 별 (금색)
-     filled: false → 빈 별 (테두리만)
   */
   function starSVG(filled) {
     return `<svg viewBox="0 0 24 24"
@@ -403,7 +427,6 @@
     </svg>`;
   }
 
-  /* ── 별 행 전체를 n개 채운 상태로 그리기 ── */
   function paintStars(row, n) {
     row.querySelectorAll("svg").forEach((svg, i) => {
       const filled = i < n;
@@ -413,7 +436,6 @@
 
   /* ════════════════════════════════════════════════
      별점 위젯 HTML 생성
-     — 마우스 이벤트는 JS에서 addEventListener로 붙임
   */
   function buildStarWidget(file, avg) {
     const safeid  = file.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -421,9 +443,7 @@
       ? `<div class="star-avg">평균 <span>${avg.toFixed(1)}</span>점</div>`
       : `<div class="star-avg" style="opacity:.45">아직 평점 없음</div>`;
 
-    const stars = [1,2,3,4,5]
-      .map(() => starSVG(false))
-      .join("");
+    const stars = [1,2,3,4,5].map(() => starSVG(false)).join("");
 
     return `<div class="star-widget" id="sw-${safeid}" data-file="${file}">
       <div class="star-row" data-file="${file}">${stars}</div>
@@ -435,34 +455,31 @@
      별점 이벤트 — 렌더 후 일괄 등록
   */
   function attachStarEvents() {
+    if (!RATING_ENABLED) return;   // 비활성화 시 이벤트 미등록
+
     document.querySelectorAll(".star-row").forEach(row => {
       const file = row.dataset.file;
 
-      /* 초기 상태: 내가 이미 매긴 점수가 있으면 표시 */
       const myScore = getMyRating(file);
       if (myScore) paintStars(row, myScore);
 
-      /* mousemove — 마우스 X 위치로 몇 번째 별인지 계산 */
       row.addEventListener("mousemove", e => {
         const rect  = row.getBoundingClientRect();
-        const x     = e.clientX - rect.left;           // row 왼쪽 끝 기준 X
+        const x     = e.clientX - rect.left;
         const ratio = Math.max(0, Math.min(1, x / rect.width));
-        const hover = Math.ceil(ratio * 5);             // 1~5
+        const hover = Math.ceil(ratio * 5);
         paintStars(row, hover);
       });
 
-      /* mouseleave — 내 점수 or 빈 별로 복원 */
       row.addEventListener("mouseleave", () => {
         const saved = getMyRating(file);
         paintStars(row, saved ?? 0);
       });
 
-      /* click — 별점 확정 & Supabase 전송 */
       row.addEventListener("click", async e => {
         e.preventDefault();
         e.stopPropagation();
 
-        /* 현재 hover 상태에서 채워진 별 개수 = 점수 */
         const svgs  = [...row.querySelectorAll("svg")];
         const score = svgs.filter(s => s.getAttribute("fill") !== "none").length;
         if (score === 0) return;
@@ -473,7 +490,6 @@
         try {
           await submitRating(file, score);
 
-          /* 평균 재조회 후 텍스트 업데이트 */
           const avgMap = await loadAllRatings();
           const newAvg = avgMap[file] ?? null;
           const widget = row.closest(".star-widget");
@@ -500,6 +516,12 @@
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
     <circle cx="12" cy="12" r="3"/></svg>`;
 
+  /* ── 별점 오픈일을 사람이 읽기 좋은 형식으로 변환 ── */
+  function formatOpenDate() {
+    const d = new Date(RATING_OPEN_DATE + "T00:00:00");
+    return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
+  }
+
   /* ════════════════════════════════════════════════
      렌더링
   */
@@ -507,6 +529,23 @@
     const sorted = [...students].sort((a, b) => b.views - a.views);
     const top6   = sorted.slice(0, 6);
     const app    = document.getElementById("app");
+
+    /* 별점 컬럼 포함 여부에 따라 th 구성 */
+    const starTh   = RATING_ENABLED ? `<th>별점</th>` : "";
+    const starTdFn = RATING_ENABLED
+      ? s => `<td class="star-cell">${buildStarWidget(s.file, s.avgRating)}</td>`
+      : () => "";
+
+    /* 별점 오픈 예고 배너 (비활성화 시만 표시) */
+    const soonBanner = !RATING_ENABLED ? `
+      <div class="rating-soon-banner">
+        <span class="banner-icon">⭐</span>
+        <div>
+          <strong>별점 기능 오픈 예정</strong>
+          <span class="banner-date">${formatOpenDate()}</span>부터
+          친구들의 작품에 별점을 줄 수 있어요!
+        </div>
+      </div>` : "";
 
     /* 메달 카드 */
     const medalHTML = `
@@ -522,7 +561,8 @@
             <div class="card-desc">${s.desc}</div>
             <div class="card-views">${eyeIcon} ${s.views.toLocaleString()}</div>
           </a>`).join("")}
-      </div>`;
+      </div>
+      ${soonBanner}`;
 
     /* 전체 테이블 */
     const tableHTML = `
@@ -535,7 +575,7 @@
               <th>이름</th>
               <th>작품명</th>
               <th>조회수</th>
-              <th>별점</th>
+              ${starTh}
             </tr>
           </thead>
           <tbody>
@@ -552,7 +592,7 @@
                      onclick="handleClick(event,'${s.file}')">${s.title}</a>
                 </td>
                 <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
-                <td class="star-cell">${buildStarWidget(s.file, s.avgRating)}</td>
+                ${starTdFn(s)}
               </tr>`).join("")}
           </tbody>
         </table>
@@ -577,10 +617,14 @@
   (async () => {
     try {
       const students = await fetchStudentsFromGitHub();
-      const [viewMap, ratingMap] = await Promise.all([loadAllViews(), loadAllRatings()]);
+      const viewMap  = await loadAllViews();
+
+      /* 별점은 활성화된 경우에만 조회 */
+      const ratingMap = await loadAllRatings();
+
       students.forEach(s => {
-        s.views     = viewMap[s.file]    ?? 0;
-        s.avgRating = ratingMap[s.file]  ?? null;
+        s.views     = viewMap[s.file]   ?? 0;
+        s.avgRating = ratingMap[s.file] ?? null;
       });
 
       if (students.length === 0) {
