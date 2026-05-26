@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>은주 키우기 게임</title>
+<title>친구 키우기 게임</title>
 <style>
 body {
   margin: 0;
@@ -93,12 +93,12 @@ button {
 </head>
 <body>
 <div class="game">
-  <h1>👶 은주 키우기 게임</h1>
-  <p>은주를 20살까지 키워보세요!</p>
+  <h1>👶 친구 키우기 게임</h1>
+  <p>친구를 20살까지 키워보세요!</p>
 
   <div id="face" class="emoji">😊</div>
 
-  <h2>은주 나이: <span id="age">0</span>살</h2>
+  <h2>친구 나이: <span id="age">0</span>살</h2>
 
   <p>배고픔</p>
   <div class="bar">
@@ -116,7 +116,7 @@ button {
   </div>
 
   <div id="message" class="message">
-    은주가 태어났어요 👶
+    친구가 태어났어요 👶
   </div>
 </div>
 
@@ -160,7 +160,7 @@ function feedMilk() {
 
   crying = false;
 
-  message('🍼 은주가 분유를 맛있게 먹었어요!');
+  message('🍼 친구가 분유를 맛있게 먹었어요!');
   updateUI();
 }
 
@@ -172,7 +172,7 @@ function patEunju() {
 
   if (happy > 100) happy = 100;
 
-  message('😊 은주가 울음을 멈추고 웃어요!');
+  message('😊 친구가 울음을 멈추고 웃어요!');
   updateUI();
 }
 
@@ -185,7 +185,7 @@ setInterval(() => {
 
   if (hunger >= 70) {
     crying = true;
-    message('😭 은주가 배고파서 울고 있어요!');
+    message('😭 친구가 배고파서 울고 있어요!');
   }
 
   if (hunger > 100) hunger = 100;
@@ -193,7 +193,7 @@ setInterval(() => {
 
   if (age >= 20) {
     clear = true;
-    message('🎉 축하합니다! 은주를 20살까지 키웠어요!');
+    message('🎉 축하합니다! 친구를 20살까지 키웠어요!');
   }
 
   updateUI();
