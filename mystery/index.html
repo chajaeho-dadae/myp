@@ -223,11 +223,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // 🔧 Supabase 설정 — supabase.com 프로젝트 → Settings → API 에서 복사
 // =====================================================================
 const SUPABASE_URL   = "https://sdhpzypjqmowhrhxvvsj.supabase.co/rest/v1/";
-const SUPABASE_KEY   = "sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc";  
-const SUPABASE_ANON = "sdhpzypjqmowhrhxvvsj";
+const SUPABASE_KEY   = "sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc";
+//const SUPABASE_ANON = "YOUR_ANON_KEY";
 
 // 🔧 교사 비밀번호
-const TEACHER_PASSWORD = "ekeownd2026!@";
+const TEACHER_PASSWORD = "teacher1234";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
@@ -316,7 +316,8 @@ let state = {
 
 // Supabase helpers
 async function dbGet(roomId) {
-  const { data } = await sb.from("rooms").select("*").eq("id", roomId).single();
+  const { data, error } = await sb.from("rooms").select("*").eq("id", roomId).maybeSingle();
+  if (error) { console.error("dbGet error:", error); return null; }
   return data;
 }
 
@@ -609,8 +610,13 @@ const afterRender = {
       if (!code || code.length < 6) return toast("방 코드를 확인하세요.", "error");
       if (!name) return toast("이름을 입력하세요.", "error");
 
-      const roomData = await dbGet(code);
-      if (!roomData) return toast("존재하지 않는 방입니다.", "error");
+      let roomData;
+      try {
+        roomData = await dbGet(code);
+      } catch(e) {
+        return toast("서버 연결에 실패했습니다. 잠시 후 다시 시도하세요.", "error");
+      }
+      if (!roomData) return toast(`존재하지 않는 방입니다. (코드: ${code})`, "error");
       if (roomData.status === "playing") return toast("이미 진행 중인 게임입니다.", "error");
 
       state.roomId = code;
@@ -907,10 +913,9 @@ const params = new URLSearchParams(location.search);
 const roomCode = params.get("room");
 if (roomCode) {
   render("student_join");
-  setTimeout(() => {
-    const input = document.getElementById("join-room-id");
-    if (input) { input.value = roomCode.toUpperCase(); input.focus(); }
-  }, 50);
+  // render()는 동기적으로 DOM을 교체하므로 setTimeout 불필요
+  const input = document.getElementById("join-room-id");
+  if (input) { input.value = roomCode.toUpperCase().trim(); }
 } else {
   render("landing");
 }
