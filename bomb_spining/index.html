@@ -466,6 +466,9 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
         <p style="color:var(--muted);margin-top:6px;font-size:13px">진행자만 볼 수 있습니다</p>
       </div>
       <div id="matrix-wrap-game"></div>
+      <button class="btn btn-bomb btn-full" style="margin-top:24px" onclick="confirmForceEndGame()">
+        🛑 게임 강제 종료
+      </button>
     </div>
   </div>
 </div>
@@ -1211,6 +1214,20 @@ async function renderMatrix() {
   const el2 = document.getElementById('matrix-wrap-game');
   if (el1) el1.innerHTML = html;
   if (el2) el2.innerHTML = html;
+}
+
+/* ================================================================
+   진행자: 게임 강제 종료
+   ================================================================ */
+function confirmForceEndGame() {
+  if (!State.isHost) return;
+  if (!confirm('게임을 즉시 종료하시겠습니까?\n모든 참가자가 결과 화면으로 이동합니다.')) return;
+  forceEndGame();
+}
+
+async function forceEndGame() {
+  clearTimer();
+  await sb.from('bomb_rooms').update({ status: 'finished' }).eq('id', State.roomId);
 }
 
 /* ================================================================
