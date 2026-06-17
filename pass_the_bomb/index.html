@@ -1360,16 +1360,20 @@ async function handleNegoChange(payload) {
   }
 
   // ── ② 내 요청이 처음 수락됨 → 오버레이 오픈 ──────────────────
-  // currentNego가 없을 때만 (이미 오버레이가 열린 상태에서 agree 이벤트가 오면 이 블록을 건너뜀)
-  if (nego.requester_id === State.playerId &&
-      nego.status === 'active' &&
-      !State.currentNego)
+  // pending→active 전환일 때: State.currentNego가 없거나 pending 상태일 때만 오버레이를 열기
+  // (agree/done 이벤트는 status가 이미 active이므로 currentNego.status === 'pending' 조건으로 구별)
   {
-    State.currentNego = nego;
-    const partner = State.players.find(p => p.id === nego.target_id);
-    setNegoStep('negotiating');
-    openNegoOverlay(partner?.name || '?', nego);
-    return;
+    const prevStatus = State.currentNego?.status;
+    if (nego.requester_id === State.playerId &&
+        nego.status === 'active' &&
+        (prevStatus === 'pending' || !State.currentNego))
+    {
+      State.currentNego = nego;
+      const partner = State.players.find(p => p.id === nego.target_id);
+      setNegoStep('negotiating');
+      openNegoOverlay(partner?.name || '?', nego);
+      return;
+    }
   }
 
   // ── ③ target이 수락 직후 본인 화면 업데이트 (currentNego가 없을 때) ──
