@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>💣 폭탄 돌리기 💣</title>
+<title>💣 폭탄 돌리기</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap');
@@ -23,9 +23,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 html { scroll-behavior: smooth; }
-
 body {
   background: var(--bg);
   color: var(--text);
@@ -35,7 +33,6 @@ body {
   overflow-x: hidden;
 }
 
-/* ── 타이포 ── */
 .display {
   font-family: 'Jua', sans-serif;
   font-size: clamp(2.2rem, 6vw, 4rem);
@@ -45,7 +42,6 @@ body {
 .title { font-family: 'Jua', sans-serif; font-size: 1.4rem; }
 h3 { font-size: 1rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 
-/* ── 레이아웃 ── */
 .screen { display: none; min-height: 100vh; }
 .screen.active { display: flex; flex-direction: column; }
 
@@ -58,7 +54,6 @@ h3 { font-size: 1rem; font-weight: 700; color: var(--muted); text-transform: upp
 
 .container { max-width: 720px; width: 100%; margin: 0 auto; padding: 0 20px 40px; }
 
-/* ── 카드 ── */
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -73,7 +68,6 @@ h3 { font-size: 1rem; font-weight: 700; color: var(--muted); text-transform: upp
   color: var(--accent);
 }
 
-/* ── 인풋 ── */
 input[type=text], input[type=number], select {
   width: 100%; background: var(--surface);
   border: 1px solid var(--border);
@@ -88,7 +82,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 .row { display: flex; gap: 10px; }
 .row .field { flex: 1; }
 
-/* ── 버튼 ── */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   padding: 11px 22px; border-radius: 8px; border: none;
@@ -106,7 +99,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 .btn-sm    { padding: 7px 14px; font-size: 13px; }
 .btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
 
-/* ── 배지 ── */
 .badge {
   display: inline-block; padding: 3px 9px; border-radius: 20px;
   font-size: 12px; font-weight: 700;
@@ -115,7 +107,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 .badge-bomb  { background: #3a0a10; color: var(--bomb);  border: 1px solid #6a1520; }
 .badge-host  { background: #3a2a00; color: var(--gold);  border: 1px solid #6a5000; }
 
-/* ── 참가자 목록 ── */
 #player-grid {
   display: flex; flex-wrap: wrap; gap: 8px;
   padding: 14px; background: var(--surface);
@@ -128,10 +119,8 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
   display: flex; align-items: center; gap: 5px;
   transition: all .2s;
 }
-.player-chip.negotiating { border-color: var(--accent); background: #2a1f00; }
 .player-chip.self { border-color: var(--angel); }
 
-/* ── 참가자 버튼 (협상 신청용) ── */
 .player-btn {
   padding: 8px 14px; border-radius: 8px; cursor: pointer;
   background: var(--card); border: 1px solid var(--border);
@@ -143,9 +132,105 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 .player-btn:hover:not(:disabled) { border-color: var(--accent); background: #251f3a; }
 .player-btn:disabled { opacity: .45; cursor: not-allowed; }
 .player-btn.in-nego  { border-color: var(--accent); background: #2a1500; color: var(--accent); }
-.player-btn.traded   { border-color: var(--angel); }
+.player-btn.traded   { border-color: var(--angel); color: var(--angel); }
 
-/* ── 채팅 ── */
+/* ── 협상 단계 진행 표시 (학생용) ── */
+#nego-progress {
+  display: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+#nego-progress.show { display: block; }
+
+.nego-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 4px;
+}
+.nego-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  opacity: 0.3;
+  transition: all .3s;
+}
+.nego-step.active { opacity: 1; }
+.nego-step.done { opacity: 1; }
+.nego-step-icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; transition: all .3s;
+}
+.nego-step.active .nego-step-icon {
+  border-color: var(--accent);
+  background: #2a1500;
+  animation: stepPulse 1.5s infinite;
+}
+.nego-step.done .nego-step-icon {
+  border-color: var(--angel);
+  background: #0d3a38;
+}
+.nego-step-label { font-size: 10px; color: var(--muted); text-align: center; white-space: nowrap; }
+.nego-step.active .nego-step-label { color: var(--accent); }
+.nego-step.done .nego-step-label { color: var(--angel); }
+
+.nego-step-divider {
+  flex: 0.3; height: 2px; background: var(--border);
+  border-radius: 1px; transition: background .3s;
+}
+.nego-step-divider.done { background: var(--angel); }
+
+@keyframes stepPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,107,53,0); }
+  50%      { box-shadow: 0 0 0 6px rgba(255,107,53,0.3); }
+}
+
+.nego-status-text {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--surface);
+}
+.nego-status-text.success {
+  color: var(--angel);
+  background: #0d3a38;
+  border: 1px solid #1a6660;
+  font-weight: 700;
+  font-size: 15px;
+}
+.nego-status-text.waiting {
+  color: var(--gold);
+  animation: textPulse 1.5s infinite;
+}
+@keyframes textPulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+
+/* ── 카드 교환 성공 배너 ── */
+#trade-success-banner {
+  display: none;
+  text-align: center;
+  padding: 16px;
+  background: linear-gradient(135deg, #0d3a38, #1a6660);
+  border: 2px solid var(--angel);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  animation: successPop .4s ease-out;
+}
+#trade-success-banner.show { display: block; }
+@keyframes successPop {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
 #chat-box {
   height: 220px; overflow-y: auto; padding: 10px;
   background: var(--surface); border-radius: 8px;
@@ -159,7 +244,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 #chat-input-row { display: flex; gap: 8px; }
 #chat-input { flex: 1; }
 
-/* ── 카드 공개 섹션 (스크롤로 내려야 보임) ── */
 #card-reveal-section {
   min-height: 100vh; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -173,6 +257,7 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
   box-shadow: 0 20px 60px rgba(0,0,0,.5);
   border: 3px solid;
   animation: cardFlip .6s ease-out;
+  position: relative;
 }
 .big-card.angel {
   background: linear-gradient(135deg, #0d3a38, #1a6660);
@@ -183,12 +268,20 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
   border-color: var(--bomb); color: var(--bomb);
 }
 .big-card .card-label { font-size: 1.2rem; }
+/* 교환 완료 시 카드에 뱃지 */
+.big-card .trade-badge {
+  position: absolute; top: -12px; right: -12px;
+  background: var(--angel); color: #000;
+  border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 900;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
 @keyframes cardFlip {
   from { transform: rotateY(90deg) scale(.8); opacity: 0; }
   to   { transform: rotateY(0deg)  scale(1);  opacity: 1; }
 }
 
-/* ── 진행자 행렬 (스크롤로 내려야 보임) ── */
 #host-matrix-section {
   min-height: 100vh; padding: 60px 24px;
   background: var(--bg);
@@ -202,8 +295,9 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 #matrix-table th { background: var(--surface); color: var(--muted); font-size: 11px; }
 .matrix-angel { color: var(--angel); font-weight: 700; }
 .matrix-bomb  { color: var(--bomb);  font-weight: 700; }
+/* 현재 라운드 열 강조 */
+.matrix-current { background: rgba(78,205,196,0.08); }
 
-/* ── 타이머 ── */
 #timer-bar-wrap {
   height: 6px; background: var(--surface);
   border-radius: 3px; overflow: hidden; margin: 10px 0;
@@ -217,7 +311,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
   text-align: center; letter-spacing: .05em;
 }
 
-/* ── 결과 화면 ── */
 #result-section {
   min-height: 100vh; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -230,7 +323,28 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
   50%      { transform: translateY(-12px); }
 }
 
-/* ── 공유 링크 ── */
+/* 결과 랭킹 테이블 */
+#result-ranking {
+  width: 100%; max-width: 480px;
+  border-collapse: collapse;
+  margin: 20px auto;
+  font-size: 14px;
+}
+#result-ranking th {
+  background: var(--surface);
+  color: var(--muted);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+#result-ranking td {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+#result-ranking tr.winner-row td { background: #1a3a00; color: var(--angel); font-weight: 700; }
+#result-ranking tr.loser-row  td { background: #3a0a10; color: var(--bomb); }
+
 #share-link {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; padding: 10px 14px;
@@ -239,7 +353,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 }
 #share-link:hover { border-color: var(--angel); }
 
-/* ── 알림 토스트 ── */
 #toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: var(--card); border: 1px solid var(--border);
@@ -249,7 +362,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 }
 #toast.show { opacity: 1; }
 
-/* ── 협상 오버레이 ── */
 #nego-overlay {
   display: none; position: fixed; inset: 0; z-index: 100;
   background: rgba(0,0,0,.75); align-items: center; justify-content: center;
@@ -263,7 +375,27 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 }
 .nego-title { font-family: 'Jua', sans-serif; font-size: 1.3rem; }
 
-/* ── 협상 요청 배너 ── */
+/* 협상 오버레이 내 단계 표시 */
+#nego-overlay-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.overlay-step { color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.overlay-step.done { color: var(--angel); }
+.overlay-step.active { color: var(--accent); font-weight: 700; }
+.overlay-step-sep { color: var(--border); }
+
+/* 교환 완료 시 오버레이 배경 변경 */
+#nego-box.trade-done {
+  border-color: var(--angel);
+  background: linear-gradient(135deg, #0a1f1e, #231f3a);
+}
+
 #nego-request-banner {
   display: none; background: #2a1a00; border: 1px solid var(--accent);
   border-radius: 10px; padding: 14px; margin-bottom: 12px;
@@ -271,42 +403,50 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 }
 #nego-request-banner.show { display: block; }
 
-/* ── 스크롤 힌트 ── */
 .scroll-hint {
   text-align: center; color: var(--muted); font-size: 13px;
   padding: 10px; animation: pulse 2s infinite;
 }
 @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
 
-/* ── 라운드 배지 ── */
 #round-display {
   font-family: 'Jua', sans-serif; font-size: 1.1rem;
   color: var(--gold); letter-spacing: .05em;
 }
 
-/* ── 반응형 ── */
+/* 내 상태 카드 */
+#my-status-card {
+  display: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+#my-status-card.show { display: block; }
+#my-status-card.traded {
+  border-color: var(--angel);
+  background: linear-gradient(135deg, #0d2a28, #231f3a);
+}
+
 @media (max-width: 480px) {
   .row { flex-direction: column; }
+  .nego-steps { gap: 2px; }
+  .nego-step-label { font-size: 9px; }
 }
 </style>
 </head>
 <body>
 
 <!-- ══════════════════════════════════
-     화면 0 : 인트로 (방 개설 / 입장)
+     화면 0 : 인트로
      ══════════════════════════════════ -->
 <div id="screen-intro" class="screen active">
   <div class="hero">
-    <div class="display">💣 폭탄 돌리기 💣</div>
-    <p style="margin-top:12px;color:var(--muted);font-size:1rem">
-<div id="fuse-text"
-     style="font-size:1.3rem;
-            text-align:center;
-            margin:20px 0;
-            font-family:'Jua',sans-serif;">
-</div>
-      
-    </p>
+    <div class="display">💣 폭탄 돌리기</div>
+    <div id="fuse-text"
+         style="font-size:1.3rem;text-align:center;margin:20px 0;font-family:'Jua',sans-serif;"></div>
   </div>
   <div class="container">
     <div class="card" id="host-intro-card">
@@ -336,7 +476,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
      화면 1 : 대기실
      ══════════════════════════════════ -->
 <div id="screen-lobby" class="screen">
-  <!-- 1페이지: 대기실 본문 -->
   <div id="lobby-main" style="min-height:100vh;display:flex;flex-direction:column;">
     <div class="hero" style="padding:30px 24px 20px;">
       <div class="title">💣 폭탄 돌리기</div>
@@ -345,21 +484,15 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
       </div>
     </div>
     <div class="container" style="flex:1">
-
-      <!-- 공유 링크 -->
       <div class="card">
         <div class="card-title">🔗 초대 링크</div>
         <div id="share-link" onclick="copyLink()">링크 생성 중...</div>
         <div style="font-size:11px;color:var(--muted);margin-top:6px">클릭하여 복사 · 학생들에게 공유하세요</div>
       </div>
-
-      <!-- 참가자 -->
       <div class="card">
         <div class="card-title">👥 참가자 <span id="player-count" style="color:var(--muted);font-size:0.85rem"></span></div>
         <div id="player-grid"></div>
       </div>
-
-      <!-- 진행자 전용 설정 -->
       <div id="host-settings" style="display:none">
         <div class="card">
           <div class="card-title">⚙️ 게임 설정</div>
@@ -386,8 +519,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
           <button class="btn btn-primary btn-full" onclick="startGame()">🎮 게임 시작</button>
         </div>
       </div>
-
-      <!-- 비진행자 대기 메시지 -->
       <div id="wait-msg" class="card" style="text-align:center;color:var(--muted)">
         <div style="font-size:2rem;margin-bottom:8px">⏳</div>
         진행자가 게임을 시작할 때까지 기다려 주세요
@@ -395,8 +526,7 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
     </div>
   </div>
 
-  <!-- 2페이지(진행자): 이전 라운드 행렬 -->
-  <div id="host-matrix-section">
+  <div id="host-matrix-section" style="min-height:100vh;padding:60px 24px;background:var(--bg);">
     <div class="container">
       <div style="text-align:center;margin-bottom:30px">
         <div class="display" style="font-size:1.8rem">📊 라운드별 카드 현황</div>
@@ -413,7 +543,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
      화면 2 : 게임 플레이
      ══════════════════════════════════ -->
 <div id="screen-game" class="screen">
-  <!-- 1페이지: 게임 본문 -->
   <div id="game-main" style="min-height:100vh;display:flex;flex-direction:column;">
     <div class="hero" style="padding:24px 24px 16px;">
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center;">
@@ -427,10 +556,49 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 
     <div class="container" style="flex:1">
 
+      <!-- 내 현재 상태 (학생용) -->
+      <div id="my-status-card">
+        <div id="my-status-text" style="font-size:14px"></div>
+      </div>
+
       <!-- 참가자 목록 -->
       <div class="card">
-        <div class="card-title">👥 참가자</div>
+        <div class="card-title">👥 참가자 — 이름을 눌러 협상 신청</div>
         <div id="player-grid-game" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      </div>
+
+      <!-- 협상 단계 진행 표시 -->
+      <div id="nego-progress">
+        <div class="nego-steps">
+          <div class="nego-step" id="step-request">
+            <div class="nego-step-icon">📤</div>
+            <div class="nego-step-label">협상 신청</div>
+          </div>
+          <div class="nego-step-divider" id="div-1"></div>
+          <div class="nego-step" id="step-accept">
+            <div class="nego-step-icon">🤝</div>
+            <div class="nego-step-label">협상 수락</div>
+          </div>
+          <div class="nego-step-divider" id="div-2"></div>
+          <div class="nego-step" id="step-agree">
+            <div class="nego-step-icon">🔄</div>
+            <div class="nego-step-label">교환 동의</div>
+          </div>
+          <div class="nego-step-divider" id="div-3"></div>
+          <div class="nego-step" id="step-done">
+            <div class="nego-step-icon">✅</div>
+            <div class="nego-step-label">교환 완료</div>
+          </div>
+        </div>
+        <div class="nego-status-text" id="nego-status-text">협상 진행 중...</div>
+      </div>
+
+      <!-- 카드 교환 성공 배너 -->
+      <div id="trade-success-banner">
+        <div style="font-size:2rem;margin-bottom:8px">🎉</div>
+        <div style="font-family:'Jua',sans-serif;font-size:1.3rem;color:var(--angel)">카드 교환 완료!</div>
+        <div id="trade-success-detail" style="margin-top:6px;font-size:13px;color:var(--muted)"></div>
+        <div style="margin-top:10px;font-size:12px;color:var(--angel)">↓ 스크롤을 내려 바뀐 카드를 확인하세요</div>
       </div>
 
       <!-- 협상 요청 배너 -->
@@ -443,19 +611,17 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
         </div>
       </div>
 
-      <!-- 스크롤 힌트 (학생용) -->
       <div id="card-scroll-hint" class="scroll-hint" style="display:none">
         ↓ 스크롤을 내리면 내 카드를 확인할 수 있어요
       </div>
 
-      <!-- 상태 메시지 -->
       <div id="game-status-msg" class="card" style="text-align:center;color:var(--muted)">
         참가자 이름을 클릭하여 협상을 시작하세요
       </div>
     </div>
   </div>
 
-  <!-- 2페이지(학생): 내 카드 공개 -->
+  <!-- 학생: 내 카드 공개 -->
   <div id="card-reveal-section" style="display:none">
     <div style="color:var(--muted);font-size:14px;margin-bottom:24px">내 카드</div>
     <div id="my-card-display"></div>
@@ -464,12 +630,12 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
     </div>
   </div>
 
-  <!-- 2페이지(진행자): 행렬 -->
+  <!-- 진행자: 행렬 -->
   <div id="host-matrix-section-game" style="min-height:100vh;padding:60px 24px;background:var(--bg);display:none">
     <div class="container">
       <div style="text-align:center;margin-bottom:30px">
         <div class="display" style="font-size:1.8rem">📊 현재 카드 현황</div>
-        <p style="color:var(--muted);margin-top:6px;font-size:13px">진행자만 볼 수 있습니다</p>
+        <p style="color:var(--muted);margin-top:6px;font-size:13px">진행자만 볼 수 있습니다 · 실시간 반영</p>
       </div>
       <div id="matrix-wrap-game"></div>
       <button class="btn btn-bomb btn-full" style="margin-top:24px" onclick="confirmForceEndGame()">
@@ -488,8 +654,16 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
     <div class="display" style="margin-top:16px">게임 종료!</div>
     <div id="result-winner" style="margin-top:20px;font-size:1.3rem;color:var(--gold)"></div>
     <div id="result-loser"  style="margin-top:10px;font-size:1.1rem;color:var(--bomb)"></div>
-    <div id="result-trades" style="margin-top:16px;color:var(--muted);font-size:14px"></div>
-    <button id="btn-replay" class="btn btn-primary" style="margin-top:30px;display:none"
+    <div style="margin-top:8px;font-size:12px;color:var(--muted)">
+      승리 조건: 마지막 라운드에 폭탄 없음 + 카드 교환 횟수 최다
+    </div>
+    <table id="result-ranking">
+      <thead><tr>
+        <th>순위</th><th>이름</th><th>최종 카드</th><th>교환 횟수</th><th>결과</th>
+      </tr></thead>
+      <tbody id="result-ranking-body"></tbody>
+    </table>
+    <button id="btn-replay" class="btn btn-primary" style="margin-top:10px;display:none"
       onclick="replayGame()">🔄 다시 하기</button>
     <button class="btn btn-ghost" style="margin-top:10px" onclick="goHome()">🏠 처음으로</button>
   </div>
@@ -501,6 +675,16 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 <div id="nego-overlay">
   <div id="nego-box">
     <div class="nego-title">🤝 <span id="nego-partner-name"></span>과 협상 중</div>
+
+    <!-- 오버레이 내 단계 표시 -->
+    <div id="nego-overlay-steps">
+      <div class="overlay-step done">✅ 수락됨</div>
+      <div class="overlay-step-sep">›</div>
+      <div class="overlay-step" id="ovl-step-agree">🔄 교환 동의 대기</div>
+      <div class="overlay-step-sep">›</div>
+      <div class="overlay-step" id="ovl-step-done">✅ 교환 완료</div>
+    </div>
+
     <div id="chat-box"></div>
     <div id="chat-input-row">
       <input type="text" id="chat-input" placeholder="메시지 입력..." maxlength="100"
@@ -508,14 +692,13 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
       <button class="btn btn-primary btn-sm" onclick="sendChat()">전송</button>
     </div>
     <button id="btn-trade" class="btn btn-bomb btn-full" onclick="toggleTrade()" disabled>
-      🔄 카드 교환 동의
+      🔄 카드 교환 동의하기
     </button>
-    <div id="trade-status" style="font-size:12px;color:var(--muted);text-align:center"></div>
-    <button class="btn btn-ghost btn-full btn-sm" onclick="closeNego()">협상 종료</button>
+    <div id="trade-status" style="font-size:12px;color:var(--muted);text-align:center;padding:4px 0"></div>
+    <button id="btn-close-nego" class="btn btn-ghost btn-full btn-sm" onclick="closeNego()">협상 종료</button>
   </div>
 </div>
 
-<!-- 토스트 -->
 <div id="toast"></div>
 
 <script>
@@ -537,13 +720,14 @@ const State = {
   room:         null,
   players:      [],
   myCard:       null,
-  currentNego:  null,   // 현재 협상 객체
-  pendingNego:  null,   // 대기 중인 요청
+  currentNego:  null,
+  pendingNego:  null,
   myTradeAgreed: false,
   myCardTraded:  false,
   timerInterval: null,
-  roundHistory:  [],    // [{ round, snapshot }]
-  subs:          [],    // realtime 구독 해제용
+  subs:          [],
+  // 실시간 행렬용: { playerId -> { name, rounds: { roundNum -> card } } }
+  liveMatrix:    {},
 };
 
 /* ================================================================
@@ -566,7 +750,7 @@ function toast(msg, dur = 2800) {
 }
 
 /* ================================================================
-   URL 파싱 (방 코드 자동 입력)
+   URL 파싱
    ================================================================ */
 (function parseUrl() {
   const params = new URLSearchParams(location.search);
@@ -585,29 +769,19 @@ async function createRoom() {
   const roomId = genRoomId();
 
   const { error: re } = await sb.from('bomb_rooms').insert({
-    id: roomId,
-    host_name: hostName,
-    status: 'waiting',
-    total_rounds: 3,
-    current_round: 0,
-    round_duration: 60,
-    angel_ratio: 1,
-    bomb_ratio: 1,
+    id: roomId, host_name: hostName, status: 'waiting',
+    total_rounds: 3, current_round: 0, round_duration: 60,
+    angel_ratio: 1, bomb_ratio: 1,
   });
   if (re) { toast('방 개설 실패: ' + re.message); return; }
 
   const { data: pd, error: pe } = await sb.from('bomb_players').insert({
-    room_id: roomId,
-    name: hostName,
-    is_host: true,
+    room_id: roomId, name: hostName, is_host: true,
   }).select().single();
   if (pe) { toast('진행자 등록 실패'); return; }
 
-  State.roomId   = roomId;
-  State.playerId = pd.id;
-  State.playerName = hostName;
-  State.isHost   = true;
-
+  State.roomId = roomId; State.playerId = pd.id;
+  State.playerName = hostName; State.isHost = true;
   enterLobby();
 }
 
@@ -636,14 +810,10 @@ async function joinRoom() {
   }).select().single();
   if (pe) { toast('입장 실패: ' + pe.message); return; }
 
-  State.roomId     = roomId;
-  State.playerId   = pd.id;
-  State.playerName = name;
-  State.isHost     = false;
-  State.room       = room;
+  State.roomId = roomId; State.playerId = pd.id;
+  State.playerName = name; State.isHost = false; State.room = room;
 
   if (room.status === 'playing') {
-    // 게임 중에 늦게 입장한 경우 게임 화면으로
     await loadMyCard();
     enterGame(room);
   } else {
@@ -652,24 +822,20 @@ async function joinRoom() {
 }
 
 /* ================================================================
-   대기실 진입
+   대기실
    ================================================================ */
 async function enterLobby() {
   showScreen('screen-lobby');
-
   const roomId = State.roomId;
   document.getElementById('room-code-display').textContent = roomId;
-
   const link = `${location.origin}${location.pathname}?room=${roomId}`;
   document.getElementById('share-link').textContent = link;
-
   document.getElementById('host-settings').style.display = State.isHost ? 'block' : 'none';
-  document.getElementById('wait-msg').style.display       = State.isHost ? 'none' : 'block';
+  document.getElementById('wait-msg').style.display       = State.isHost ? 'none'  : 'block';
   document.getElementById('host-matrix-section').style.display = State.isHost ? 'block' : 'none';
 
   await refreshPlayers();
 
-  // Realtime 구독
   const roomSub = sb.channel('lobby-room-' + roomId)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bomb_rooms', filter: `id=eq.${roomId}` },
       async (payload) => {
@@ -682,7 +848,6 @@ async function enterLobby() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bomb_players', filter: `room_id=eq.${roomId}` },
       () => refreshPlayers())
     .subscribe();
-
   State.subs.push(roomSub);
 }
 
@@ -704,7 +869,7 @@ function renderPlayerGrid(elId) {
     chip.className = 'player-chip' + (p.id === State.playerId ? ' self' : '');
     chip.innerHTML =
       (p.is_host ? '<span class="badge badge-host">진행자</span> ' : '') +
-      `<span>${p.name}</span>` +
+      `<span>${esc(p.name)}</span>` +
       (p.id === State.playerId ? ' <span style="font-size:10px;color:var(--muted)">(나)</span>' : '');
     el.appendChild(chip);
   });
@@ -714,16 +879,15 @@ function renderPlayerGrid(elId) {
    게임 시작 (진행자)
    ================================================================ */
 async function startGame() {
-  const angelRatio = parseInt(document.getElementById('angel-ratio').value) || 1;
-  const bombRatio  = parseInt(document.getElementById('bomb-ratio').value)  || 1;
-  const totalRounds = parseInt(document.getElementById('total-rounds').value) || 3;
+  const angelRatio    = parseInt(document.getElementById('angel-ratio').value)    || 1;
+  const bombRatio     = parseInt(document.getElementById('bomb-ratio').value)     || 1;
+  const totalRounds   = parseInt(document.getElementById('total-rounds').value)   || 3;
   const roundDuration = parseInt(document.getElementById('round-duration').value) || 60;
 
   const students = State.players.filter(p => !p.is_host);
   if (students.length < 2) { toast('학생이 최소 2명 필요합니다'); return; }
 
-  // 카드 배분
-  const cards = distributeCards(students.length, angelRatio, bombRatio);
+  const cards    = distributeCards(students.length, angelRatio, bombRatio);
   const shuffled = [...cards].sort(() => Math.random() - .5);
 
   const updates = students.map((p, i) =>
@@ -732,21 +896,18 @@ async function startGame() {
   );
   await Promise.all(updates);
 
-  // 라운드 종료 시각 계산
+  // liveMatrix 초기화
+  State.liveMatrix = {};
+  students.forEach((p, i) => {
+    State.liveMatrix[p.id] = { name: p.name, rounds: { 1: shuffled[i] } };
+  });
+
   const roundEndAt = new Date(Date.now() + roundDuration * 1000).toISOString();
-
   await sb.from('bomb_rooms').update({
-    status: 'playing',
-    total_rounds: totalRounds,
-    current_round: 1,
-    round_duration: roundDuration,
-    round_end_at: roundEndAt,
-    angel_ratio: angelRatio,
-    bomb_ratio: bombRatio,
+    status: 'playing', total_rounds: totalRounds, current_round: 1,
+    round_duration: roundDuration, round_end_at: roundEndAt,
+    angel_ratio: angelRatio, bomb_ratio: bombRatio,
   }).eq('id', State.roomId);
-
-  // 첫 라운드 스냅샷 저장
-  await saveRoundSnapshot(1);
 }
 
 function distributeCards(count, angelRatio, bombRatio) {
@@ -764,54 +925,85 @@ function distributeCards(count, angelRatio, bombRatio) {
 async function enterGame(room) {
   State.room = room;
   clearSubs();
-
   showScreen('screen-game');
 
-  // 카드 공개 섹션 & 진행자 행렬 섹션 표시 설정
-  document.getElementById('card-reveal-section').style.display = State.isHost ? 'none' : 'flex';
-  document.getElementById('card-scroll-hint').style.display    = State.isHost ? 'none' : 'block';
-  document.getElementById('host-matrix-section-game').style.display = State.isHost ? 'block' : 'none';
+  document.getElementById('card-reveal-section').style.display         = State.isHost ? 'none'  : 'flex';
+  document.getElementById('card-scroll-hint').style.display            = State.isHost ? 'none'  : 'block';
+  document.getElementById('host-matrix-section-game').style.display    = State.isHost ? 'block' : 'none';
+  document.getElementById('my-status-card').style.display              = State.isHost ? 'none'  : 'block';
+  document.getElementById('my-status-card').classList.add('show');
+
+  // liveMatrix 재구성 (늦게 입장하거나 재진입 시)
+  await rebuildLiveMatrix(room);
 
   renderMyCard();
+  renderMyStatus();
   await refreshGamePlayers();
   startTimer(room);
-  await renderMatrix();
+  if (State.isHost) renderMatrix(room.current_round);
 
-  // Realtime 구독
   const gameSub = sb.channel('game-' + State.roomId)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bomb_rooms', filter: `id=eq.${State.roomId}` },
       async (payload) => {
         const prev = State.room;
         State.room = payload.new;
-        if (payload.new.status === 'finished') {
-          endGame();
-          return;
-        }
+        if (payload.new.status === 'finished') { endGame(); return; }
         if (payload.new.current_round !== prev.current_round) {
-          // 새 라운드
+          // 새 라운드 시작: liveMatrix에 새 라운드 초기값 세팅
+          const newRound = payload.new.current_round;
+          State.players.filter(p => !p.is_host).forEach(p => {
+            if (State.liveMatrix[p.id]) {
+              // 이전 라운드 카드 그대로 새 라운드 초기값으로 복사
+              const prevCard = State.liveMatrix[p.id].rounds[newRound - 1] || p.card;
+              State.liveMatrix[p.id].rounds[newRound] = prevCard;
+            }
+          });
+
           clearTimer();
-          State.myCardTraded = false;
-          State.myTradeAgreed = false;
+          State.myCardTraded   = false;
+          State.myTradeAgreed  = false;
+          State.currentNego    = null;
+
           await loadMyCard();
           renderMyCard();
+          renderMyStatus();
+          resetNegoProgress();
+          hideTradeBanner();
           startTimer(payload.new);
-          await renderMatrix();
+          if (State.isHost) renderMatrix(payload.new.current_round);
         }
       })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bomb_players', filter: `room_id=eq.${State.roomId}` },
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bomb_players', filter: `room_id=eq.${State.roomId}` },
       async (payload) => {
+        const updated = payload.new;
+
+        // liveMatrix 실시간 업데이트 (카드 변경 시)
+        if (!updated.is_host && State.liveMatrix[updated.id] && State.room) {
+          const round = State.room.current_round;
+          State.liveMatrix[updated.id].rounds[round] = updated.card;
+        }
+
         // 내 카드가 바뀐 경우
-        if (payload.new.id === State.playerId && payload.new.card !== State.myCard) {
-          State.myCard = payload.new.card;
-          renderMyCard();
+        if (updated.id === State.playerId) {
+          const cardChanged = updated.card !== State.myCard;
+          State.myCard       = updated.card;
+          State.myCardTraded = updated.card_traded;
+          if (cardChanged) renderMyCard();
+          renderMyStatus();
         }
-        State.players = State.players.map(p => p.id === payload.new.id ? payload.new : p);
-        // 새 플레이어
-        if (!State.players.find(p => p.id === payload.new.id)) {
-          State.players.push(payload.new);
-        }
+
+        // State.players 업데이트
+        const idx = State.players.findIndex(p => p.id === updated.id);
+        if (idx >= 0) State.players[idx] = updated;
+        else State.players.push(updated);
+
         renderGamePlayerGrid();
-        if (State.isHost) renderMatrix();
+        if (State.isHost) renderMatrix(State.room?.current_round);
+      })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bomb_players', filter: `room_id=eq.${State.roomId}` },
+      async (payload) => {
+        State.players.push(payload.new);
+        renderGamePlayerGrid();
       })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bomb_negotiations',
       filter: `room_id=eq.${State.roomId}` }, handleNegoChange)
@@ -827,15 +1019,49 @@ async function enterGame(room) {
 }
 
 /* ================================================================
+   liveMatrix 재구성 (DB에서)
+   ================================================================ */
+async function rebuildLiveMatrix(room) {
+  const { data: players } = await sb.from('bomb_players').select()
+    .eq('room_id', State.roomId).order('joined_at');
+  if (!players) return;
+  State.players = players;
+
+  // 히스토리 테이블에서 과거 라운드 데이터 로드
+  const { data: history } = await sb.from('bomb_round_history').select()
+    .eq('room_id', State.roomId).order('round');
+
+  State.liveMatrix = {};
+  players.filter(p => !p.is_host).forEach(p => {
+    State.liveMatrix[p.id] = { name: p.name, rounds: {} };
+  });
+
+  // 히스토리에서 과거 라운드 복원
+  if (history) {
+    history.forEach(h => {
+      Object.keys(h.snapshot).forEach(pid => {
+        if (State.liveMatrix[pid]) {
+          State.liveMatrix[pid].rounds[h.round] = h.snapshot[pid].card;
+        }
+      });
+    });
+  }
+
+  // 현재 라운드는 DB의 실제 카드값으로
+  players.filter(p => !p.is_host).forEach(p => {
+    if (State.liveMatrix[p.id]) {
+      State.liveMatrix[p.id].rounds[room.current_round] = p.card;
+    }
+  });
+}
+
+/* ================================================================
    내 카드 로드 & 렌더
    ================================================================ */
 async function loadMyCard() {
   const { data } = await sb.from('bomb_players').select('card, card_traded')
     .eq('id', State.playerId).single();
-  if (data) {
-    State.myCard = data.card;
-    State.myCardTraded = data.card_traded;
-  }
+  if (data) { State.myCard = data.card; State.myCardTraded = data.card_traded; }
 }
 
 function renderMyCard() {
@@ -845,12 +1071,29 @@ function renderMyCard() {
   const isAngel = State.myCard === 'angel';
   el.innerHTML = `
     <div class="big-card ${isAngel ? 'angel' : 'bomb'}">
+      ${State.myCardTraded ? '<div class="trade-badge">✅</div>' : ''}
       <div>${isAngel ? '😇' : '💣'}</div>
       <div class="card-label">${isAngel ? '천사 카드' : '폭탄 카드'}</div>
     </div>
     <div style="margin-top:16px;font-size:13px;color:var(--muted)">
-      ${State.myCardTraded ? '✅ 이번 라운드 카드 교환 완료' : '이번 라운드 카드 교환 가능'}
+      ${State.myCardTraded ? '✅ 이번 라운드 카드 교환 완료 · 협상을 자유롭게 종료할 수 있어요' : '이번 라운드 카드 교환 가능'}
     </div>`;
+}
+
+/* 내 현재 상태 카드 (게임 화면 상단) */
+function renderMyStatus() {
+  const el = document.getElementById('my-status-card');
+  const txt = document.getElementById('my-status-text');
+  if (!el || !txt || State.isHost) return;
+
+  if (State.myCardTraded) {
+    el.classList.add('traded');
+    txt.innerHTML = `<span style="color:var(--angel);font-weight:700;font-size:1rem">✅ 이번 라운드 교환 완료</span>
+      <br><span style="font-size:12px;color:var(--muted);margin-top:4px;display:block">협상을 자유롭게 종료하거나 대화만 계속할 수 있어요</span>`;
+  } else {
+    el.classList.remove('traded');
+    txt.innerHTML = `<span style="color:var(--muted)">아직 카드를 교환하지 않았습니다. 참가자를 눌러 협상을 시작하세요.</span>`;
+  }
 }
 
 /* ================================================================
@@ -868,18 +1111,78 @@ function renderGamePlayerGrid() {
   if (!el) return;
   el.innerHTML = '';
   State.players.forEach(p => {
-    if (p.is_host) return; // 진행자는 목록에서 제외
-    if (p.id === State.playerId) return; // 나 자신 제외
-
+    if (p.is_host || p.id === State.playerId) return;
     const inNego = !!p.negotiating_with;
     const btn = document.createElement('button');
-    btn.className = 'player-btn' + (inNego ? ' in-nego' : '') + (p.card_traded ? ' traded' : '');
-    btn.innerHTML = `${p.name}${inNego ? '<span style="font-size:11px"> · 협상중</span>' : ''}${p.card_traded ? ' ✅' : ''}`;
+    btn.className = 'player-btn'
+      + (inNego ? ' in-nego' : '')
+      + (p.card_traded ? ' traded' : '');
+    btn.innerHTML = `${esc(p.name)}${inNego ? '<span style="font-size:11px"> · 협상중</span>' : ''}${p.card_traded ? ' ✅' : ''}`;
     btn.disabled = inNego || !!State.myCardTraded;
-
     btn.onclick = () => requestNego(p);
     el.appendChild(btn);
   });
+}
+
+/* ================================================================
+   협상 단계 진행 UI (학생용)
+   ================================================================ */
+/*
+  단계: idle → requesting → negotiating → agreed → done
+*/
+function setNegoStep(step) {
+  // step: 'requesting' | 'negotiating' | 'agreed' | 'done' | 'idle'
+  const progress = document.getElementById('nego-progress');
+  const statusTxt = document.getElementById('nego-status-text');
+
+  const steps = ['step-request','step-accept','step-agree','step-done'];
+  const divs  = ['div-1','div-2','div-3'];
+
+  if (step === 'idle') {
+    progress.classList.remove('show');
+    return;
+  }
+  progress.classList.add('show');
+
+  // 각 단계 활성화 수준
+  const levelMap = { requesting:0, negotiating:1, agreed:2, done:3 };
+  const level = levelMap[step] ?? 0;
+
+  steps.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active','done');
+    if (i < level)       el.classList.add('done');
+    else if (i === level) el.classList.add('active');
+  });
+  divs.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.toggle('done', i < level);
+  });
+
+  const msgs = {
+    requesting:  '상대방이 협상을 수락할 때까지 기다리는 중...',
+    negotiating: '협상이 시작되었어요! 채팅하고 교환 동의 버튼을 눌러보세요.',
+    agreed:      '내가 동의했어요. 상대방의 동의를 기다리는 중... 🤞',
+    done:        '✅ 카드 교환이 완료되었어요! 협상을 종료해도 됩니다.',
+  };
+
+  statusTxt.textContent = msgs[step] || '';
+  statusTxt.className   = 'nego-status-text' + (step === 'done' ? ' success' : step === 'agreed' ? ' waiting' : '');
+}
+
+function resetNegoProgress() {
+  setNegoStep('idle');
+}
+
+function showTradeBanner(partnerName) {
+  const banner = document.getElementById('trade-success-banner');
+  const detail = document.getElementById('trade-success-detail');
+  banner.classList.add('show');
+  detail.textContent = `${partnerName}와(과) 카드가 교환되었어요!`;
+}
+
+function hideTradeBanner() {
+  document.getElementById('trade-success-banner').classList.remove('show');
 }
 
 /* ================================================================
@@ -887,30 +1190,22 @@ function renderGamePlayerGrid() {
    ================================================================ */
 function startTimer(room) {
   clearTimer();
-  const endAt  = new Date(room.round_end_at).getTime();
-  const total  = room.round_duration * 1000;
-
+  const endAt = new Date(room.round_end_at).getTime();
+  const total = room.round_duration * 1000;
   document.getElementById('round-display').textContent =
     `라운드 ${room.current_round} / ${room.total_rounds}`;
 
   function tick() {
-    const now     = Date.now();
-    const remain  = Math.max(0, endAt - now);
-    const pct     = remain / total * 100;
-
-    const sec = Math.ceil(remain / 1000);
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
+    const now    = Date.now();
+    const remain = Math.max(0, endAt - now);
+    const pct    = remain / total * 100;
+    const sec    = Math.ceil(remain / 1000);
+    const m = Math.floor(sec / 60), s = sec % 60;
     document.getElementById('timer-text').textContent = `${m}:${String(s).padStart(2,'0')}`;
-
     const bar = document.getElementById('timer-bar');
-    bar.style.width = pct + '%';
+    bar.style.width      = pct + '%';
     bar.style.background = pct > 40 ? 'var(--angel)' : pct > 20 ? 'var(--gold)' : 'var(--bomb)';
-
-    if (remain <= 0) {
-      clearTimer();
-      if (State.isHost) advanceRound();
-    }
+    if (remain <= 0) { clearTimer(); if (State.isHost) advanceRound(); }
   }
   tick();
   State.timerInterval = setInterval(tick, 500);
@@ -927,15 +1222,16 @@ function clearTimer() {
 async function advanceRound() {
   const room = State.room;
   if (!room) return;
-  const next = room.current_round + 1;
 
+  // [핵심 수정①] 라운드 종료 시점에 현재 카드 상태로 히스토리 저장
+  await saveRoundSnapshotFromLive(room.current_round);
+
+  const next = room.current_round + 1;
   if (next > room.total_rounds) {
-    // 게임 종료
     await sb.from('bomb_rooms').update({ status: 'finished' }).eq('id', State.roomId);
     return;
   }
 
-  // 새 라운드: card_traded 리셋
   const students = State.players.filter(p => !p.is_host);
   await Promise.all(students.map(p =>
     sb.from('bomb_players').update({ card_traded: false, negotiating_with: null }).eq('id', p.id)
@@ -944,16 +1240,93 @@ async function advanceRound() {
   const roundEndAt = new Date(Date.now() + room.round_duration * 1000).toISOString();
   await sb.from('bomb_rooms').update({ current_round: next, round_end_at: roundEndAt })
     .eq('id', State.roomId);
+}
 
-  await saveRoundSnapshot(next);
+/* ================================================================
+   [핵심 수정①] 라운드 종료 시점 스냅샷 — liveMatrix 기반
+   ================================================================ */
+async function saveRoundSnapshotFromLive(round) {
+  // liveMatrix에 현재 라운드 데이터가 있으면 그걸 사용
+  // 없으면 DB에서 직접 읽어서 저장
+  const snapshot = {};
+  let hasData = false;
+
+  Object.keys(State.liveMatrix).forEach(pid => {
+    const entry = State.liveMatrix[pid];
+    if (entry.rounds[round] !== undefined) {
+      snapshot[pid] = { name: entry.name, card: entry.rounds[round] };
+      hasData = true;
+    }
+  });
+
+  if (!hasData) {
+    // fallback: DB에서 직접 읽기
+    const { data: players } = await sb.from('bomb_players').select()
+      .eq('room_id', State.roomId).eq('is_host', false);
+    if (players) {
+      players.forEach(p => { snapshot[p.id] = { name: p.name, card: p.card }; });
+    }
+  }
+
+  // 기존 같은 라운드 히스토리 있으면 덮어쓰기 (upsert)
+  await sb.from('bomb_round_history').upsert(
+    { room_id: State.roomId, round, snapshot },
+    { onConflict: 'room_id,round' }
+  );
+}
+
+/* ================================================================
+   행렬 렌더링 — liveMatrix 기반 (실시간)
+   ================================================================ */
+function renderMatrix(currentRound) {
+  const playerIds = Object.keys(State.liveMatrix);
+  if (!playerIds.length) return;
+
+  // 몇 라운드까지 표시할지
+  const room = State.room;
+  const totalRounds = room?.total_rounds || 3;
+  const rounds = [];
+  for (let r = 1; r <= totalRounds; r++) rounds.push(r);
+
+  let html = `<table id="matrix-table"><thead><tr>
+    <th>이름</th>
+    ${rounds.map(r =>
+      `<th class="${r === currentRound ? 'matrix-current' : ''}">R${r}${r === currentRound ? ' 🔴' : ''}</th>`
+    ).join('')}
+    <th>교환수</th>
+  </tr></thead><tbody>`;
+
+  playerIds.forEach(pid => {
+    const entry = State.liveMatrix[pid];
+    const player = State.players.find(p => p.id === pid);
+    html += `<tr><td>${esc(entry.name)}</td>`;
+    rounds.forEach(r => {
+      const card = entry.rounds[r];
+      const isCurrent = r === currentRound;
+      if (card === undefined) {
+        html += `<td class="${isCurrent ? 'matrix-current' : ''}">-</td>`;
+      } else {
+        html += `<td class="${card === 'angel' ? 'matrix-angel' : 'matrix-bomb'}${isCurrent ? ' matrix-current' : ''}">
+          ${card === 'angel' ? '😇 천사' : '💣 폭탄'}
+        </td>`;
+      }
+    });
+    html += `<td>${player?.trade_count ?? 0}</td></tr>`;
+  });
+  html += '</tbody></table>';
+
+  const el1 = document.getElementById('matrix-wrap');
+  const el2 = document.getElementById('matrix-wrap-game');
+  if (el1) el1.innerHTML = html;
+  if (el2) el2.innerHTML = html;
 }
 
 /* ================================================================
    협상 요청
    ================================================================ */
 async function requestNego(target) {
-  if (State.myCardTraded) { toast('이번 라운드 카드 교환을 완료했습니다'); return; }
-  if (State.currentNego)  { toast('이미 협상 중입니다'); return; }
+  if (State.myCardTraded)  { toast('이번 라운드 카드 교환을 완료했습니다'); return; }
+  if (State.currentNego)   { toast('이미 협상 중입니다'); return; }
 
   const { data: nego, error } = await sb.from('bomb_negotiations').insert({
     room_id: State.roomId,
@@ -964,10 +1337,9 @@ async function requestNego(target) {
   }).select().single();
   if (error) { toast('협상 요청 실패'); return; }
 
-  // 내 상태: 협상중 표시
   await sb.from('bomb_players').update({ negotiating_with: target.id }).eq('id', State.playerId);
-
   State.currentNego = nego;
+  setNegoStep('requesting');
   toast(`${target.name}에게 협상 요청을 보냈습니다`);
 }
 
@@ -983,8 +1355,7 @@ async function handleNegoChange(payload) {
     if (!requester) return;
     State.pendingNego = nego;
     document.getElementById('nego-request-banner').classList.add('show');
-    document.getElementById('nego-request-msg').textContent =
-      `${requester.name}이(가) 협상을 요청했습니다`;
+    document.getElementById('nego-request-msg').textContent = `${requester.name}이(가) 협상을 요청했습니다`;
     return;
   }
 
@@ -992,29 +1363,56 @@ async function handleNegoChange(payload) {
   if (nego.requester_id === State.playerId && nego.status === 'active') {
     State.currentNego = nego;
     const partner = State.players.find(p => p.id === nego.target_id);
+    setNegoStep('negotiating');
     openNegoOverlay(partner?.name || '?', nego);
+    return;
+  }
+
+  // 내가 수락한 협상 시작 확인
+  if (nego.target_id === State.playerId && nego.status === 'active' && State.currentNego?.id === nego.id) {
+    State.currentNego = nego;
+    setNegoStep('negotiating');
+    updateOverlaySteps(nego);
     return;
   }
 
   // 협상 완료 (카드 교환)
   if (State.currentNego && nego.id === State.currentNego.id && nego.status === 'done') {
+    const partner = State.players.find(p =>
+      p.id === (nego.requester_id === State.playerId ? nego.target_id : nego.requester_id)
+    );
     State.currentNego = null;
     State.myCardTraded = true;
     State.myTradeAgreed = false;
+
+    setNegoStep('done');
+
     await loadMyCard();
     renderMyCard();
-    closeNegoOverlay();
-    toast('✅ 카드 교환 완료!');
+    renderMyStatus();
+    showTradeBanner(partner?.name || '상대방');
+    toast('✅ 카드 교환 완료!', 4000);
+
+    // 오버레이 내용 업데이트 후 자동으로 닫지 않음 → 학생이 직접 닫도록
+    updateOverlayForTradeDone();
     await refreshGamePlayers();
     return;
   }
 
-  // 상대방 agree 업데이트 (협상 오버레이에 반영)
+  // agree 상태 업데이트
   if (State.currentNego && nego.id === State.currentNego.id) {
     State.currentNego = nego;
     updateTradeStatus(nego);
+    updateOverlaySteps(nego);
 
-    // 둘 다 동의 → 서버에서 카드 교환 실행 (requester가 처리)
+    const isRequester = nego.requester_id === State.playerId;
+    const iAgreed     = isRequester ? nego.requester_agree : nego.target_agree;
+    const theyAgreed  = isRequester ? nego.target_agree   : nego.requester_agree;
+
+    if (iAgreed && !theyAgreed) setNegoStep('agreed');
+    else if (iAgreed && theyAgreed) { /* done 처리는 위에서 */ }
+
+    // 둘 다 동의 → requester가 카드 교환 실행
     if (nego.requester_agree && nego.target_agree && nego.status === 'active') {
       if (nego.requester_id === State.playerId) {
         await executeTradeCards(nego);
@@ -1032,11 +1430,11 @@ async function acceptNego() {
   document.getElementById('nego-request-banner').classList.remove('show');
 
   await sb.from('bomb_negotiations').update({ status: 'active' }).eq('id', nego.id);
-  await sb.from('bomb_players').update({ negotiating_with: nego.requester_id })
-    .eq('id', State.playerId);
+  await sb.from('bomb_players').update({ negotiating_with: nego.requester_id }).eq('id', State.playerId);
 
   State.currentNego = nego;
   const partner = State.players.find(p => p.id === nego.requester_id);
+  setNegoStep('negotiating');
   openNegoOverlay(partner?.name || '?', nego);
   State.pendingNego = null;
 }
@@ -1057,33 +1455,66 @@ async function rejectNego() {
 function openNegoOverlay(partnerName, nego) {
   document.getElementById('nego-partner-name').textContent = partnerName;
   document.getElementById('nego-overlay').classList.add('open');
+  document.getElementById('nego-box').classList.remove('trade-done');
   document.getElementById('chat-box').innerHTML = '';
-  document.getElementById('btn-trade').disabled = State.myCardTraded;
-  document.getElementById('btn-trade').textContent = '🔄 카드 교환 동의';
+  document.getElementById('btn-trade').disabled    = State.myCardTraded;
+  document.getElementById('btn-trade').textContent = '🔄 카드 교환 동의하기';
+  document.getElementById('btn-trade').style.background = '';
+  document.getElementById('btn-trade').style.color      = '';
+  document.getElementById('btn-close-nego').textContent = '협상 종료';
   updateTradeStatus(nego);
+  updateOverlaySteps(nego);
   loadChatHistory(nego.id);
+}
+
+function updateOverlaySteps(nego) {
+  const agreeEl = document.getElementById('ovl-step-agree');
+  const doneEl  = document.getElementById('ovl-step-done');
+  if (!agreeEl || !doneEl) return;
+
+  const bothAgreed = nego?.requester_agree && nego?.target_agree;
+  const isRequester = nego?.requester_id === State.playerId;
+  const iAgreed = nego ? (isRequester ? nego.requester_agree : nego.target_agree) : false;
+
+  agreeEl.className = 'overlay-step' + (bothAgreed ? ' done' : iAgreed ? ' active' : '');
+  agreeEl.textContent = iAgreed ? '✅ 교환 동의 완료' : '🔄 교환 동의 대기';
+  doneEl.className  = 'overlay-step' + (nego?.status === 'done' ? ' done' : '');
+}
+
+function updateOverlayForTradeDone() {
+  document.getElementById('nego-box').classList.add('trade-done');
+  const btn = document.getElementById('btn-trade');
+  btn.textContent = '✅ 카드 교환 완료!';
+  btn.style.background = 'var(--angel)';
+  btn.style.color      = '#000';
+  btn.disabled = true;
+  document.getElementById('btn-close-nego').textContent = '✅ 협상 종료 (교환 완료)';
+  document.getElementById('ovl-step-done').className = 'overlay-step done';
+  document.getElementById('ovl-step-done').textContent = '✅ 교환 완료';
+  document.getElementById('trade-status').textContent = '✅ 양측 모두 동의 — 카드 교환 완료!';
 }
 
 function closeNegoOverlay() {
   document.getElementById('nego-overlay').classList.remove('open');
   State.myTradeAgreed = false;
-  updateTradeStatus(State.currentNego);
 }
 
 async function closeNego() {
   if (State.currentNego) {
-    // 협상 종료 - 상태를 'done' 또는 협상 취소로 처리
-    await sb.from('bomb_players').update({ negotiating_with: null }).eq('id', State.playerId);
     const nego = State.currentNego;
-    if (nego.requester_id === State.playerId || nego.target_id === State.playerId) {
-      // 상대방도 협상 해제
+    // 교환 완료가 아닐 때만 rejected 처리
+    if (nego.status !== 'done') {
       const otherId = nego.requester_id === State.playerId ? nego.target_id : nego.requester_id;
+      await sb.from('bomb_players').update({ negotiating_with: null }).eq('id', State.playerId);
       await sb.from('bomb_players').update({ negotiating_with: null }).eq('id', otherId);
       await sb.from('bomb_negotiations').update({ status: 'rejected' }).eq('id', nego.id);
+    } else {
+      await sb.from('bomb_players').update({ negotiating_with: null }).eq('id', State.playerId);
     }
     State.currentNego = null;
   }
   closeNegoOverlay();
+  if (!State.myCardTraded) resetNegoProgress();
 }
 
 /* ================================================================
@@ -1102,7 +1533,7 @@ async function toggleTrade() {
   await sb.from('bomb_negotiations').update(update).eq('id', nego.id);
 
   const btn = document.getElementById('btn-trade');
-  btn.textContent = State.myTradeAgreed ? '✅ 동의 완료 (취소하려면 클릭)' : '🔄 카드 교환 동의';
+  btn.textContent      = State.myTradeAgreed ? '✅ 동의 완료 (취소하려면 클릭)' : '🔄 카드 교환 동의하기';
   btn.style.background = State.myTradeAgreed ? 'var(--angel)' : '';
   btn.style.color      = State.myTradeAgreed ? '#000' : '';
 }
@@ -1117,25 +1548,32 @@ function updateTradeStatus(nego) {
    카드 교환 실행 (requester가 처리)
    ================================================================ */
 async function executeTradeCards(nego) {
-  const req = State.players.find(p => p.id === nego.requester_id);
-  const tgt = State.players.find(p => p.id === nego.target_id);
-  if (!req || !tgt || !req.card || !tgt.card) return;
+  // DB에서 최신 카드값 읽기 (State.players가 stale할 수 있음)
+  const { data: reqData } = await sb.from('bomb_players')
+    .select('card, trade_count, card_traded').eq('id', nego.requester_id).single();
+  const { data: tgtData } = await sb.from('bomb_players')
+    .select('card, trade_count, card_traded').eq('id', nego.target_id).single();
 
-  // 카드 교환
-  await sb.from('bomb_players').update({ card: tgt.card, card_traded: true, negotiating_with: null })
-    .eq('id', nego.requester_id);
-  await sb.from('bomb_players').update({ card: req.card, card_traded: true, negotiating_with: null })
-    .eq('id', nego.target_id);
+  if (!reqData || !tgtData || !reqData.card || !tgtData.card) return;
+  // 이미 교환된 경우 중복 처리 방지
+  if (reqData.card_traded && tgtData.card_traded) return;
 
-  // trade_count 증가
-  await sb.from('bomb_players').update({ trade_count: (req.trade_count || 0) + 1 })
-    .eq('id', nego.requester_id);
-  await sb.from('bomb_players').update({ trade_count: (tgt.trade_count || 0) + 1 })
-    .eq('id', nego.target_id);
+  await Promise.all([
+    sb.from('bomb_players').update({
+      card: tgtData.card,
+      card_traded: true,
+      negotiating_with: null,
+      trade_count: (reqData.trade_count || 0) + 1,
+    }).eq('id', nego.requester_id),
+    sb.from('bomb_players').update({
+      card: reqData.card,
+      card_traded: true,
+      negotiating_with: null,
+      trade_count: (tgtData.trade_count || 0) + 1,
+    }).eq('id', nego.target_id),
+  ]);
 
   await sb.from('bomb_negotiations').update({ status: 'done' }).eq('id', nego.id);
-
-  if (State.isHost) await renderMatrix();
 }
 
 /* ================================================================
@@ -1157,7 +1595,7 @@ async function sendChat() {
   await sb.from('bomb_chats').insert({
     room_id: State.roomId,
     negotiation_id: State.currentNego.id,
-    sender_id: State.playerId,
+    sender_id:   State.playerId,
     sender_name: State.playerName,
     message: msg,
   });
@@ -1174,55 +1612,6 @@ function appendChat(chat) {
 }
 
 /* ================================================================
-   라운드 스냅샷 & 행렬
-   ================================================================ */
-async function saveRoundSnapshot(round) {
-  const { data: players } = await sb.from('bomb_players').select().eq('room_id', State.roomId);
-  if (!players) return;
-  const snapshot = {};
-  players.forEach(p => {
-    if (!p.is_host) snapshot[p.id] = { name: p.name, card: p.card };
-  });
-  await sb.from('bomb_round_history').insert({ room_id: State.roomId, round, snapshot });
-}
-
-async function renderMatrix() {
-  const { data: history } = await sb.from('bomb_round_history').select()
-    .eq('room_id', State.roomId).order('round');
-  if (!history || !history.length) return;
-
-  State.roundHistory = history;
-
-  // 플레이어 이름 목록
-  const first = history[0].snapshot;
-  const playerIds = Object.keys(first);
-  const names = playerIds.map(id => first[id]?.name || id);
-
-  let html = `<table id="matrix-table"><thead><tr>
-    <th>이름</th>
-    ${history.map(h => `<th>R${h.round}</th>`).join('')}
-    <th>교환수</th>
-  </tr></thead><tbody>`;
-
-  playerIds.forEach((pid, i) => {
-    const p = State.players.find(pl => pl.id === pid);
-    html += `<tr><td>${esc(names[i])}</td>`;
-    history.forEach(h => {
-      const card = h.snapshot[pid]?.card;
-      html += `<td class="${card === 'angel' ? 'matrix-angel' : 'matrix-bomb'}">
-        ${card === 'angel' ? '😇 천사' : card === 'bomb' ? '💣 폭탄' : '-'}</td>`;
-    });
-    html += `<td>${p?.trade_count || 0}</td></tr>`;
-  });
-  html += '</tbody></table>';
-
-  const el1 = document.getElementById('matrix-wrap');
-  const el2 = document.getElementById('matrix-wrap-game');
-  if (el1) el1.innerHTML = html;
-  if (el2) el2.innerHTML = html;
-}
-
-/* ================================================================
    진행자: 게임 강제 종료
    ================================================================ */
 function confirmForceEndGame() {
@@ -1233,33 +1622,60 @@ function confirmForceEndGame() {
 
 async function forceEndGame() {
   clearTimer();
+  // 강제 종료 시에도 현재 라운드 스냅샷 저장
+  if (State.room) await saveRoundSnapshotFromLive(State.room.current_round);
   await sb.from('bomb_rooms').update({ status: 'finished' }).eq('id', State.roomId);
 }
 
 /* ================================================================
    게임 종료 & 결과
+   [핵심 수정③] DB에서 직접 최신 데이터 조회 → 정확한 교환 횟수
    ================================================================ */
 async function endGame() {
   clearTimer();
   clearSubs();
 
+  // DB에서 최신 플레이어 데이터 직접 조회
   const { data: players } = await sb.from('bomb_players').select()
     .eq('room_id', State.roomId).order('trade_count', { ascending: false });
 
   const students = (players || []).filter(p => !p.is_host);
+  // 폭탄 보유자 (마지막 라운드 기준)
   const losers   = students.filter(p => p.card === 'bomb');
-  const winner   = students.filter(p => p.card !== 'bomb')
-    .sort((a, b) => b.trade_count - a.trade_count)[0];
+  // 승리 조건: 폭탄 없음 + 교환 횟수 최다
+  const survivors = students.filter(p => p.card !== 'bomb')
+    .sort((a, b) => b.trade_count - a.trade_count);
+  const winner = survivors[0] || null;
 
   showScreen('screen-result');
 
   document.getElementById('result-winner').textContent =
-    winner ? `🏆 우승자: ${winner.name} (교환 ${winner.trade_count}회)` : '우승자 없음';
+    winner ? `🏆 우승자: ${winner.name}` : (losers.length === students.length ? '모두 폭탄! 우승자 없음' : '우승자 없음');
   document.getElementById('result-loser').textContent =
-    losers.length ? `💣 폭탄 보유자: ${losers.map(p => p.name).join(', ')}` : '모두 생존!';
+    losers.length ? `💣 폭탄 보유자: ${losers.map(p => p.name).join(', ')}` : '🎉 모두 생존!';
 
-  const trades = students.map(p => `${p.name}: ${p.trade_count}회`).join(' · ');
-  document.getElementById('result-trades').textContent = `교환 횟수 — ${trades}`;
+  // 랭킹 테이블 — 교환 횟수 포함
+  const tbody = document.getElementById('result-ranking-body');
+  tbody.innerHTML = '';
+  const sorted = [...students].sort((a, b) => {
+    // 생존자 우선, 그 다음 교환 횟수
+    if (a.card !== 'bomb' && b.card === 'bomb') return -1;
+    if (a.card === 'bomb' && b.card !== 'bomb') return 1;
+    return b.trade_count - a.trade_count;
+  });
+  sorted.forEach((p, i) => {
+    const isBomb     = p.card === 'bomb';
+    const isWinner   = winner && p.id === winner.id;
+    const tr = document.createElement('tr');
+    tr.className = isWinner ? 'winner-row' : isBomb ? 'loser-row' : '';
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${esc(p.name)}${isWinner ? ' 🏆' : ''}</td>
+      <td>${p.card === 'angel' ? '😇 천사' : '💣 폭탄'}</td>
+      <td>${p.trade_count ?? 0}회</td>
+      <td>${isBomb ? '💣 탈락' : isWinner ? '🏆 우승' : '✅ 생존'}</td>`;
+    tbody.appendChild(tr);
+  });
 
   if (State.isHost) document.getElementById('btn-replay').style.display = 'block';
 }
@@ -1268,18 +1684,13 @@ async function endGame() {
    다시 하기 (진행자)
    ================================================================ */
 async function replayGame() {
-  // 모든 플레이어 카드 초기화
-  await sb.from('bomb_players').update({ card: null, card_traded: false, negotiating_with: null, trade_count: 0 })
-    .eq('room_id', State.roomId);
-  // 라운드 히스토리 삭제
+  await sb.from('bomb_players').update({
+    card: null, card_traded: false, negotiating_with: null, trade_count: 0
+  }).eq('room_id', State.roomId);
   await sb.from('bomb_round_history').delete().eq('room_id', State.roomId);
-  // 방 상태 초기화
   await sb.from('bomb_rooms').update({ status: 'waiting', current_round: 0 }).eq('id', State.roomId);
 
-  State.myCard = null;
-  State.myCardTraded = false;
-  State.roundHistory = [];
-
+  State.myCard = null; State.myCardTraded = false; State.liveMatrix = {};
   enterLobby();
 }
 
@@ -1287,13 +1698,12 @@ async function replayGame() {
    처음으로
    ================================================================ */
 function goHome() {
-  clearSubs();
-  clearTimer();
+  clearSubs(); clearTimer();
   Object.assign(State, {
     roomId: null, playerId: null, playerName: null, isHost: false,
     room: null, players: [], myCard: null, currentNego: null,
     pendingNego: null, myTradeAgreed: false, myCardTraded: false,
-    timerInterval: null, roundHistory: [], subs: [],
+    timerInterval: null, liveMatrix: {}, subs: [],
   });
   history.pushState({}, '', location.pathname);
   showScreen('screen-intro');
@@ -1306,93 +1716,66 @@ function genRoomId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
-
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
 function copyLink() {
   const link = document.getElementById('share-link').textContent;
   navigator.clipboard.writeText(link).then(() => toast('✅ 링크가 클립보드에 복사되었습니다'));
 }
-
 function clearSubs() {
   State.subs.forEach(s => { try { sb.removeChannel(s); } catch(e) {} });
   State.subs = [];
 }
-/* ==========================================
+
+/* ================================================================
    도화선 애니메이션
-   ========================================== */
-
+   ================================================================ */
 const fuseEl = document.getElementById('fuse-text');
-
 const baseText = '폭탄의 도화선이 타들어가고 있습니다';
-const maxDots = 18; // ".................." = 18개
-
-let dots = maxDots;
-let fuseShowingExplosion = false;
-let fuseInterval = null;
+const maxDots = 18;
+let dots = maxDots, fuseShowingExplosion = false, fuseInterval = null;
 
 const boomSVG = `
 <div style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;animation:boomPop .3s ease-out;">
   <svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 18px #ff6b00);">
-    <!-- 폭발 스파이크 -->
     <polygon points="80,4 88,42 110,18 100,54 132,38 114,68 152,68 124,88 156,104 122,106 140,134 108,120 110,156 86,132 80,158 74,132 50,156 52,120 20,134 38,106 4,104 36,88 8,68 46,68 28,38 60,54 50,18 72,42"
       fill="#ff6b00" opacity="0.95"/>
-    <!-- 안쪽 원 -->
     <circle cx="80" cy="82" r="42" fill="#ffcc00"/>
     <circle cx="80" cy="82" r="34" fill="#ff8c00"/>
-    <!-- BOOM 텍스트 -->
-    <text x="80" y="93" text-anchor="middle" font-family="'Jua',sans-serif" font-size="26" font-weight="900" fill="#fff" letter-spacing="1" style="text-shadow:0 2px 6px #000">BOOM</text>
+    <text x="80" y="93" text-anchor="middle" font-family="'Jua',sans-serif" font-size="26" font-weight="900" fill="#fff" letter-spacing="1">BOOM</text>
   </svg>
 </div>`;
 
-const boomStyle = `
-@keyframes boomPop {
+const boomStyleEl = document.createElement('style');
+boomStyleEl.textContent = `@keyframes boomPop {
   0%   { transform: scale(0.3) rotate(-10deg); opacity:0; }
   60%  { transform: scale(1.15) rotate(3deg);  opacity:1; }
   100% { transform: scale(1)    rotate(0deg);  opacity:1; }
 }`;
-
-// 스타일 주입
-const boomStyleEl = document.createElement('style');
-boomStyleEl.textContent = boomStyle;
 document.head.appendChild(boomStyleEl);
 
 function updateFuse() {
   if (!fuseEl) return;
-
   if (fuseShowingExplosion) {
-    // 폭발 이모지 표시
     fuseEl.innerHTML = boomSVG;
-
     setTimeout(() => {
-      fuseShowingExplosion = false;
-      dots = maxDots;
+      fuseShowingExplosion = false; dots = maxDots;
       fuseEl.textContent = baseText + '.'.repeat(dots) + '!';
-      // 인터벌 재시작
       if (fuseInterval) clearInterval(fuseInterval);
       fuseInterval = setInterval(updateFuse, 2000);
     }, 3000);
-
     return;
   }
-
-  // 일반 텍스트 상태
   fuseEl.textContent = baseText + '.'.repeat(dots) + '!';
   dots--;
-
   if (dots < 0) {
     fuseShowingExplosion = true;
     if (fuseInterval) clearInterval(fuseInterval);
-    updateFuse(); // 즉시 폭발 표시
+    updateFuse();
   }
 }
-
-// 처음 실행
 updateFuse();
-
-// 2초마다 갱신
 fuseInterval = setInterval(updateFuse, 2000);
 </script>
 </body>
