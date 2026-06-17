@@ -1697,32 +1697,47 @@ async function endGame() {
     .eq('room_id', State.roomId).order('trade_count', { ascending: false });
 
   const students = (players || []).filter(p => !p.is_host);
+
   // 폭탄 보유자 (마지막 라운드 기준)
-  const losers   = students.filter(p => p.card === 'bomb');
-  // 승리 조건: 폭탄 없음 + 교환 횟수 최다
-  const survivors = students.filter(p => p.card !== 'bomb')
-    .sort((a, b) => b.trade_count - a.trade_count);
-  const winner = survivors[0] || null;
+  const losers = students.filter(p => p.card === 'bomb');
+
+  // 우승 조건 ①: 마지막 라운드에 천사 카드를 보유
+  const angelHolders = students.filter(p => p.card === 'angel');
+
+  // 우승 조건 ②: 그 중 교환 횟수가 가장 많은 학생 (공동 우승 가능)
+  let winners = [];
+  if (angelHolders.length > 0) {
+    const maxTrades = Math.max(...angelHolders.map(p => p.trade_count || 0));
+    winners = angelHolders.filter(p => (p.trade_count || 0) === maxTrades);
+  }
 
   showScreen('screen-result');
 
-  document.getElementById('result-winner').textContent =
-    winner ? `🏆 우승자: ${winner.name}` : (losers.length === students.length ? '모두 폭탄! 우승자 없음' : '우승자 없음');
+  // 우승자 표시
+  const winnerEl = document.getElementById('result-winner');
+  if (winners.length === 0) {
+    winnerEl.textContent = losers.length === students.length ? '모두 폭탄! 우승자 없음' : '우승자 없음';
+  } else if (winners.length === 1) {
+    winnerEl.textContent = `🏆 우승자: ${winners[0].name}`;
+  } else {
+    winnerEl.textContent = `🏆 공동 우승: ${winners.map(p => p.name).join(', ')}`;
+  }
+
   document.getElementById('result-loser').textContent =
     losers.length ? `💣 폭탄 보유자: ${losers.map(p => p.name).join(', ')}` : '🎉 모두 생존!';
 
-  // 랭킹 테이블 — 교환 횟수 포함
+  // 랭킹 테이블: 천사 카드 우선, 그 다음 교환 횟수 내림차순
   const tbody = document.getElementById('result-ranking-body');
   tbody.innerHTML = '';
+  const winnerIds = new Set(winners.map(p => p.id));
   const sorted = [...students].sort((a, b) => {
-    // 생존자 우선, 그 다음 교환 횟수
-    if (a.card !== 'bomb' && b.card === 'bomb') return -1;
-    if (a.card === 'bomb' && b.card !== 'bomb') return 1;
-    return b.trade_count - a.trade_count;
+    if (a.card === 'angel' && b.card === 'bomb') return -1;
+    if (a.card === 'bomb' && b.card === 'angel') return 1;
+    return (b.trade_count || 0) - (a.trade_count || 0);
   });
   sorted.forEach((p, i) => {
-    const isBomb     = p.card === 'bomb';
-    const isWinner   = winner && p.id === winner.id;
+    const isBomb    = p.card === 'bomb';
+    const isWinner  = winnerIds.has(p.id);
     const tr = document.createElement('tr');
     tr.className = isWinner ? 'winner-row' : isBomb ? 'loser-row' : '';
     tr.innerHTML = `
