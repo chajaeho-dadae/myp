@@ -1839,7 +1839,7 @@ function clearSubs() {
    ================================================================ */
 const fuseEl = document.getElementById('fuse-text');
 const baseText = '폭탄의 도화선';
-const maxDots = 18;
+const maxDots = 24;
 let dots = maxDots, fuseShowingExplosion = false, fuseInterval = null;
 
 const boomSVG = `
@@ -1869,7 +1869,7 @@ function updateFuse() {
       fuseShowingExplosion = false; dots = maxDots;
       fuseEl.textContent = baseText + '.'.repeat(dots) + '!';
       if (fuseInterval) clearInterval(fuseInterval);
-      fuseInterval = setInterval(updateFuse, 1000);
+      fuseInterval = setInterval(updateFuse, 500);
     }, 3000);
     return;
   }
