@@ -1349,7 +1349,7 @@ async function requestNego(target) {
 async function handleNegoChange(payload) {
   const nego = payload.new;
 
-  // 나에게 온 요청
+  // ── ① 나에게 온 새 요청 (pending) ──────────────────────────────
   if (nego.target_id === State.playerId && nego.status === 'pending') {
     const requester = State.players.find(p => p.id === nego.requester_id);
     if (!requester) return;
@@ -1359,8 +1359,62 @@ async function handleNegoChange(payload) {
     return;
   }
 
-  // 내 요청이 수락됨
-  if (nego.requester_id === State.playerId && nego.status === 'active') {
+  // ── ② 진행 중인 내 협상 이벤트 처리 (active / done) ────────────
+  // 이미 진행 중인 협상(State.currentNego)에 대한 변경이면 여기서 처리
+  if (State.currentNego && nego.id === State.currentNego.id) {
+    State.currentNego = nego;
+
+    // 협상 완료 (카드 교환 성공)
+    if (nego.status === 'done') {
+      const partner = State.players.find(p =>
+        p.id === (nego.requester_id === State.playerId ? nego.target_id : nego.requester_id)
+      );
+      State.currentNego = null;
+      State.myCardTraded = true;
+      State.myTradeAgreed = false;
+      setNegoStep('done');
+      await loadMyCard();
+      renderMyCard();
+      renderMyStatus();
+      showTradeBanner(partner?.name || '상대방');
+      toast('✅ 카드 교환 완료!', 4000);
+      updateOverlayForTradeDone();
+      await refreshGamePlayers();
+      return;
+    }
+
+    // agree 상태 업데이트
+    updateTradeStatus(nego);
+    updateOverlaySteps(nego);
+
+    const isRequester = nego.requester_id === State.playerId;
+    const iAgreed    = isRequester ? nego.requester_agree : nego.target_agree;
+    const theyAgreed = isRequester ? nego.target_agree   : nego.requester_agree;
+
+    // 버튼 UI를 DB 값 기준으로 동기화 (toggleTrade 후 이벤트로 리셋되는 문제 방지)
+    State.myTradeAgreed = !!iAgreed;
+    const btn = document.getElementById('btn-trade');
+    if (btn && !State.myCardTraded) {
+      btn.textContent      = iAgreed ? '✅ 동의 완료 (취소하려면 클릭)' : '🔄 카드 교환 동의하기';
+      btn.style.background = iAgreed ? 'var(--angel)' : '';
+      btn.style.color      = iAgreed ? '#000' : '';
+    }
+
+    if (iAgreed && !theyAgreed) setNegoStep('agreed');
+
+    // 둘 다 동의 → requester가 카드 교환 실행
+    if (nego.requester_agree && nego.target_agree &&
+        nego.status === 'active' &&
+        nego.requester_id === State.playerId)
+    {
+      await executeTradeCards(nego);
+    }
+    return;
+  }
+
+  // ── ③ 내 요청이 처음 수락됨 (아직 오버레이가 열리지 않은 상태) ──
+  // currentNego가 없거나 다른 협상일 때만 실행 → 동의 이벤트를 가로채지 않음
+  if (nego.requester_id === State.playerId && nego.status === 'active' && !State.currentNego) {
     State.currentNego = nego;
     const partner = State.players.find(p => p.id === nego.target_id);
     setNegoStep('negotiating');
@@ -1368,58 +1422,12 @@ async function handleNegoChange(payload) {
     return;
   }
 
-  // 내가 수락한 협상 시작 확인
-  if (nego.target_id === State.playerId && nego.status === 'active' && State.currentNego?.id === nego.id) {
+  // ── ④ 내가 수락한 협상 첫 active 전환 확인 ──────────────────────
+  if (nego.target_id === State.playerId && nego.status === 'active' && !State.currentNego) {
     State.currentNego = nego;
     setNegoStep('negotiating');
     updateOverlaySteps(nego);
     return;
-  }
-
-  // 협상 완료 (카드 교환)
-  if (State.currentNego && nego.id === State.currentNego.id && nego.status === 'done') {
-    const partner = State.players.find(p =>
-      p.id === (nego.requester_id === State.playerId ? nego.target_id : nego.requester_id)
-    );
-    State.currentNego = null;
-    State.myCardTraded = true;
-    State.myTradeAgreed = false;
-
-    setNegoStep('done');
-
-    await loadMyCard();
-    renderMyCard();
-    renderMyStatus();
-    showTradeBanner(partner?.name || '상대방');
-    toast('✅ 카드 교환 완료!', 4000);
-
-    // 오버레이 내용 업데이트 후 자동으로 닫지 않음 → 학생이 직접 닫도록
-    updateOverlayForTradeDone();
-    await refreshGamePlayers();
-    return;
-  }
-
-  // agree 상태 업데이트
-  if (State.currentNego && nego.id === State.currentNego.id) {
-    State.currentNego = nego;
-    updateTradeStatus(nego);
-    updateOverlaySteps(nego);
-
-    const isRequester = nego.requester_id === State.playerId;
-    const iAgreed     = isRequester ? nego.requester_agree : nego.target_agree;
-    const theyAgreed  = isRequester ? nego.target_agree   : nego.requester_agree;
-
-    if (iAgreed && !theyAgreed) setNegoStep('agreed');
-    else if (iAgreed && theyAgreed) { /* done 처리는 위에서 */ }
-
-    // 둘 다 동의 → requester가 카드 교환 실행 [수정②: 조건 강화]
-    if (nego.requester_agree && nego.target_agree &&
-        nego.status === 'active' &&
-        nego.requester_id === State.playerId &&
-        State.currentNego?.id === nego.id)   // 내 현재 협상인지 확인
-    {
-      await executeTradeCards(nego);
-    }
   }
 }
 
@@ -1530,20 +1538,23 @@ async function closeNego() {
    ================================================================ */
 async function toggleTrade() {
   if (!State.currentNego) return;
-  State.myTradeAgreed = !State.myTradeAgreed;
+  const newAgreed = !State.myTradeAgreed;
 
   const nego = State.currentNego;
   const isRequester = nego.requester_id === State.playerId;
   const update = isRequester
-    ? { requester_agree: State.myTradeAgreed }
-    : { target_agree:    State.myTradeAgreed };
+    ? { requester_agree: newAgreed }
+    : { target_agree:    newAgreed };
 
-  await sb.from('bomb_negotiations').update(update).eq('id', nego.id);
+  const { error } = await sb.from('bomb_negotiations').update(update).eq('id', nego.id);
+  if (error) { toast('동의 처리 중 오류가 발생했습니다. 다시 시도해주세요.'); return; }
 
+  // DB 업데이트 성공 후 UI 반영 (실시간 이벤트로도 동기화되지만 즉각 반응용)
+  State.myTradeAgreed = newAgreed;
   const btn = document.getElementById('btn-trade');
-  btn.textContent      = State.myTradeAgreed ? '✅ 동의 완료 (취소하려면 클릭)' : '🔄 카드 교환 동의하기';
-  btn.style.background = State.myTradeAgreed ? 'var(--angel)' : '';
-  btn.style.color      = State.myTradeAgreed ? '#000' : '';
+  btn.textContent      = newAgreed ? '✅ 동의 완료 (취소하려면 클릭)' : '🔄 카드 교환 동의하기';
+  btn.style.background = newAgreed ? 'var(--angel)' : '';
+  btn.style.color      = newAgreed ? '#000' : '';
 }
 
 function updateTradeStatus(nego) {
