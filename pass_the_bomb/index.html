@@ -1763,7 +1763,7 @@ function updateFuse() {
       fuseShowingExplosion = false; dots = maxDots;
       fuseEl.textContent = baseText + '.'.repeat(dots) + '!';
       if (fuseInterval) clearInterval(fuseInterval);
-      fuseInterval = setInterval(updateFuse, 2000);
+      fuseInterval = setInterval(updateFuse, 1500);
     }, 3000);
     return;
   }
