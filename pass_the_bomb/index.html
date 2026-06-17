@@ -1359,31 +1359,57 @@ async function handleNegoChange(payload) {
     return;
   }
 
-  // ── ② 진행 중인 내 협상 이벤트 처리 (active / done) ────────────
-  // 이미 진행 중인 협상(State.currentNego)에 대한 변경이면 여기서 처리
-  if (State.currentNego && nego.id === State.currentNego.id) {
+  // ── ② 내 요청이 처음 수락됨 → 오버레이 오픈 ──────────────────
+  // currentNego가 없을 때만 (이미 오버레이가 열린 상태에서 agree 이벤트가 오면 이 블록을 건너뜀)
+  if (nego.requester_id === State.playerId &&
+      nego.status === 'active' &&
+      !State.currentNego)
+  {
     State.currentNego = nego;
+    const partner = State.players.find(p => p.id === nego.target_id);
+    setNegoStep('negotiating');
+    openNegoOverlay(partner?.name || '?', nego);
+    return;
+  }
 
-    // 협상 완료 (카드 교환 성공)
-    if (nego.status === 'done') {
-      const partner = State.players.find(p =>
-        p.id === (nego.requester_id === State.playerId ? nego.target_id : nego.requester_id)
-      );
-      State.currentNego = null;
-      State.myCardTraded = true;
-      State.myTradeAgreed = false;
-      setNegoStep('done');
-      await loadMyCard();
-      renderMyCard();
-      renderMyStatus();
-      showTradeBanner(partner?.name || '상대방');
-      toast('✅ 카드 교환 완료!', 4000);
-      updateOverlayForTradeDone();
-      await refreshGamePlayers();
-      return;
-    }
+  // ── ③ target이 수락 직후 본인 화면 업데이트 (currentNego가 없을 때) ──
+  if (nego.target_id === State.playerId &&
+      nego.status === 'active' &&
+      !State.currentNego)
+  {
+    State.currentNego = nego;
+    setNegoStep('negotiating');
+    updateOverlaySteps(nego);
+    return;
+  }
 
-    // agree 상태 업데이트
+  // ── ④ 진행 중인 협상의 모든 변경 (agree / done) ───────────────
+  if (!State.currentNego || nego.id !== State.currentNego.id) return;
+
+  // 최신 nego 상태로 교체
+  State.currentNego = nego;
+
+  // 협상 완료
+  if (nego.status === 'done') {
+    const partner = State.players.find(p =>
+      p.id === (nego.requester_id === State.playerId ? nego.target_id : nego.requester_id)
+    );
+    State.currentNego = null;
+    State.myCardTraded = true;
+    State.myTradeAgreed = false;
+    setNegoStep('done');
+    await loadMyCard();
+    renderMyCard();
+    renderMyStatus();
+    showTradeBanner(partner?.name || '상대방');
+    toast('✅ 카드 교환 완료!', 4000);
+    updateOverlayForTradeDone();
+    await refreshGamePlayers();
+    return;
+  }
+
+  // agree 상태 UI 동기화
+  if (nego.status === 'active') {
     updateTradeStatus(nego);
     updateOverlaySteps(nego);
 
@@ -1391,7 +1417,7 @@ async function handleNegoChange(payload) {
     const iAgreed    = isRequester ? nego.requester_agree : nego.target_agree;
     const theyAgreed = isRequester ? nego.target_agree   : nego.requester_agree;
 
-    // 버튼 UI를 DB 값 기준으로 동기화 (toggleTrade 후 이벤트로 리셋되는 문제 방지)
+    // 버튼을 DB 값 기준으로 동기화 (이벤트 수신으로 인한 리셋 방지)
     State.myTradeAgreed = !!iAgreed;
     const btn = document.getElementById('btn-trade');
     if (btn && !State.myCardTraded) {
@@ -1402,32 +1428,10 @@ async function handleNegoChange(payload) {
 
     if (iAgreed && !theyAgreed) setNegoStep('agreed');
 
-    // 둘 다 동의 → requester가 카드 교환 실행
-    if (nego.requester_agree && nego.target_agree &&
-        nego.status === 'active' &&
-        nego.requester_id === State.playerId)
-    {
+    // 양측 모두 동의 → requester 클라이언트에서 카드 교환 실행
+    if (nego.requester_agree && nego.target_agree && nego.requester_id === State.playerId) {
       await executeTradeCards(nego);
     }
-    return;
-  }
-
-  // ── ③ 내 요청이 처음 수락됨 (아직 오버레이가 열리지 않은 상태) ──
-  // currentNego가 없거나 다른 협상일 때만 실행 → 동의 이벤트를 가로채지 않음
-  if (nego.requester_id === State.playerId && nego.status === 'active' && !State.currentNego) {
-    State.currentNego = nego;
-    const partner = State.players.find(p => p.id === nego.target_id);
-    setNegoStep('negotiating');
-    openNegoOverlay(partner?.name || '?', nego);
-    return;
-  }
-
-  // ── ④ 내가 수락한 협상 첫 active 전환 확인 ──────────────────────
-  if (nego.target_id === State.playerId && nego.status === 'active' && !State.currentNego) {
-    State.currentNego = nego;
-    setNegoStep('negotiating');
-    updateOverlaySteps(nego);
-    return;
   }
 }
 
@@ -1518,8 +1522,13 @@ function closeNegoOverlay() {
 async function closeNego() {
   if (State.currentNego) {
     const nego = State.currentNego;
-    // 교환 완료가 아닐 때만 rejected 처리
-    if (nego.status !== 'done') {
+
+    // DB에서 최신 status 확인 (로컬 캐시가 stale할 수 있음)
+    const { data: freshNego } = await sb.from('bomb_negotiations')
+      .select('status').eq('id', nego.id).single();
+    const currentStatus = freshNego?.status ?? nego.status;
+
+    if (currentStatus !== 'done') {
       const otherId = nego.requester_id === State.playerId ? nego.target_id : nego.requester_id;
       await sb.from('bomb_players').update({ negotiating_with: null }).eq('id', State.playerId);
       await sb.from('bomb_players').update({ negotiating_with: null }).eq('id', otherId);
@@ -1567,39 +1576,45 @@ function updateTradeStatus(nego) {
    카드 교환 실행 (requester가 처리)
    ================================================================ */
 async function executeTradeCards(nego) {
-  // [수정①] status를 'done'으로 원자적으로 업데이트 시도 (낙관적 잠금)
-  // 이미 다른 클라이언트가 처리했으면 0 rows → 중복 실행 방지
-  const { data: lockResult } = await sb.from('bomb_negotiations')
-    .update({ status: 'done' })
-    .eq('id', nego.id)
-    .eq('status', 'active')  // 'active'일 때만 성공
-    .select();
+  // 중복 실행 방지: 클라이언트 레벨 플래그
+  if (executeTradeCards._running) return;
+  executeTradeCards._running = true;
 
-  if (!lockResult || lockResult.length === 0) return; // 이미 처리됨
+  try {
+    // DB에서 최신 nego 상태 확인 (이미 done이면 중단)
+    const { data: freshNego } = await sb.from('bomb_negotiations')
+      .select('status').eq('id', nego.id).single();
+    if (!freshNego || freshNego.status !== 'active') return;
 
-  // DB에서 최신 카드값 읽기 (State.players가 stale할 수 있음)
-  const { data: reqData } = await sb.from('bomb_players')
-    .select('card, trade_count').eq('id', nego.requester_id).single();
-  const { data: tgtData } = await sb.from('bomb_players')
-    .select('card, trade_count').eq('id', nego.target_id).single();
+    // DB에서 최신 카드값 읽기
+    const { data: reqData } = await sb.from('bomb_players')
+      .select('card, trade_count').eq('id', nego.requester_id).single();
+    const { data: tgtData } = await sb.from('bomb_players')
+      .select('card, trade_count').eq('id', nego.target_id).single();
 
-  if (!reqData?.card || !tgtData?.card) return;
+    if (!reqData?.card || !tgtData?.card) return;
 
-  await Promise.all([
-    sb.from('bomb_players').update({
-      card: tgtData.card,
-      card_traded: true,
-      negotiating_with: null,
-      trade_count: (reqData.trade_count || 0) + 1,
-    }).eq('id', nego.requester_id),
-    sb.from('bomb_players').update({
-      card: reqData.card,
-      card_traded: true,
-      negotiating_with: null,
-      trade_count: (tgtData.trade_count || 0) + 1,
-    }).eq('id', nego.target_id),
-  ]);
-  // status 업데이트는 잠금 단계에서 이미 처리
+    // 카드 교환 실행
+    await Promise.all([
+      sb.from('bomb_players').update({
+        card: tgtData.card,
+        card_traded: true,
+        negotiating_with: null,
+        trade_count: (reqData.trade_count || 0) + 1,
+      }).eq('id', nego.requester_id),
+      sb.from('bomb_players').update({
+        card: reqData.card,
+        card_traded: true,
+        negotiating_with: null,
+        trade_count: (tgtData.trade_count || 0) + 1,
+      }).eq('id', nego.target_id),
+    ]);
+
+    // 마지막으로 status done 처리
+    await sb.from('bomb_negotiations').update({ status: 'done' }).eq('id', nego.id);
+  } finally {
+    executeTradeCards._running = false;
+  }
 }
 
 /* ================================================================
