@@ -133,13 +133,11 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 .player-btn:disabled { opacity: .45; cursor: not-allowed; }
 .player-btn.in-nego  { border-color: var(--accent); background: #2a1500; color: var(--accent); }
 .player-btn.traded   { border-color: var(--angel); color: var(--angel); }
-/* ★ NEW: 이미 교환한 적 있는 상대방 버튼 스타일 */
 .player-btn.already-traded-with {
   border-color: var(--muted);
   opacity: 0.55;
 }
 
-/* ── 협상 단계 진행 표시 (학생용) ── */
 #nego-progress {
   display: none;
   background: var(--card);
@@ -219,7 +217,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 }
 @keyframes textPulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
 
-/* ── 카드 교환 성공 배너 ── */
 #trade-success-banner {
   display: none;
   text-align: center;
@@ -429,6 +426,38 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
   background: linear-gradient(135deg, #0d2a28, #231f3a);
 }
 
+/* ── 라운드별 시간 미리보기 ── */
+#round-time-preview {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+#round-time-preview .preview-title {
+  color: var(--angel);
+  font-weight: 700;
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+#round-time-preview .preview-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+#round-time-preview .preview-chip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text);
+}
+
 @media (max-width: 480px) {
   .row { flex-direction: column; }
   .nego-steps { gap: 2px; }
@@ -508,14 +537,19 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
           <div class="row">
             <div class="field">
               <label>총 라운드 수 (1~15)</label>
-              <input type="number" id="total-rounds" value="3" min="1" max="15">
+              <input type="number" id="total-rounds" value="3" min="1" max="15" oninput="updateRoundPreview()">
             </div>
             <div class="field">
-              <label>라운드 시간 (초)</label>
-              <input type="number" id="round-duration" value="60" min="10" max="300">
+              <label>1라운드 시간 (초)</label>
+              <input type="number" id="round-duration" value="60" min="10" max="300" oninput="updateRoundPreview()">
             </div>
           </div>
-          <button class="btn btn-primary btn-full" onclick="startGame()">🎮 게임 시작</button>
+          <!-- ★ NEW: 라운드별 시간 미리보기 -->
+          <div id="round-time-preview">
+            <div class="preview-title">⏱ 라운드별 진행 시간 (매 라운드 5초씩 감소)</div>
+            <div class="preview-row" id="preview-chips"></div>
+          </div>
+          <button class="btn btn-primary btn-full" style="margin-top:14px" onclick="startGame()">🎮 게임 시작</button>
         </div>
       </div>
       <div id="wait-msg" class="card" style="text-align:center;color:var(--muted)">
@@ -683,7 +717,6 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
       <div class="overlay-step" id="ovl-step-done">✅ 교환 완료</div>
     </div>
 
-    <!-- ★ NEW: 이미 교환한 상대임을 알리는 안내 -->
     <div id="already-traded-notice" style="display:none;padding:8px 12px;background:#1a1500;border:1px solid var(--gold);border-radius:8px;font-size:12px;color:var(--gold);text-align:center;">
       ⚠️ 이미 이전에 교환한 상대입니다. 다시 교환해도 점수(교환 횟수)에는 카운팅되지 않습니다.
     </div>
@@ -727,12 +760,39 @@ const State = {
   pendingNego:  null,
   myTradeAgreed: false,
   myCardTraded:  false,
-  // ★ NEW: 나와 교환한 상대방 ID 목록 (게임 전체 기간 동안 누적)
   myTradedWith:  [],
   timerInterval: null,
   subs:          [],
   liveMatrix:    {},
 };
+
+/* ================================================================
+   ★ NEW: 라운드별 시간 계산 유틸
+   기본 시간에서 (라운드-1) * 5초를 뺀 값, 최소 5초 보장
+   ================================================================ */
+function getRoundDuration(baseDuration, round) {
+  return Math.max(5, baseDuration - (round - 1) * 5);
+}
+
+/* ================================================================
+   ★ NEW: 라운드별 시간 미리보기 렌더 (설정 화면)
+   ================================================================ */
+function updateRoundPreview() {
+  const totalRounds   = parseInt(document.getElementById('total-rounds').value)   || 3;
+  const roundDuration = parseInt(document.getElementById('round-duration').value) || 60;
+  const container     = document.getElementById('preview-chips');
+  if (!container) return;
+
+  let html = '';
+  for (let r = 1; r <= Math.min(totalRounds, 15); r++) {
+    const sec = getRoundDuration(roundDuration, r);
+    const m   = Math.floor(sec / 60);
+    const s   = sec % 60;
+    const label = m > 0 ? `${m}분 ${s > 0 ? s + '초' : ''}`.trim() : `${s}초`;
+    html += `<span class="preview-chip">R${r}: ${label}</span>`;
+  }
+  container.innerHTML = html;
+}
 
 /* ================================================================
    화면 전환
@@ -811,7 +871,7 @@ async function joinRoom() {
 
   const { data: pd, error: pe } = await sb.from('bomb_players').insert({
     room_id: roomId, name, is_host: false,
-    traded_with: [],   // ★ NEW: 초기화
+    traded_with: [],
   }).select().single();
   if (pe) { toast('입장 실패: ' + pe.message); return; }
 
@@ -839,6 +899,8 @@ async function enterLobby() {
   document.getElementById('host-settings').style.display = State.isHost ? 'block' : 'none';
   document.getElementById('wait-msg').style.display       = State.isHost ? 'none'  : 'block';
   document.getElementById('host-matrix-section').style.display = State.isHost ? 'block' : 'none';
+
+  if (State.isHost) updateRoundPreview();
 
   await refreshPlayers();
 
@@ -896,13 +958,12 @@ async function startGame() {
   const cards    = distributeCards(students.length, angelRatio, bombRatio);
   const shuffled = [...cards].sort(() => Math.random() - .5);
 
-  // ★ CHANGED: traded_with 배열도 초기화해서 업데이트
   const updates = students.map((p, i) =>
     sb.from('bomb_players').update({
       card: shuffled[i],
       trade_count: 0,
       card_traded: false,
-      traded_with: [],   // ★ NEW: 게임 시작 시 초기화
+      traded_with: [],
     }).eq('id', p.id)
   );
   await Promise.all(updates);
@@ -912,7 +973,10 @@ async function startGame() {
     State.liveMatrix[p.id] = { name: p.name, rounds: { 1: shuffled[i] } };
   });
 
-  const roundEndAt = new Date(Date.now() + roundDuration * 1000).toISOString();
+  // ★ CHANGED: 1라운드 시간 = 기본 시간 (감소 없음)
+  const firstRoundDuration = getRoundDuration(roundDuration, 1);
+  const roundEndAt = new Date(Date.now() + firstRoundDuration * 1000).toISOString();
+
   await sb.from('bomb_rooms').update({
     status: 'playing', total_rounds: totalRounds, current_round: 1,
     round_duration: roundDuration, round_end_at: roundEndAt,
@@ -944,8 +1008,6 @@ async function enterGame(room) {
   document.getElementById('my-status-card').classList.add('show');
 
   await rebuildLiveMatrix(room);
-
-  // ★ NEW: DB에서 내 traded_with 복원
   await loadMyTradedWith();
 
   renderMyCard();
@@ -973,7 +1035,6 @@ async function enterGame(room) {
           State.myCardTraded   = false;
           State.myTradeAgreed  = false;
           State.currentNego    = null;
-          // ★ NOTE: myTradedWith는 라운드가 바뀌어도 초기화하지 않음 (게임 전체 누적)
 
           await loadMyCard();
           renderMyCard();
@@ -997,7 +1058,6 @@ async function enterGame(room) {
           const cardChanged = updated.card !== State.myCard;
           State.myCard       = updated.card;
           State.myCardTraded = updated.card_traded;
-          // ★ NEW: traded_with 동기화
           State.myTradedWith = updated.traded_with || [];
           if (cardChanged) renderMyCard();
           renderMyStatus();
@@ -1029,7 +1089,7 @@ async function enterGame(room) {
 }
 
 /* ================================================================
-   ★ NEW: DB에서 내 traded_with 로드
+   DB에서 내 traded_with 로드
    ================================================================ */
 async function loadMyTradedWith() {
   if (State.isHost) return;
@@ -1118,7 +1178,6 @@ function renderMyStatus() {
 
 /* ================================================================
    게임 참가자 그리드
-   ★ CHANGED: 이미 교환한 상대에게 시각적 표시 추가
    ================================================================ */
 async function refreshGamePlayers() {
   const { data } = await sb.from('bomb_players').select()
@@ -1134,16 +1193,14 @@ function renderGamePlayerGrid() {
   State.players.forEach(p => {
     if (p.is_host || p.id === State.playerId) return;
     const inNego = !!p.negotiating_with;
-    // ★ NEW: 이 상대와 이미 교환했는지 확인 (내 traded_with 기준)
     const alreadyTradedWith = State.myTradedWith.includes(p.id);
 
     const btn = document.createElement('button');
     btn.className = 'player-btn'
       + (inNego ? ' in-nego' : '')
       + (p.card_traded ? ' traded' : '')
-      + (alreadyTradedWith ? ' already-traded-with' : '');  // ★ NEW
+      + (alreadyTradedWith ? ' already-traded-with' : '');
 
-    // ★ CHANGED: 이미 교환한 상대임을 이름 옆에 표시
     const alreadyLabel = alreadyTradedWith
       ? '<span style="font-size:10px;color:var(--muted)"> (교환함·점수제외)</span>'
       : '';
@@ -1213,11 +1270,17 @@ function hideTradeBanner() {
 
 /* ================================================================
    타이머
+   ★ CHANGED: room.round_duration(기본값) + current_round로
+              실제 라운드 시간을 계산하여 타이머 바 비율 산정
    ================================================================ */
 function startTimer(room) {
   clearTimer();
   const endAt = new Date(room.round_end_at).getTime();
-  const total = room.round_duration * 1000;
+
+  // 이 라운드의 실제 시간 = 기본 시간 - (라운드-1)*5초
+  const actualDuration = getRoundDuration(room.round_duration, room.current_round);
+  const total = actualDuration * 1000;
+
   document.getElementById('round-display').textContent =
     `라운드 ${room.current_round} / ${room.total_rounds}`;
 
@@ -1244,6 +1307,7 @@ function clearTimer() {
 
 /* ================================================================
    라운드 진행 (진행자)
+   ★ CHANGED: 다음 라운드 시간을 getRoundDuration으로 계산
    ================================================================ */
 async function advanceRound() {
   const room = State.room;
@@ -1258,12 +1322,14 @@ async function advanceRound() {
   }
 
   const students = State.players.filter(p => !p.is_host);
-  // ★ NOTE: card_traded와 negotiating_with만 초기화, traded_with는 유지
   await Promise.all(students.map(p =>
     sb.from('bomb_players').update({ card_traded: false, negotiating_with: null }).eq('id', p.id)
   ));
 
-  const roundEndAt = new Date(Date.now() + room.round_duration * 1000).toISOString();
+  // ★ CHANGED: 다음 라운드 시간 = 기본 시간 - (다음 라운드-1)*5초
+  const nextRoundDuration = getRoundDuration(room.round_duration, next);
+  const roundEndAt = new Date(Date.now() + nextRoundDuration * 1000).toISOString();
+
   await sb.from('bomb_rooms').update({ current_round: next, round_end_at: roundEndAt })
     .eq('id', State.roomId);
 }
@@ -1299,6 +1365,7 @@ async function saveRoundSnapshotFromLive(round) {
 
 /* ================================================================
    행렬 렌더링
+   ★ CHANGED: 각 라운드 헤더에 시간 표시 추가
    ================================================================ */
 function renderMatrix(currentRound) {
   const playerIds = Object.keys(State.liveMatrix);
@@ -1306,14 +1373,18 @@ function renderMatrix(currentRound) {
 
   const room = State.room;
   const totalRounds = room?.total_rounds || 3;
+  const baseDuration = room?.round_duration || 60;
   const rounds = [];
   for (let r = 1; r <= totalRounds; r++) rounds.push(r);
 
   let html = `<table id="matrix-table"><thead><tr>
     <th>이름</th>
-    ${rounds.map(r =>
-      `<th class="${r === currentRound ? 'matrix-current' : ''}">R${r}${r === currentRound ? ' 🔴' : ''}</th>`
-    ).join('')}
+    ${rounds.map(r => {
+      const sec = getRoundDuration(baseDuration, r);
+      const m   = Math.floor(sec / 60), s = sec % 60;
+      const timeLabel = m > 0 ? `${m}:${String(s).padStart(2,'0')}` : `${s}s`;
+      return `<th class="${r === currentRound ? 'matrix-current' : ''}">R${r}${r === currentRound ? ' 🔴' : ''}<br><span style="font-size:10px;opacity:0.6">${timeLabel}</span></th>`;
+    }).join('')}
     <th>교환수</th>
   </tr></thead><tbody>`;
 
@@ -1415,7 +1486,7 @@ async function handleNegoChange(payload) {
     State.myCardTraded = true;
     State.myTradeAgreed = false;
     setNegoStep('done');
-    await loadMyCard();   // ★ traded_with도 함께 로드됨
+    await loadMyCard();
     renderMyCard();
     renderMyStatus();
     showTradeBanner(partner?.name || '상대방');
@@ -1485,7 +1556,6 @@ async function rejectNego() {
 
 /* ================================================================
    협상 오버레이
-   ★ CHANGED: partnerId 파라미터 추가 → 이미 교환한 상대 안내 표시
    ================================================================ */
 function openNegoOverlay(partnerName, nego, partnerId) {
   document.getElementById('nego-partner-name').textContent = partnerName;
@@ -1498,7 +1568,6 @@ function openNegoOverlay(partnerName, nego, partnerId) {
   document.getElementById('btn-trade').style.color      = '';
   document.getElementById('btn-close-nego').textContent = '협상 종료';
 
-  // ★ NEW: 이미 교환한 상대 안내
   const alreadyNotice = document.getElementById('already-traded-notice');
   if (partnerId && State.myTradedWith.includes(partnerId)) {
     alreadyNotice.style.display = 'block';
@@ -1596,10 +1665,8 @@ function updateTradeStatus(nego) {
 
 /* ================================================================
    카드 교환 실행
-   ★ CHANGED: traded_with 확인 후 중복 교환은 trade_count 제외
    ================================================================ */
 async function executeTradeCards(nego) {
-  // 선점 락
   const { error: lockErr } = await sb.from('bomb_negotiations')
     .update({ status: 'processing' })
     .eq('id', nego.id)
@@ -1612,7 +1679,6 @@ async function executeTradeCards(nego) {
 
   if (!check || check.status !== 'processing') return;
 
-  // DB에서 최신 카드값 + traded_with 읽기
   const { data: reqData } = await sb.from('bomb_players')
     .select('card, trade_count, traded_with').eq('id', check.requester_id).single();
   const { data: tgtData } = await sb.from('bomb_players')
@@ -1623,24 +1689,20 @@ async function executeTradeCards(nego) {
     return;
   }
 
-  // ★ NEW: 이미 교환한 상대인지 확인
   const reqTradedWith = reqData.traded_with || [];
   const tgtTradedWith = tgtData.traded_with || [];
 
-  // requester 입장에서 target이 traded_with에 있으면 중복 교환
   const isRepeatTradeForReq = reqTradedWith.includes(check.target_id);
   const isRepeatTradeForTgt = tgtTradedWith.includes(check.requester_id);
 
-  // ★ NEW: trade_count는 새로운 상대일 때만 증가
   const reqNewCount = isRepeatTradeForReq
-    ? (reqData.trade_count || 0)          // 중복: 카운트 유지
-    : (reqData.trade_count || 0) + 1;     // 신규: 카운트 증가
+    ? (reqData.trade_count || 0)
+    : (reqData.trade_count || 0) + 1;
 
   const tgtNewCount = isRepeatTradeForTgt
     ? (tgtData.trade_count || 0)
     : (tgtData.trade_count || 0) + 1;
 
-  // ★ NEW: traded_with 배열에 상대방 ID 추가 (중복 없이)
   const reqNewTradedWith = reqTradedWith.includes(check.target_id)
     ? reqTradedWith
     : [...reqTradedWith, check.target_id];
@@ -1649,21 +1711,20 @@ async function executeTradeCards(nego) {
     ? tgtTradedWith
     : [...tgtTradedWith, check.requester_id];
 
-  // 카드 교환 실행
   await Promise.all([
     sb.from('bomb_players').update({
       card: tgtData.card,
       card_traded: true,
       negotiating_with: null,
       trade_count: reqNewCount,
-      traded_with: reqNewTradedWith,        // ★ NEW
+      traded_with: reqNewTradedWith,
     }).eq('id', check.requester_id),
     sb.from('bomb_players').update({
       card: reqData.card,
       card_traded: true,
       negotiating_with: null,
       trade_count: tgtNewCount,
-      traded_with: tgtNewTradedWith,        // ★ NEW
+      traded_with: tgtNewTradedWith,
     }).eq('id', check.target_id),
   ]);
 
@@ -1765,7 +1826,6 @@ async function endGame() {
   sorted.forEach((p, i) => {
     const isBomb    = p.card === 'bomb';
     const isWinner  = winnerIds.has(p.id);
-    // ★ NEW: traded_with 길이 = 교환한 서로 다른 상대 수
     const uniquePartners = (p.traded_with || []).length;
     const tr = document.createElement('tr');
     tr.className = isWinner ? 'winner-row' : isBomb ? 'loser-row' : '';
@@ -1783,18 +1843,17 @@ async function endGame() {
 
 /* ================================================================
    다시 하기 (진행자)
-   ★ CHANGED: traded_with도 초기화
    ================================================================ */
 async function replayGame() {
   await sb.from('bomb_players').update({
     card: null, card_traded: false, negotiating_with: null,
-    trade_count: 0, traded_with: [],   // ★ NEW: 초기화
+    trade_count: 0, traded_with: [],
   }).eq('room_id', State.roomId);
   await sb.from('bomb_round_history').delete().eq('room_id', State.roomId);
   await sb.from('bomb_rooms').update({ status: 'waiting', current_round: 0 }).eq('id', State.roomId);
 
   State.myCard = null; State.myCardTraded = false;
-  State.myTradedWith = [];   // ★ NEW: 로컬 상태도 초기화
+  State.myTradedWith = [];
   State.liveMatrix = {};
   enterLobby();
 }
@@ -1808,7 +1867,7 @@ function goHome() {
     roomId: null, playerId: null, playerName: null, isHost: false,
     room: null, players: [], myCard: null, currentNego: null,
     pendingNego: null, myTradeAgreed: false, myCardTraded: false,
-    myTradedWith: [],   // ★ NEW
+    myTradedWith: [],
     timerInterval: null, liveMatrix: {}, subs: [],
   });
   history.pushState({}, '', location.pathname);
