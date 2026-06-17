@@ -1432,9 +1432,10 @@ async function handleNegoChange(payload) {
 
     if (iAgreed && !theyAgreed) setNegoStep('agreed');
 
-    // 양측 모두 동의 → requester 클라이언트에서 카드 교환 실행
-    if (nego.requester_agree && nego.target_agree && nego.requester_id === State.playerId) {
-      await executeTradeCards(nego);
+    // 양측 모두 동의 → 양측 모두 executeTradeCards 시도 (DB 락으로 한 번만 실행됨)
+    if (nego.requester_agree && nego.target_agree) {
+      const iAmInvolved = nego.requester_id === State.playerId || nego.target_id === State.playerId;
+      if (iAmInvolved) await executeTradeCards(nego);
     }
   }
 }
@@ -1532,7 +1533,8 @@ async function closeNego() {
       .select('status').eq('id', nego.id).single();
     const currentStatus = freshNego?.status ?? nego.status;
 
-    if (currentStatus !== 'done') {
+    // 'done' 또는 'processing'(교환 진행 중) 상태이면 rejected로 덮어쓰지 않음
+    if (currentStatus !== 'done' && currentStatus !== 'processing') {
       const otherId = nego.requester_id === State.playerId ? nego.target_id : nego.requester_id;
       await sb.from('bomb_players').update({ negotiating_with: null }).eq('id', State.playerId);
       await sb.from('bomb_players').update({ negotiating_with: null }).eq('id', otherId);
@@ -1577,48 +1579,58 @@ function updateTradeStatus(nego) {
 }
 
 /* ================================================================
-   카드 교환 실행 (requester가 처리)
+   카드 교환 실행
+   양측 모두 호출 가능 — nego status를 'processing'으로 먼저 선점해서 중복 방지
    ================================================================ */
 async function executeTradeCards(nego) {
-  // 중복 실행 방지: 클라이언트 레벨 플래그
-  if (executeTradeCards._running) return;
-  executeTradeCards._running = true;
+  // ── 선점 락: status를 'processing'으로 바꿀 수 있는 클라이언트만 실행 ──
+  // active → processing 업데이트 후 변경된 row 수를 count로 확인
+  const { error: lockErr } = await sb.from('bomb_negotiations')
+    .update({ status: 'processing' })
+    .eq('id', nego.id)
+    .eq('status', 'active');
 
-  try {
-    // DB에서 최신 nego 상태 확인 (이미 done이면 중단)
-    const { data: freshNego } = await sb.from('bomb_negotiations')
-      .select('status').eq('id', nego.id).single();
-    if (!freshNego || freshNego.status !== 'active') return;
+  if (lockErr) return; // 락 실패
 
-    // DB에서 최신 카드값 읽기
-    const { data: reqData } = await sb.from('bomb_players')
-      .select('card, trade_count').eq('id', nego.requester_id).single();
-    const { data: tgtData } = await sb.from('bomb_players')
-      .select('card, trade_count').eq('id', nego.target_id).single();
+  // 락 성공 확인: DB에서 실제 status 조회
+  const { data: check } = await sb.from('bomb_negotiations')
+    .select('status, requester_id, target_id').eq('id', nego.id).single();
 
-    if (!reqData?.card || !tgtData?.card) return;
+  // 내가 processing으로 바꿨는지 확인
+  // (다른 클라이언트가 먼저 바꿨으면 'done' 이거나 이미 'processing')
+  // 소유권 확인: requester_id 또는 target_id가 나인 경우에만 진행
+  if (!check || check.status !== 'processing') return;
 
-    // 카드 교환 실행
-    await Promise.all([
-      sb.from('bomb_players').update({
-        card: tgtData.card,
-        card_traded: true,
-        negotiating_with: null,
-        trade_count: (reqData.trade_count || 0) + 1,
-      }).eq('id', nego.requester_id),
-      sb.from('bomb_players').update({
-        card: reqData.card,
-        card_traded: true,
-        negotiating_with: null,
-        trade_count: (tgtData.trade_count || 0) + 1,
-      }).eq('id', nego.target_id),
-    ]);
+  // DB에서 최신 카드값 읽기
+  const { data: reqData } = await sb.from('bomb_players')
+    .select('card, trade_count').eq('id', check.requester_id).single();
+  const { data: tgtData } = await sb.from('bomb_players')
+    .select('card, trade_count').eq('id', check.target_id).single();
 
-    // 마지막으로 status done 처리
-    await sb.from('bomb_negotiations').update({ status: 'done' }).eq('id', nego.id);
-  } finally {
-    executeTradeCards._running = false;
+  if (!reqData?.card || !tgtData?.card) {
+    // 카드 없으면 status 복구
+    await sb.from('bomb_negotiations').update({ status: 'active' }).eq('id', nego.id);
+    return;
   }
+
+  // 카드 교환
+  await Promise.all([
+    sb.from('bomb_players').update({
+      card: tgtData.card,
+      card_traded: true,
+      negotiating_with: null,
+      trade_count: (reqData.trade_count || 0) + 1,
+    }).eq('id', check.requester_id),
+    sb.from('bomb_players').update({
+      card: reqData.card,
+      card_traded: true,
+      negotiating_with: null,
+      trade_count: (tgtData.trade_count || 0) + 1,
+    }).eq('id', check.target_id),
+  ]);
+
+  // 완료
+  await sb.from('bomb_negotiations').update({ status: 'done' }).eq('id', nego.id);
 }
 
 /* ================================================================
