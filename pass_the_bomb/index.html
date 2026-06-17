@@ -1732,7 +1732,7 @@ function clearSubs() {
    도화선 애니메이션
    ================================================================ */
 const fuseEl = document.getElementById('fuse-text');
-const baseText = '폭탄의 도화선이 타들어가고 있습니다';
+const baseText = '폭탄의 도화선';
 const maxDots = 12;
 let dots = maxDots, fuseShowingExplosion = false, fuseInterval = null;
 
@@ -1763,7 +1763,7 @@ function updateFuse() {
       fuseShowingExplosion = false; dots = maxDots;
       fuseEl.textContent = baseText + '.'.repeat(dots) + '!';
       if (fuseInterval) clearInterval(fuseInterval);
-      fuseInterval = setInterval(updateFuse, 1500);
+      fuseInterval = setInterval(updateFuse, 1000);
     }, 3000);
     return;
   }
