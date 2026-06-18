@@ -915,8 +915,10 @@ async function startGame() {
   const roundEndAt = new Date(Date.now() + roundDuration * 1000).toISOString();
   await sb.from('bomb_rooms').update({
     status: 'playing', total_rounds: totalRounds, current_round: 1,
-    round_duration: roundDuration, round_end_at: roundEndAt,
+    round_duration: roundDuration,
+    round_duration_step: 5,
     angel_ratio: angelRatio, bomb_ratio: bombRatio,
+    round_end_at: roundEndAt,
   }).eq('id', State.roomId);
 }
 
@@ -1212,12 +1214,21 @@ function hideTradeBanner() {
 }
 
 /* ================================================================
+   라운드별 실제 진행 시간 계산 (매 라운드 5초씩 감소, 최소 10초)
+   ================================================================ */
+function getRoundDuration(room, round) {
+  const base = room.round_duration || 60;
+  const step = room.round_duration_step || 5;
+  return Math.max(10, base - (round - 1) * step);
+}
+
+/* ================================================================
    타이머
    ================================================================ */
 function startTimer(room) {
   clearTimer();
   const endAt = new Date(room.round_end_at).getTime();
-  const total = room.round_duration * 1000;
+  const total = getRoundDuration(room, room.current_round) * 1000;
   document.getElementById('round-display').textContent =
     `라운드 ${room.current_round} / ${room.total_rounds}`;
 
@@ -1263,8 +1274,9 @@ async function advanceRound() {
     sb.from('bomb_players').update({ card_traded: false, negotiating_with: null }).eq('id', p.id)
   ));
 
-  const roundEndAt = new Date(Date.now() + room.round_duration * 1000).toISOString();
-  await sb.from('bomb_rooms').update({ current_round: next, round_end_at: roundEndAt })
+  const nextDuration = getRoundDuration(room, next);
+  const roundEndAt = new Date(Date.now() + nextDuration * 1000).toISOString();
+  await sb.from('bomb_rooms').update({ current_round: next, round_end_at: roundEndAt, round_duration: nextDuration })
     .eq('id', State.roomId);
 }
 
