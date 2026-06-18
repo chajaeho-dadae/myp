@@ -1851,7 +1851,7 @@ function clearSubs() {
    ================================================================ */
 const fuseEl = document.getElementById('fuse-text');
 const baseText = '💣';
-const maxDots = 64;
+const maxDots = 128;
 let dots = maxDots, fuseShowingExplosion = false, fuseInterval = null;
 
 const boomSVG = `
@@ -1879,13 +1879,13 @@ function updateFuse() {
     fuseEl.innerHTML = boomSVG;
     setTimeout(() => {
       fuseShowingExplosion = false; dots = maxDots;
-      fuseEl.textContent = baseText + '.'.repeat(dots) + '💥';
+      fuseEl.textContent = baseText + '. '.repeat(dots) + '💥';
       if (fuseInterval) clearInterval(fuseInterval);
       fuseInterval = setInterval(updateFuse, 100);
     }, 1000);
     return;
   }
-  fuseEl.textContent = baseText + '.'.repeat(dots) + '💥';
+  fuseEl.textContent = baseText + '. '.repeat(dots) + '💥';
   dots--;
   if (dots < 0) {
     fuseShowingExplosion = true;
