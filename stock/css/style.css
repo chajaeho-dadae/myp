@@ -253,13 +253,12 @@ input:focus, select:focus { border-color: var(--accent); }
 
 .player-body {
   flex: 1;
-  padding: 12px 4px;
+  padding: 12px 8px;   /* 좌우 패딩 축소 */
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 1000px;    /* 기존 대비 약 200px 확장 */
-  margin: 0 auto;      /* 중앙 정렬 */
-  width: 100%;
+  width: 100%;          /* 추가 */
+  box-sizing: border-box;
 }
 
 /* ================================================================
