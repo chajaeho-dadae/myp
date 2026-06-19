@@ -256,7 +256,7 @@ input:focus, select:focus { border-color: var(--accent); }
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 900px;    /* 기존 대비 약 200px 확장 */
+  max-width: 1000px;    /* 기존 대비 약 200px 확장 */
   margin: 0 auto;      /* 중앙 정렬 */
   width: 100%;
 }
