@@ -173,6 +173,9 @@ input:focus, select:focus { border-color: var(--accent); }
   grid-template-rows: auto 1fr;
   min-height: 100vh;
   gap: 0;
+  max-width: 1300px;   /* 기존 대비 약 100px 확장 */
+  margin: 0 auto;      /* 중앙 정렬 */
+  width: 100%;
 }
 
 .host-header {
@@ -253,6 +256,9 @@ input:focus, select:focus { border-color: var(--accent); }
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-width: 900px;    /* 기존 대비 약 200px 확장 */
+  margin: 0 auto;      /* 중앙 정렬 */
+  width: 100%;
 }
 
 /* ================================================================
