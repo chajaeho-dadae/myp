@@ -4,7 +4,7 @@
 
 // ⚠️ 아래 두 값을 본인 Supabase 프로젝트 값으로 교체하세요
 // Settings → API → Project URL / anon public key
-const SUPABASE_URL  = 'https://sdhpzypjqmowhrhxvvsj.supabase.co/rest/v1/';
+const SUPABASE_URL  = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
 
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
