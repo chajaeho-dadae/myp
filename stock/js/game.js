@@ -258,20 +258,20 @@ async function processGameStart(roomId, stocks) {
  * @param {number} playerCash    현재 보유 현금
  */
 async function processBuy(roomId, playerName, ticker, quantity, currentPrice, playerCash) {
-  if (quantity <= 0)            throw new Error('수량은 1 이상이어야 합니다.');
+  if (quantity <= 0)               throw new Error('수량은 1 이상이어야 합니다.');
   if (!Number.isInteger(quantity)) throw new Error('수량은 정수여야 합니다.');
 
   const totalCost = currentPrice * quantity;
-  if (totalCost > playerCash)   throw new Error('잔액이 부족합니다.');
+  if (totalCost > playerCash)      throw new Error('잔액이 부족합니다.');
 
-  const newCash = playerCash - totalCost;
-
-  // 현금 차감 먼저
-  await dbUpdatePlayerCash(roomId, playerName, newCash);
+  // DB에서 직접 차감 (atomic) — 빠른 연속 거래로 인한 이중차감 방지
+  await dbIncrementPlayerCash(roomId, playerName, -totalCost);
   // 보유 주식 추가
   await dbBuyStock(roomId, playerName, ticker, quantity, currentPrice);
 
-  return newCash;
+  // 최신 현금 반환
+  const player = await dbGetPlayer(roomId, playerName);
+  return player.cash;
 }
 
 
@@ -294,14 +294,15 @@ async function processSell(roomId, playerName, ticker, quantity, currentPrice, p
   if (quantity > holdingQty)       throw new Error('보유 수량이 부족합니다.');
 
   const totalGain = currentPrice * quantity;
-  const newCash   = playerCash + totalGain;
 
   // 보유 주식 차감 먼저
   await dbSellStock(roomId, playerName, ticker, quantity);
-  // 현금 추가
-  await dbUpdatePlayerCash(roomId, playerName, newCash);
+  // DB에서 직접 증가 (atomic) — 빠른 연속 거래로 인한 이중지급 방지
+  await dbIncrementPlayerCash(roomId, playerName, totalGain);
 
-  return newCash;
+  // 최신 현금 반환
+  const player = await dbGetPlayer(roomId, playerName);
+  return player.cash;
 }
 
 
