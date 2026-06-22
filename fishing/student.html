@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎣 공유지의 비극 — 어부</title>
+<title>🎣 낚시왕 — 어부</title>
 <style>
 :root {
   --bg0:#0d1117; --bg1:#161b22; --bg2:#1c2128; --bg3:#22272e;
@@ -182,8 +182,8 @@ html,body{height:100%;background:var(--bg0);color:var(--text1);font-family:'Sego
 <div id="join-screen">
   <div id="join-box">
     <div style="font-size:48px;text-align:center;margin-bottom:8px">🎣</div>
-    <h2>공유지의 비극</h2>
-    <p>어촌 마을 어부가 되어<br>공동 어장을 지켜내세요!</p>
+    <h2>낚시왕</h2>
+    <p>어촌 마을 어부가 되어<br>공동 어장의 낚시왕이 되세요!</p>
     <div class="field" style="margin-top:16px">
       <label>방 코드 (진행자에게 받은 4자리)</label>
       <input type="text" id="j-code" placeholder="1234"
@@ -206,7 +206,7 @@ html,body{height:100%;background:var(--bg0);color:var(--text1);font-family:'Sego
 <div id="app" style="display:none">
   <div id="topbar">
     <span style="font-size:18px">🎣</span>
-    <h1>공유지의 비극</h1>
+    <h1>낚시왕</h1>
     <span id="tb-phase" class="badge badge-blue">대기</span>
     <div class="spacer"></div>
     <span id="tb-me" style="font-size:12px;color:var(--text2)"></span>
@@ -947,7 +947,7 @@ function renderEnded() {
   const isGameover = room.resource <= 0;
   document.getElementById('ended-title').textContent = isGameover ? '💀 어장 고갈!' : '🏁 게임 종료!';
   document.getElementById('ended-desc').textContent  = isGameover
-    ? '공유지의 비극이 현실이 되었습니다.\n협력의 중요성을 배웠나요?'
+    ? '공동 어장의 물고기가 고갈되었습니다.'
     : '모든 라운드가 완료되었습니다. 최종 순위를 확인하세요!';
 
   const sorted = [...S.players].filter(p=>!p.is_host).sort((a,b)=>b.total_score-a.total_score);
