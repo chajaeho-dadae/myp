@@ -201,8 +201,33 @@ function subscribeAll() {
     }),
     dbWatchPlayers(Host.roomId, players => {
       Host.players = players;
-      renderRankings();
+      // holdings도 함께 갱신해야 정확한 순위 계산이 가능
+      dbGetAllHoldings(Host.roomId).then(holdings => {
+        Host.holdings = holdings;
+        renderRankings();
+      });
     }),
+  );
+
+  // 학생 거래(holdings 변경) 감지 → 진행자 순위 실시간 갱신
+  Host.subs.push(
+    _sb
+      .channel('host-holdings-' + Host.roomId)
+      .on('postgres_changes', {
+        event:  '*',
+        schema: 'public',
+        table:  'stock_holdings',
+        filter: `room_id=eq.${Host.roomId}`,
+      }, async () => {
+        const [players, holdings] = await Promise.all([
+          dbGetPlayers(Host.roomId),
+          dbGetAllHoldings(Host.roomId),
+        ]);
+        Host.players  = players;
+        Host.holdings = holdings;
+        renderRankings();
+      })
+      .subscribe()
   );
 }
 
@@ -276,11 +301,15 @@ function renderNewsList() {
 }
 
 function renderRankings() {
-  const rankings = calcRankings(Host.players, Host.holdings, Host.stocks);
-  const tbody    = document.getElementById('h-rank-tbody');
+  const tbody = document.getElementById('h-rank-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '';
 
+  // Host.holdings 는 subscribeAll/refreshAll 에서 항상 최신 상태 유지
+  // 총자산 기준 내림차순 정렬을 방어적으로 보장
+  const rankings = calcRankings(Host.players, Host.holdings, Host.stocks);
+  rankings.sort((a, b) => b.total - a.total);
+
+  tbody.innerHTML = '';
   rankings.forEach((r, i) => {
     const tr = document.createElement('tr');
     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}위`;
