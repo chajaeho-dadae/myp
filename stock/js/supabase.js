@@ -185,6 +185,24 @@ async function dbUpdatePlayerCash(roomId, name, newCash) {
   if (error) throw error;
 }
 
+// 현금을 덮어쓰지 않고 DB에서 직접 delta 만큼 증감
+// 동시 요청(빠른 연속 거래)으로 인한 이중차감/이중지급 방지
+async function dbIncrementPlayerCash(roomId, name, delta) {
+  // Supabase RPC로 atomic 증감
+  const { error } = await _sb.rpc('increment_player_cash', {
+    p_room_id: roomId,
+    p_name:    name,
+    p_delta:   delta,
+  });
+  if (error) {
+    // RPC 미설정 환경 fallback: DB 최신값 읽어서 update (단일 사용자 환경에서는 안전)
+    const player = await dbGetPlayer(roomId, name);
+    const safeCash = (player?.cash ?? 0) + delta;
+    if (safeCash < 0) throw new Error('잔액이 부족합니다.');
+    await dbUpdatePlayerCash(roomId, name, safeCash);
+  }
+}
+
 function dbWatchPlayers(roomId, callback) {
   return _sb
     .channel('players-' + roomId)
@@ -319,6 +337,8 @@ async function dbGetNews(roomId, round) {
 }
 
 function dbWatchNews(roomId, callback) {
+  // callback 은 round 를 직접 지정해 재조회하는 신호 전용
+  // dbGetNews(roomId, null) 은 .eq('round', null) 이 되어 항상 빈 배열 반환하는 버그 수정
   return _sb
     .channel('news-' + roomId)
     .on('postgres_changes', {
@@ -326,7 +346,7 @@ function dbWatchNews(roomId, callback) {
       schema: 'public',
       table:  'stock_news',
       filter: `room_id=eq.${roomId}`,
-    }, () => dbGetNews(roomId, null).then(callback))
+    }, () => callback())
     .subscribe();
 }
 
