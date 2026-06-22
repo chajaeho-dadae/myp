@@ -63,7 +63,7 @@ html,body{height:100%;background:var(--bg0);color:var(--text1);font-family:'Sego
 #join-screen{display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg0)}
 #join-box{background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:28px;width:100%;max-width:400px}
 #join-box h2{font-size:20px;font-weight:700;margin-bottom:6px;text-align:center}
-#join-box p{font-size:12px;color:var(--text2);text-align:center;margin-bottom:20px}
+#join-box p{font-size:12px;color:var(--text2);text-align:center;margin-bottom:8px}
 .field{margin-bottom:14px}
 .field label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px}
 .field input{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:var(--radius);padding:9px 12px;font-size:14px;outline:none;transition:border .15s}
@@ -181,23 +181,24 @@ html,body{height:100%;background:var(--bg0);color:var(--text1);font-family:'Sego
 <!-- ══ 입장 화면 ══ -->
 <div id="join-screen">
   <div id="join-box">
-    <div style="font-size:40px;text-align:center;margin-bottom:10px">🎣</div>
+    <div style="font-size:48px;text-align:center;margin-bottom:8px">🎣</div>
     <h2>공유지의 비극</h2>
     <p>어촌 마을 어부가 되어<br>공동 어장을 지켜내세요!</p>
-    <div class="field">
-      <label>Supabase URL</label>
-      <input type="text" id="j-url" placeholder="https://xxxx.supabase.co">
-    </div>
-    <div class="field">
-      <label>Supabase anon key</label>
-      <input type="text" id="j-key" placeholder="eyJ...">
+    <div class="field" style="margin-top:16px">
+      <label>방 코드 (진행자에게 받은 4자리)</label>
+      <input type="text" id="j-code" placeholder="1234"
+        maxlength="4" inputmode="numeric" pattern="[0-9]*"
+        style="font-size:28px;font-weight:700;letter-spacing:8px;text-align:center;font-family:monospace"
+        oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">
     </div>
     <div class="field">
       <label>어부 이름 (닉네임)</label>
-      <input type="text" id="j-name" placeholder="홍길동" maxlength="12" oninput="this.value=this.value.trim()">
+      <input type="text" id="j-name" placeholder="홍길동" maxlength="12"
+        oninput="this.value=this.value.trim()"
+        onkeydown="if(event.key==='Enter')joinGame()">
     </div>
-    <button class="btn btn-green btn-full" style="margin-top:4px" onclick="joinGame()">🚤 입장하기</button>
-    <div id="join-err"></div>
+    <button class="btn btn-green btn-full" style="margin-top:8px;padding:12px" onclick="joinGame()">🚤 입장하기</button>
+    <div id="join-err" style="margin-top:8px"></div>
   </div>
 </div>
 
@@ -368,6 +369,12 @@ html,body{height:100%;background:var(--bg0);color:var(--text1);font-family:'Sego
 'use strict';
 
 // ================================================================
+//  Supabase 접속 정보 (하드코딩)
+// ================================================================
+const SUPABASE_URL  = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
+
+// ================================================================
 //  전역 상태
 // ================================================================
 let sb       = null;
@@ -391,43 +398,62 @@ const S = {
 //  입장
 // ================================================================
 async function joinGame() {
-  const url  = document.getElementById('j-url').value.trim();
-  const key  = document.getElementById('j-key').value.trim();
+  const code = document.getElementById('j-code').value.trim();
   const name = document.getElementById('j-name').value.trim();
   const err  = document.getElementById('join-err');
 
-  if (!url || !key) { err.textContent = 'Supabase URL과 Key를 입력하세요.'; return; }
-  if (!name)        { err.textContent = '어부 이름을 입력하세요.'; return; }
-  if (name.length < 1 || name.length > 12) { err.textContent = '이름은 1~12자로 입력하세요.'; return; }
+  if (!code || code.length !== 4) { err.textContent = '4자리 방 코드를 입력하세요.'; return; }
+  if (!name)  { err.textContent = '어부 이름을 입력하세요.'; return; }
+  if (name.length > 12) { err.textContent = '이름은 12자 이하로 입력하세요.'; return; }
+
+  // 버튼 비활성화 (중복 클릭 방지)
+  const btn = document.querySelector('#join-box button');
+  btn.disabled = true;
+  btn.textContent = '⏳ 연결 중...';
 
   try {
-    sb = supabase.createClient(url, key);
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-    // 방 확인
-    const { data: room, error: re } = await sb.from('fish_rooms').select('*').eq('id','main').single();
-    if (re) throw re;
-    if (room.phase === 'ended') { err.textContent = '게임이 이미 종료되었습니다.'; return; }
+    // 방 코드 검증
+    const { data: room, error: re } = await sb.from('fish_rooms')
+      .select('*').eq('id','main').eq('room_code', code).single();
 
-    // 중복 닉네임 확인 (이미 있으면 재접속으로 처리)
-    const { data: existing } = await sb.from('fish_players').select('*').eq('id', name).single();
-    if (existing && existing.is_host) { err.textContent = '진행자 이름은 사용할 수 없습니다.'; return; }
+    if (re || !room) {
+      err.textContent = '❌ 방 코드가 올바르지 않습니다. 진행자에게 확인하세요.';
+      btn.disabled = false; btn.textContent = '🚤 입장하기';
+      return;
+    }
+    if (room.phase === 'ended') {
+      err.textContent = '게임이 이미 종료되었습니다.';
+      btn.disabled = false; btn.textContent = '🚤 입장하기';
+      return;
+    }
+
+    // 중복 닉네임 확인 (이미 있으면 재접속)
+    const { data: existing } = await sb.from('fish_players')
+      .select('*').eq('id', name).single();
+    if (existing && existing.is_host) {
+      err.textContent = '진행자와 같은 이름은 사용할 수 없습니다.';
+      btn.disabled = false; btn.textContent = '🚤 입장하기';
+      return;
+    }
 
     MY_ID = name;
 
     if (existing) {
-      // 재접속: last_seen_at 갱신
-      await sb.from('fish_players').update({ last_seen_at: new Date().toISOString(), is_active: true }).eq('id', name);
-      toast('🔄 재접속 완료! 이전 게임 상태를 복원합니다.');
+      await sb.from('fish_players').update({
+        last_seen_at: new Date().toISOString(), is_active: true
+      }).eq('id', name);
+      toast('🔄 재접속 완료! 이전 상태를 복원합니다.');
     } else {
-      // 신규 입장
       const { error: pe } = await sb.from('fish_players').insert({
         id: name, room_id: 'main', is_host: false,
       });
       if (pe) throw pe;
     }
 
-    // 설정 저장 (재접속용)
-    localStorage.setItem('fish_student_cfg', JSON.stringify({ url, key, name }));
+    // 재접속 정보 저장
+    localStorage.setItem('fish_student_cfg', JSON.stringify({ code, name }));
 
     // 이벤트 목록 로드
     const { data: evts } = await sb.from('fish_events').select('*');
@@ -444,6 +470,7 @@ async function joinGame() {
 
   } catch(e) {
     err.textContent = '입장 실패: ' + (e.message || e);
+    btn.disabled = false; btn.textContent = '🚤 입장하기';
   }
 }
 
@@ -451,12 +478,15 @@ async function joinGame() {
 //  자동 재접속 (localStorage)
 // ================================================================
 window.addEventListener('DOMContentLoaded', () => {
+  // Supabase client 미리 초기화
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  // 재접속 정보 복원
   const raw = localStorage.getItem('fish_student_cfg');
   if (!raw) return;
   const cfg = JSON.parse(raw);
-  document.getElementById('j-url').value  = cfg.url  || '';
-  document.getElementById('j-key').value  = cfg.key  || '';
-  document.getElementById('j-name').value = cfg.name || '';
+  if (cfg.code) document.getElementById('j-code').value = cfg.code;
+  if (cfg.name) document.getElementById('j-name').value = cfg.name;
 });
 
 // ================================================================
