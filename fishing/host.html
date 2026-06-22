@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎣 공유지의 비극 — 진행자</title>
+<title>🎣 어부왕 — 진행자</title>
 <style>
 :root {
   --bg0:#0d1117; --bg1:#161b22; --bg2:#1c2128; --bg3:#22272e;
@@ -150,11 +150,16 @@ a{color:var(--blue);text-decoration:none}
   <!-- 상단 바 -->
   <div id="topbar">
     <span style="font-size:18px">🎣</span>
-    <h1>공유지의 비극 — 진행자</h1>
-    <span id="tb-room" class="badge badge-blue">main</span>
+    <h1>어부왕 — 진행자</h1>
     <span id="tb-phase" class="badge badge-yellow">lobby</span>
     <div class="spacer"></div>
-    <span id="tb-connected" style="font-size:11px;color:var(--text2)">● 연결 중...</span>
+    <!-- 방 코드 표시 -->
+    <div id="room-code-wrap" style="display:none;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:4px 12px">
+      <span style="font-size:11px;color:var(--text2)">방 코드</span>
+      <span id="tb-room-code" style="font-size:20px;font-weight:700;font-family:monospace;color:var(--yellow);letter-spacing:4px">----</span>
+      <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="copyRoomCode()" title="복사">📋</button>
+    </div>
+    <span id="tb-connected" style="font-size:11px;color:var(--text2);margin-left:8px">● 연결 중...</span>
   </div>
 
   <!-- 3열 메인 -->
@@ -231,6 +236,13 @@ a{color:var(--blue);text-decoration:none}
         </div>
 
         <!-- 단계 버튼들 -->
+        <!-- 방 코드 표시 (로비) -->
+        <div id="room-code-panel" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;margin-bottom:4px">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px">학생에게 알려줄 방 코드</div>
+          <div id="ctrl-room-code" style="font-size:36px;font-weight:700;font-family:monospace;color:var(--yellow);letter-spacing:8px">----</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">student.html 에서 이 코드로 입장</div>
+          <button class="btn btn-ghost" style="margin-top:8px;font-size:11px;width:100%;justify-content:center" onclick="generateRoomCode()">🔄 코드 재생성</button>
+        </div>
         <button id="btn-start-game"   class="btn btn-green  btn-full" onclick="startGame()">▶ 게임 시작</button>
         <button id="btn-start-round"  class="btn btn-primary btn-full" onclick="startRound()" style="display:none">▶ 다음 라운드 시작</button>
         <button id="btn-end-neg"      class="btn btn-orange btn-full" onclick="endNegotiation()" style="display:none">⏩ 협상 종료 → 채취 단계</button>
@@ -283,7 +295,7 @@ a{color:var(--blue);text-decoration:none}
 <div id="gameover">
   <div style="font-size:48px">💀</div>
   <h2>어장 고갈!</h2>
-  <p id="gameover-msg">모든 물고기가 사라졌습니다.<br>공유지의 비극이 현실이 되었습니다.</p>
+  <p id="gameover-msg">모든 물고기가 사라졌습니다.<br>어부왕이 현실이 되었습니다.</p>
   <button class="btn btn-ghost" onclick="document.getElementById('gameover').classList.remove('show')">닫기</button>
 </div>
 
@@ -326,6 +338,32 @@ const S = {
 // ================================================================
 //  자동 연결 (페이지 로드 시 즉시 실행)
 // ================================================================
+// ================================================================
+//  방 코드 생성/표시
+// ================================================================
+function generateRoomCode() {
+  const code = String(Math.floor(1000 + Math.random() * 9000));
+  sb.from('fish_rooms').update({ room_code: code }).eq('id','main').then(() => {
+    displayRoomCode(code);
+    toast('방 코드 생성: ' + code);
+  });
+}
+
+function displayRoomCode(code) {
+  if (!code) return;
+  document.getElementById('tb-room-code').textContent   = code;
+  document.getElementById('ctrl-room-code').textContent = code;
+  document.getElementById('room-code-wrap').style.display = 'flex';
+}
+
+function copyRoomCode() {
+  const code = document.getElementById('tb-room-code').textContent;
+  navigator.clipboard.writeText(code).then(() => toast('방 코드 ' + code + ' 복사됨!'));
+}
+
+// ================================================================
+//  자동 연결 (페이지 로드 시 즉시 실행)
+// ================================================================
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
@@ -340,6 +378,15 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await initRealtime();
     await fullSync();
+
+    // 기존 방 코드가 있으면 표시
+    if (S.room?.room_code) {
+      displayRoomCode(S.room.room_code);
+    } else {
+      // 없으면 자동 생성
+      generateRoomCode();
+    }
+
     toast('✅ 진행자 연결 완료');
 
   } catch(e) {
@@ -714,7 +761,7 @@ async function computeResult() {
   await sendChat(resultMsg, true);
 
   if (isOver) {
-    await sendChat('💀 어장이 고갈되었습니다! 공유지의 비극 발생!', true);
+    await sendChat('💀 어장이 고갈되었습니다! 어부왕 발생!', true);
     document.getElementById('gameover').classList.add('show');
   }
 
@@ -748,9 +795,11 @@ async function resetGame() {
   await sb.from('fish_chat').delete().eq('room_id','main');
   await sb.from('fish_players').delete().eq('room_id','main');
   const initResource = parseInt(document.getElementById('cfg-resource')?.value || 200);
+  const newCode = String(Math.floor(1000 + Math.random() * 9000));
   await sb.from('fish_rooms').update({
     phase:'lobby', current_round:0,
     resource: initResource, event_id:null, event_applied:false,
+    room_code: newCode,
   }).eq('id','main');
   await fullSync();
   document.getElementById('gameover').classList.remove('show');
@@ -819,6 +868,11 @@ function renderTopBar() {
   document.getElementById('tb-phase').textContent  = phaseNames[p] || p;
   document.getElementById('tb-phase').className    = 'badge ' + (phaseColors[p]||'badge-blue');
   document.getElementById('phase-text').textContent = phaseNames[p] || p;
+  // 방 코드 갱신
+  if (S.room?.room_code) displayRoomCode(S.room.room_code);
+  // 로비에서만 방 코드 패널 표시
+  const rcPanel = document.getElementById('room-code-panel');
+  if (rcPanel) rcPanel.style.display = (p === 'lobby') ? '' : 'none';
 }
 
 function renderResourceBar() {
