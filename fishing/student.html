@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎣 공유지의 비극 — 어부</title>
+<style>
+:root {
+  --bg0:#0d1117; --bg1:#161b22; --bg2:#1c2128; --bg3:#22272e;
+  --border:#30363d; --text1:#e6edf3; --text2:#8b949e; --text3:#484f58;
+  --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff;
+  --orange:#f0883e; --purple:#bc8cff;
+  --radius:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg0);color:var(--text1);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;overflow:hidden}
+
+/* ── 레이아웃 ── */
+#app{display:grid;grid-template-rows:48px 1fr;height:100vh;height:100dvh}
+#topbar{background:var(--bg1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;height:48px;flex-shrink:0}
+#topbar h1{font-size:13px;font-weight:600}
+#topbar .spacer{flex:1}
+/* 1280px 이상: 사이드 채팅 패널 */
+#main{display:grid;grid-template-columns:1fr 260px;height:100%;overflow:hidden}
+/* 1280px 미만(크롬북 등): 채팅 패널 숨기고 하단 탭으로 */
+@media(max-width:1279px){
+  #main{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  #chat-panel{border-left:none;border-top:1px solid var(--border);height:200px;min-height:160px}
+}
+/* 1600px 이상: 채팅 패널 더 넓게 */
+@media(min-width:1600px){
+  #main{grid-template-columns:1fr 320px}
+}
+
+/* ── 패널 ── */
+.panel{display:flex;flex-direction:column;overflow:hidden}
+.panel-header{padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--blue);text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--bg1);display:flex;align-items:center;gap:6px}
+.panel-body{flex:1;overflow-y:auto;padding:10px;min-height:0}
+.panel-body::-webkit-scrollbar{width:4px}
+.panel-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── 버튼 ── */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:600;transition:filter .15s;white-space:nowrap}
+.btn-primary{background:var(--blue);color:#000}
+.btn-green{background:var(--green);color:#000}
+.btn-red{background:var(--red);color:#fff}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-orange{background:var(--orange);color:#000}
+.btn-purple{background:var(--purple);color:#000}
+.btn:hover:not(:disabled){filter:brightness(1.15)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-full{width:100%;justify-content:center}
+
+/* ── 뱃지 ── */
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.badge-green{background:#1a3a1a;color:var(--green);border:1px solid #2a5a2a}
+.badge-red{background:#3a1a1a;color:var(--red);border:1px solid #5a2a2a}
+.badge-yellow{background:#2a2a1a;color:var(--yellow);border:1px solid #4a4a2a}
+.badge-blue{background:#1a2a3a;color:var(--blue);border:1px solid #2a4a6a}
+.badge-purple{background:#2a1a3a;color:var(--purple);border:1px solid #4a3a6a}
+
+/* ── 입장 화면 ── */
+#join-screen{display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg0)}
+#join-box{background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:28px;width:100%;max-width:400px}
+#join-box h2{font-size:20px;font-weight:700;margin-bottom:6px;text-align:center}
+#join-box p{font-size:12px;color:var(--text2);text-align:center;margin-bottom:20px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px}
+.field input{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:var(--radius);padding:9px 12px;font-size:14px;outline:none;transition:border .15s}
+.field input:focus{border-color:var(--blue)}
+#join-err{color:var(--red);font-size:12px;text-align:center;margin-top:8px}
+
+/* ── 대기 화면 ── */
+#lobby-screen{display:none;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:20px;text-align:center}
+#lobby-screen .big-icon{font-size:64px}
+#lobby-screen h2{font-size:22px;font-weight:700}
+#lobby-screen p{font-size:13px;color:var(--text2);line-height:1.7}
+#player-me-name{color:var(--blue);font-weight:700}
+
+/* ── 자원 게이지 ── */
+#resource-wrap{background:var(--bg1);border-bottom:1px solid var(--border);padding:7px 12px}
+#res-bar-bg{height:12px;background:var(--bg3);border-radius:6px;overflow:hidden;margin:4px 0 3px;position:relative}
+#res-bar-fill{height:100%;border-radius:7px;transition:width .6s;background:var(--green)}
+#res-bar-limit{position:absolute;top:0;width:2px;background:var(--yellow);height:100%}
+#res-info{display:flex;justify-content:space-between;font-size:11px;color:var(--text2)}
+
+/* ── 이벤트 카드 ── */
+#event-wrap{margin:0 0 12px}
+#event-card-student{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+#ev-s-icon{font-size:26px;margin-bottom:3px}
+#ev-s-name{font-weight:700;font-size:15px;margin-bottom:4px}
+#ev-s-desc{font-size:12px;color:var(--text2);line-height:1.6}
+
+/* ── 채취 슬라이더 ── */
+#harvest-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+#harvest-wrap h3{font-size:13px;font-weight:700;margin-bottom:12px;color:var(--yellow)}
+#slider-display{font-size:34px;font-weight:700;text-align:center;color:var(--orange);margin:6px 0;font-family:monospace}
+#harvest-slider{width:100%;accent-color:var(--orange);height:8px;margin:8px 0 14px}
+.slider-hints{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:12px}
+#harvest-note{font-size:11px;color:var(--text2);text-align:center;margin-bottom:10px;line-height:1.5}
+
+/* 제출 완료 표시 */
+#submitted-badge{display:none;background:#1a3a1a;border:1px solid #2a5a2a;border-radius:var(--radius);padding:14px;text-align:center;margin-bottom:12px}
+#submitted-badge .icon{font-size:28px;margin-bottom:4px}
+#submitted-badge .txt{font-size:13px;color:var(--green);font-weight:600}
+#submitted-badge .amount{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* ── 점수 카드 ── */
+#score-wrap{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.score-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center}
+.score-card .val{font-size:20px;font-weight:700;font-family:monospace}
+.score-card .lbl{font-size:10px;color:var(--text2);margin-top:1px}
+.score-card.yellow .val{color:var(--yellow)}
+.score-card.green .val{color:var(--green)}
+
+/* ── E11 투표 ── */
+#vote-wrap{background:var(--bg2);border:1px solid var(--purple);border-radius:var(--radius);padding:10px;margin-bottom:8px;display:none}
+#vote-wrap h3{font-size:13px;font-weight:700;color:var(--purple);margin-bottom:8px}
+#vote-wrap p{font-size:12px;color:var(--text2);margin-bottom:10px}
+.vote-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* ── 결과 화면 ── */
+#result-wrap{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;margin-bottom:8px}
+#result-wrap h3{font-size:13px;font-weight:700;margin-bottom:8px;color:var(--blue)}
+.result-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bg3);font-size:12px}
+.result-row:last-child{border:none}
+.result-row .lbl{color:var(--text2)}
+.result-row .val{font-weight:600}
+
+/* ── 대기 오버레이 ── */
+#phase-overlay{display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center}
+#phase-overlay .big{font-size:52px}
+#phase-overlay h2{font-size:20px;font-weight:700}
+#phase-overlay p{font-size:13px;color:var(--text2)}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 채팅 ── */
+#chat-panel{border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+#chat-messages{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px;min-height:0}
+.chat-msg{background:var(--bg2);border-radius:var(--radius);padding:7px 10px;font-size:12px;line-height:1.5}
+.chat-msg.system{background:#1a2a3a;border:1px solid #2a4a6a;color:var(--blue)}
+.chat-msg.whisper{background:#2a1a3a;border:1px solid #4a2a6a;color:var(--purple)}
+.chat-msg.mine{background:#1a2a1a;border:1px solid #2a5a2a}
+.chat-msg .sender{font-weight:700;font-size:11px;margin-bottom:2px}
+.chat-msg .time{font-size:10px;color:var(--text3);float:right}
+#chat-footer{padding:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+#chat-footer input{background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:var(--radius);padding:7px 10px;font-size:12px;outline:none;width:100%}
+#chat-footer input:focus{border-color:var(--blue)}
+#whisper-row{display:flex;gap:6px;align-items:center}
+#whisper-row select{flex:1;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:var(--radius);padding:6px 8px;font-size:11px;outline:none}
+#chat-footer .send-row{display:flex;gap:6px}
+#chat-footer .send-row input{flex:1}
+
+/* ── 게임 종료 ── */
+#ended-screen{display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center}
+#ended-screen .trophy{font-size:56px}
+#ended-screen h2{font-size:22px;font-weight:700}
+.rank-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.rank-table th{color:var(--text2);padding:5px 10px;border-bottom:1px solid var(--border);text-align:left}
+.rank-table td{padding:6px 10px;border-bottom:1px solid var(--bg3)}
+.rank-1{color:var(--yellow);font-weight:700}
+.rank-2{color:var(--text2);font-weight:600}
+.rank-3{color:var(--orange);font-weight:600}
+
+/* ── 타이머 ── */
+#timer-wrap{text-align:center;padding:6px;background:var(--bg3);border-radius:var(--radius);margin-bottom:10px;display:none}
+#timer-wrap .phase-name{font-size:11px;color:var(--text2);margin-bottom:2px}
+#timer-wrap .time-val{font-size:26px;font-weight:700;font-family:monospace;color:var(--yellow)}
+
+/* ── 토스트 ── */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border);color:var(--text1);padding:10px 20px;border-radius:20px;font-size:12px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- ══ 입장 화면 ══ -->
+<div id="join-screen">
+  <div id="join-box">
+    <div style="font-size:40px;text-align:center;margin-bottom:10px">🎣</div>
+    <h2>공유지의 비극</h2>
+    <p>어촌 마을 어부가 되어<br>공동 어장을 지켜내세요!</p>
+    <div class="field">
+      <label>Supabase URL</label>
+      <input type="text" id="j-url" placeholder="https://xxxx.supabase.co">
+    </div>
+    <div class="field">
+      <label>Supabase anon key</label>
+      <input type="text" id="j-key" placeholder="eyJ...">
+    </div>
+    <div class="field">
+      <label>어부 이름 (닉네임)</label>
+      <input type="text" id="j-name" placeholder="홍길동" maxlength="12" oninput="this.value=this.value.trim()">
+    </div>
+    <button class="btn btn-green btn-full" style="margin-top:4px" onclick="joinGame()">🚤 입장하기</button>
+    <div id="join-err"></div>
+  </div>
+</div>
+
+<!-- ══ 메인 앱 ══ -->
+<div id="app" style="display:none">
+  <div id="topbar">
+    <span style="font-size:18px">🎣</span>
+    <h1>공유지의 비극</h1>
+    <span id="tb-phase" class="badge badge-blue">대기</span>
+    <div class="spacer"></div>
+    <span id="tb-me" style="font-size:12px;color:var(--text2)"></span>
+    <span id="tb-score" style="font-size:12px;font-weight:700;color:var(--yellow)">0pt</span>
+    <span id="tb-conn" style="font-size:11px;color:var(--text3)">●</span>
+  </div>
+
+  <div id="main">
+    <!-- ══ 좌측: 게임 영역 ══ -->
+    <div class="panel">
+
+      <!-- 자원 게이지 -->
+      <div id="resource-wrap">
+        <div id="res-info">
+          <span>🐟 어장 자원</span>
+          <span id="res-label" style="color:var(--green);font-weight:700">200마리</span>
+        </div>
+        <div id="res-bar-bg">
+          <div id="res-bar-fill" style="width:100%"></div>
+          <div id="res-bar-limit"></div>
+        </div>
+        <div id="res-info-bottom" style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)">
+          <span id="res-limit-label">한계: 30%</span>
+          <span id="res-round-label">라운드 0/7</span>
+        </div>
+      </div>
+
+      <!-- 메인 콘텐츠 -->
+      <div class="panel-body" id="game-body">
+
+        <!-- 대기 화면 (lobby) -->
+        <div id="lobby-screen">
+          <div class="big-icon">⚓</div>
+          <h2>입장 완료!</h2>
+          <p>어부 <span id="player-me-name"></span> 님,<br>진행자가 게임을 시작할 때까지 기다려주세요.</p>
+          <div class="spinner"></div>
+        </div>
+
+        <!-- 게임 진행 화면 -->
+        <div id="game-screen" style="display:none">
+
+          <!-- 타이머 -->
+          <div id="timer-wrap">
+            <div class="phase-name" id="timer-phase-name">협상 중</div>
+            <div class="time-val" id="timer-val">02:00</div>
+          </div>
+
+          <!-- 점수 카드 -->
+          <div id="score-wrap">
+            <div class="score-card yellow">
+              <div class="val" id="sc-total">0</div>
+              <div class="lbl">내 총점 (pt)</div>
+            </div>
+            <div class="score-card green">
+              <div class="val" id="sc-round">+0</div>
+              <div class="lbl">이번 라운드 획득</div>
+            </div>
+          </div>
+
+          <!-- 이벤트 카드 -->
+          <div id="event-wrap">
+            <div id="event-card-student" style="display:none">
+              <div id="ev-s-icon"></div>
+              <div id="ev-s-name"></div>
+              <div id="ev-s-desc"></div>
+            </div>
+          </div>
+
+          <!-- E11 투표 -->
+          <div id="vote-wrap">
+            <h3>🗳️ 어업 조합 설립 투표</h3>
+            <p>과반수 찬성 시 이번 라운드 지속 가능 채취 한계가 20% 늘어납니다.</p>
+            <div class="vote-btns">
+              <button class="btn btn-green btn-full" onclick="submitVote('yes')">👍 찬성</button>
+              <button class="btn btn-red btn-full" onclick="submitVote('no')">👎 반대</button>
+            </div>
+          </div>
+
+          <!-- 채취 슬라이더 (harvest 페이즈) -->
+          <div id="harvest-wrap" style="display:none">
+            <h3>🎣 이번 라운드 채취량을 선택하세요</h3>
+            <div id="slider-display">5 마리</div>
+            <input type="range" id="harvest-slider" min="0" max="10" value="5" step="1"
+              oninput="onSlider(this.value)">
+            <div class="slider-hints"><span>0 (자제)</span><span>5 (적당)</span><span>10 (최대)</span></div>
+            <div id="harvest-note"></div>
+            <button class="btn btn-orange btn-full" id="btn-submit-harvest" onclick="submitHarvest()">
+              ✅ 채취량 확정 제출
+            </button>
+          </div>
+
+          <!-- 제출 완료 표시 -->
+          <div id="submitted-badge">
+            <div class="icon">✅</div>
+            <div class="txt">채취량 제출 완료!</div>
+            <div class="amount" id="submitted-amount">5마리 제출</div>
+          </div>
+
+          <!-- 결과 표시 -->
+          <div id="result-wrap">
+            <h3>📊 이번 라운드 결과</h3>
+            <div class="result-row"><span class="lbl">내 채취량</span><span class="val" id="r-amount">-</span></div>
+            <div class="result-row"><span class="lbl">이벤트 효과</span><span class="val" id="r-event">-</span></div>
+            <div class="result-row"><span class="lbl">획득 점수</span><span class="val" id="r-score" style="color:var(--green)">-</span></div>
+            <div class="result-row"><span class="lbl">어장 채취 합계</span><span class="val" id="r-total">-</span></div>
+            <div class="result-row"><span class="lbl">어장 잔여</span><span class="val" id="r-remain">-</span></div>
+          </div>
+
+          <!-- 대기 오버레이 (result 단계 등) -->
+          <div id="phase-overlay">
+            <div class="big" id="po-icon">⏳</div>
+            <h2 id="po-title">결과 집계 중...</h2>
+            <p id="po-desc">잠시만 기다려주세요</p>
+            <div class="spinner"></div>
+          </div>
+
+        </div>
+
+        <!-- 게임 종료 화면 -->
+        <div id="ended-screen">
+          <div class="trophy">🏆</div>
+          <h2 id="ended-title">게임 종료!</h2>
+          <p id="ended-desc" style="font-size:13px;color:var(--text2)"></p>
+          <table class="rank-table" id="rank-table">
+            <thead><tr><th>순위</th><th>어부</th><th>총점</th></tr></thead>
+            <tbody id="rank-tbody"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ 우측: 채팅 ══ -->
+    <div id="chat-panel">
+      <div class="panel-header">💬 마을 채팅
+        <span id="online-count" class="badge badge-blue" style="margin-left:auto">0명</span>
+      </div>
+      <div id="chat-messages"></div>
+      <div id="chat-footer">
+        <div id="whisper-row">
+          <span style="font-size:11px;color:var(--text2);white-space:nowrap">귓속말:</span>
+          <select id="whisper-target">
+            <option value="">전체에게</option>
+          </select>
+        </div>
+        <div class="send-row">
+          <input type="text" id="chat-input" placeholder="메시지 입력..." onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="btn btn-ghost" style="padding:7px 12px" onclick="sendChat()">전송</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="fish_game.js"></script>
+<script>
+'use strict';
+
+// ================================================================
+//  전역 상태
+// ================================================================
+let sb       = null;
+let MY_ID    = '';      // 내 닉네임 (= player_id)
+let timerInterval = null;
+let phaseEndTime  = null;
+let mySubmittedAmount = null;   // 이번 라운드 제출한 채취량
+let hasVoted  = false;          // 이번 라운드 투표 여부
+
+const S = {
+  room:    null,
+  players: [],
+  me:      null,    // fish_players 내 row
+  event:   null,    // 현재 이벤트 (fish_events row)
+  events:  [],      // 전체 이벤트 목록
+  roundRow: null,   // 현재 fish_rounds row
+  myHarvest: null,  // 이번 라운드 내 harvest row
+};
+
+// ================================================================
+//  입장
+// ================================================================
+async function joinGame() {
+  const url  = document.getElementById('j-url').value.trim();
+  const key  = document.getElementById('j-key').value.trim();
+  const name = document.getElementById('j-name').value.trim();
+  const err  = document.getElementById('join-err');
+
+  if (!url || !key) { err.textContent = 'Supabase URL과 Key를 입력하세요.'; return; }
+  if (!name)        { err.textContent = '어부 이름을 입력하세요.'; return; }
+  if (name.length < 1 || name.length > 12) { err.textContent = '이름은 1~12자로 입력하세요.'; return; }
+
+  try {
+    sb = supabase.createClient(url, key);
+
+    // 방 확인
+    const { data: room, error: re } = await sb.from('fish_rooms').select('*').eq('id','main').single();
+    if (re) throw re;
+    if (room.phase === 'ended') { err.textContent = '게임이 이미 종료되었습니다.'; return; }
+
+    // 중복 닉네임 확인 (이미 있으면 재접속으로 처리)
+    const { data: existing } = await sb.from('fish_players').select('*').eq('id', name).single();
+    if (existing && existing.is_host) { err.textContent = '진행자 이름은 사용할 수 없습니다.'; return; }
+
+    MY_ID = name;
+
+    if (existing) {
+      // 재접속: last_seen_at 갱신
+      await sb.from('fish_players').update({ last_seen_at: new Date().toISOString(), is_active: true }).eq('id', name);
+      toast('🔄 재접속 완료! 이전 게임 상태를 복원합니다.');
+    } else {
+      // 신규 입장
+      const { error: pe } = await sb.from('fish_players').insert({
+        id: name, room_id: 'main', is_host: false,
+      });
+      if (pe) throw pe;
+    }
+
+    // 설정 저장 (재접속용)
+    localStorage.setItem('fish_student_cfg', JSON.stringify({ url, key, name }));
+
+    // 이벤트 목록 로드
+    const { data: evts } = await sb.from('fish_events').select('*');
+    S.events = evts || [];
+
+    // 화면 전환
+    document.getElementById('join-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'grid';
+    document.getElementById('player-me-name').textContent = MY_ID;
+    document.getElementById('tb-me').textContent = MY_ID;
+
+    await initRealtime();
+    await fullSync();
+
+  } catch(e) {
+    err.textContent = '입장 실패: ' + (e.message || e);
+  }
+}
+
+// ================================================================
+//  자동 재접속 (localStorage)
+// ================================================================
+window.addEventListener('DOMContentLoaded', () => {
+  const raw = localStorage.getItem('fish_student_cfg');
+  if (!raw) return;
+  const cfg = JSON.parse(raw);
+  document.getElementById('j-url').value  = cfg.url  || '';
+  document.getElementById('j-key').value  = cfg.key  || '';
+  document.getElementById('j-name').value = cfg.name || '';
+});
+
+// ================================================================
+//  Realtime 구독
+// ================================================================
+async function initRealtime() {
+  // 방 상태 변경
+  sb.channel('student-room')
+    .on('postgres_changes', { event:'*', schema:'public', table:'fish_rooms', filter:'id=eq.main' },
+      async payload => {
+        const prev = S.room?.phase;
+        S.room = payload.new;
+        // 페이즈 변경 시 전체 동기화
+        if (prev !== payload.new.phase) await fullSync();
+        else renderAll();
+      })
+    .subscribe(st => {
+      document.getElementById('tb-conn').textContent =
+        st === 'SUBSCRIBED' ? '● 연결됨' : '● 재연결 중...';
+      document.getElementById('tb-conn').style.color =
+        st === 'SUBSCRIBED' ? 'var(--green)' : 'var(--yellow)';
+    });
+
+  // 플레이어 목록 변경 (귓속말 대상 갱신)
+  sb.channel('student-players')
+    .on('postgres_changes', { event:'*', schema:'public', table:'fish_players', filter:'room_id=eq.main' },
+      async () => { await syncPlayers(); renderWhisperList(); })
+    .subscribe();
+
+  // 내 harvest 변경 (결과 반영)
+  sb.channel('student-harvest')
+    .on('postgres_changes', { event:'*', schema:'public', table:'fish_harvests', filter:'room_id=eq.main' },
+      async payload => {
+        if (payload.new.player_id === MY_ID) {
+          S.myHarvest = payload.new;
+          renderAll();
+        }
+      })
+    .subscribe();
+
+  // 채팅
+  sb.channel('student-chat')
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'fish_chat', filter:'room_id=eq.main' },
+      payload => {
+        const msg = payload.new;
+        // 귓속말: 내가 수신자이거나 발신자일 때만 표시
+        if (msg.target_id && msg.target_id !== MY_ID && msg.sender_id !== MY_ID) return;
+        appendChatMsg(msg);
+      })
+    .subscribe();
+}
+
+// ================================================================
+//  데이터 동기화
+// ================================================================
+async function fullSync() {
+  const [roomRes, meRes, playersRes] = await Promise.all([
+    sb.from('fish_rooms').select('*').eq('id','main').single(),
+    sb.from('fish_players').select('*').eq('id', MY_ID).single(),
+    sb.from('fish_players').select('*').eq('room_id','main').eq('is_active',true).order('total_score',{ascending:false}),
+  ]);
+  S.room    = roomRes.data;
+  S.me      = meRes.data;
+  S.players = playersRes.data || [];
+
+  // 현재 라운드 데이터
+  if (S.room.current_round > 0) {
+    const [roundRes, harvestRes] = await Promise.all([
+      sb.from('fish_rounds').select('*').eq('room_id','main').eq('round_num', S.room.current_round).single(),
+      sb.from('fish_harvests').select('*').eq('room_id','main').eq('round_num', S.room.current_round).eq('player_id', MY_ID).single(),
+    ]);
+    S.roundRow = roundRes.data;
+    S.myHarvest = harvestRes.data || null;
+
+    // 이벤트 카드
+    S.event = S.events.find(e => e.id === S.room.event_id) || null;
+
+    // 이번 라운드 제출 여부 복원
+    if (S.myHarvest) {
+      mySubmittedAmount = S.myHarvest.amount;
+    } else {
+      mySubmittedAmount = null;
+    }
+
+    // 투표 여부 복원
+    hasVoted = !!(S.myHarvest?.vote);
+  }
+
+  // 채팅 불러오기 (현재+이전 라운드)
+  if (S.room.current_round > 0) {
+    // 전체 공개 메시지
+    const { data: publicChats } = await sb.from('fish_chat')
+      .select('*').eq('room_id','main')
+      .is('target_id', null)
+      .gte('round_num', Math.max(0, S.room.current_round - 1))
+      .order('created_at');
+    // 내가 주고받은 귓속말
+    const { data: whispersSent } = await sb.from('fish_chat')
+      .select('*').eq('room_id','main')
+      .eq('sender_id', MY_ID)
+      .not('target_id','is',null)
+      .gte('round_num', Math.max(0, S.room.current_round - 1))
+      .order('created_at');
+    const { data: whispersRecv } = await sb.from('fish_chat')
+      .select('*').eq('room_id','main')
+      .eq('target_id', MY_ID)
+      .gte('round_num', Math.max(0, S.room.current_round - 1))
+      .order('created_at');
+    const chats = [...(publicChats||[]), ...(whispersSent||[]), ...(whispersRecv||[])]
+      .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    document.getElementById('chat-messages').innerHTML = '';
+    (chats || []).forEach(c => appendChatMsg(c));
+  }
+
+  renderWhisperList();
+  restoreTimer();
+  renderAll();
+}
+
+async function syncPlayers() {
+  const { data } = await sb.from('fish_players').select('*').eq('room_id','main').eq('is_active',true).order('total_score',{ascending:false});
+  S.players = data || [];
+}
+
+// ================================================================
+//  타이머
+// ================================================================
+function startTimer(seconds, phaseName) {
+  clearInterval(timerInterval);
+  phaseEndTime = Date.now() + seconds * 1000;
+  const wrap = document.getElementById('timer-wrap');
+  wrap.style.display = '';
+  document.getElementById('timer-phase-name').textContent = phaseName;
+  timerInterval = setInterval(() => {
+    const left = Math.max(0, Math.ceil((phaseEndTime - Date.now()) / 1000));
+    const m = String(Math.floor(left/60)).padStart(2,'0');
+    const s = String(left%60).padStart(2,'0');
+    document.getElementById('timer-val').textContent = m+':'+s;
+    document.getElementById('timer-val').style.color = left <= 10 ? 'var(--red)' : 'var(--yellow)';
+    if (left === 0) clearInterval(timerInterval);
+  }, 500);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  document.getElementById('timer-wrap').style.display = 'none';
+}
+
+function restoreTimer() {
+  if (!S.room) return;
+  const { phase, phase_started_at, negotiation_secs, harvest_secs } = S.room;
+  if (!phase_started_at) return;
+  const elapsed = (Date.now() - phase_started_at) / 1000;
+  if (phase === 'negotiation') {
+    const left = negotiation_secs - elapsed;
+    if (left > 0) startTimer(left, '협상 중');
+  } else if (phase === 'harvest') {
+    const left = harvest_secs - elapsed;
+    if (left > 0) startTimer(left, '채취 마감까지');
+    else stopTimer();
+  } else {
+    stopTimer();
+  }
+}
+
+// ================================================================
+//  채취량 제출
+// ================================================================
+function onSlider(val) {
+  document.getElementById('slider-display').textContent = val + ' 마리';
+  updateHarvestNote(parseInt(val));
+}
+
+function updateHarvestNote(val) {
+  const room = S.room;
+  if (!room) return;
+  const limit = Math.round(room.resource * room.harvest_limit_ratio);
+  const activeCnt = S.players.filter(p=>!p.is_host&&p.is_active).length || 1;
+  const avgSafe = Math.floor(limit / activeCnt);
+  let note = `현재 어장: <strong>${room.resource}마리</strong> | 지속 가능 한계: <strong>${limit}마리</strong> | 1인당 안전 채취: <strong>~${avgSafe}마리</strong>`;
+  if (val > avgSafe * 1.5) note += '<br><span style="color:var(--red)">⚠ 과도한 채취! 어장이 위험합니다.</span>';
+  else if (val <= avgSafe) note += '<br><span style="color:var(--green)">✓ 지속 가능한 채취량입니다.</span>';
+  document.getElementById('harvest-note').innerHTML = note;
+}
+
+async function submitHarvest() {
+  const room = S.room;
+  if (!room || room.phase !== 'harvest') return;
+  if (mySubmittedAmount !== null) { toast('이미 제출했습니다.'); return; }
+
+  // E14: 허용 여부 확인
+  if (S.roundRow?.allowed_players && !S.roundRow.allowed_players.includes(MY_ID)) {
+    toast('이번 라운드에는 어업 면허가 없습니다. 채취 불가!');
+    return;
+  }
+
+  // E15: 휴어기 발동 시
+  if (S.event?.effect?.type === 'host_can_ban_harvest' && room.event_applied) {
+    toast('긴급 휴어기! 이번 라운드는 채취할 수 없습니다.');
+    return;
+  }
+
+  const amount = parseInt(document.getElementById('harvest-slider').value);
+  mySubmittedAmount = amount;
+
+  await sb.from('fish_harvests').upsert({
+    room_id:   'main',
+    round_num: room.current_round,
+    player_id: MY_ID,
+    amount,
+    score_gained: 0,
+  });
+
+  await sb.from('fish_players').update({ is_submitted: true }).eq('id', MY_ID);
+
+  document.getElementById('submitted-amount').textContent = amount + '마리 제출';
+  renderAll();
+  toast(`✅ ${amount}마리 제출 완료!`);
+}
+
+// ================================================================
+//  E11 투표
+// ================================================================
+async function submitVote(choice) {
+  if (hasVoted) { toast('이미 투표했습니다.'); return; }
+  hasVoted = true;
+
+  const room = S.room;
+  // harvest row가 없으면 먼저 생성
+  await sb.from('fish_harvests').upsert({
+    room_id:   'main',
+    round_num: room.current_round,
+    player_id: MY_ID,
+    amount:    mySubmittedAmount ?? 0,
+    score_gained: 0,
+    vote: choice,
+  });
+
+  // fish_rounds 집계: 전체 투표 재집계 (race condition 방지)
+  const { data: allVotes } = await sb.from('fish_harvests')
+    .select('vote').eq('room_id','main').eq('round_num', room.current_round)
+    .not('vote','is',null);
+  const yes = (allVotes||[]).filter(v=>v.vote==='yes').length;
+  const no  = (allVotes||[]).filter(v=>v.vote==='no').length;
+  const activeCnt = S.players.filter(p=>!p.is_host&&p.is_active).length;
+  const passed = yes > activeCnt / 2;
+  await sb.from('fish_rounds').update({ vote_yes: yes, vote_no: no, vote_passed: passed })
+    .eq('room_id','main').eq('round_num', room.current_round);
+
+  document.getElementById('vote-wrap').style.display = 'none';
+  toast(choice==='yes' ? '👍 찬성 투표 완료!' : '👎 반대 투표 완료!');
+}
+
+// ================================================================
+//  채팅
+// ================================================================
+async function sendChat() {
+  const inp = document.getElementById('chat-input');
+  const msg = inp.value.trim();
+  if (!msg || !S.room) return;
+  const target = document.getElementById('whisper-target').value || null;
+
+  await sb.from('fish_chat').insert({
+    room_id:   'main',
+    round_num: S.room.current_round,
+    sender_id: MY_ID,
+    content:   msg,
+    is_system: false,
+    target_id: target || null,
+  });
+  inp.value = '';
+}
+
+function appendChatMsg(row) {
+  const wrap = document.getElementById('chat-messages');
+  const div  = document.createElement('div');
+  const t    = new Date(row.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  const isMe = row.sender_id === MY_ID;
+  div.className = 'chat-msg'
+    + (row.is_system ? ' system' : '')
+    + (row.target_id ? ' whisper' : '')
+    + (isMe && !row.is_system ? ' mine' : '');
+  div.innerHTML = `<span class="time">${t}</span>
+    <div class="sender">${row.is_system ? '🔔 시스템' : (row.target_id ? `🤫 ${row.sender_id}→${row.target_id}` : row.sender_id)}</div>
+    <div>${row.content}</div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function renderWhisperList() {
+  const sel = document.getElementById('whisper-target');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">전체에게</option>';
+  S.players.filter(p=>p.id!==MY_ID&&!p.is_host).forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value = p.id; opt.textContent = p.id;
+    if (p.id===cur) opt.selected=true;
+    sel.appendChild(opt);
+  });
+  document.getElementById('online-count').textContent = S.players.filter(p=>!p.is_host).length + '명';
+}
+
+// ================================================================
+//  렌더링
+// ================================================================
+function renderAll() {
+  if (!S.room) return;
+  const phase = S.room.phase;
+  const phaseNames = {lobby:'대기',negotiation:'협상',harvest:'채취',result:'결과',ended:'종료'};
+  const phaseColors = {lobby:'badge-blue',negotiation:'badge-purple',harvest:'badge-yellow',result:'badge-green',ended:'badge-red'};
+  document.getElementById('tb-phase').textContent = phaseNames[phase]||phase;
+  document.getElementById('tb-phase').className   = 'badge '+(phaseColors[phase]||'badge-blue');
+  document.getElementById('tb-score').textContent = (S.me?.total_score||0)+'pt';
+  document.getElementById('sc-total').textContent  = S.me?.total_score||0;
+
+  renderResourceBar();
+
+  if (phase === 'lobby')  { showScreen('lobby');  return; }
+  if (phase === 'ended')  { showScreen('ended');  renderEnded(); return; }
+
+  showScreen('game');
+  renderScoreCards();
+  renderEventCard();
+  renderHarvestArea();
+  renderResultArea();
+  renderPhaseOverlay();
+  renderVote();
+}
+
+function showScreen(name) {
+  document.getElementById('lobby-screen').style.display  = name==='lobby' ? 'flex' : 'none';
+  document.getElementById('game-screen').style.display   = name==='game'  ? ''     : 'none';
+  document.getElementById('ended-screen').style.display  = name==='ended' ? 'flex' : 'none';
+}
+
+function renderResourceBar() {
+  const room = S.room;
+  const pct  = Math.min(100, Math.round(room.resource / room.resource_init * 100));
+  const fill = document.getElementById('res-bar-fill');
+  fill.style.width = pct+'%';
+  fill.style.background = pct>50?'var(--green)':pct>20?'var(--yellow)':'var(--red)';
+  document.getElementById('res-label').textContent = room.resource+'마리';
+  document.getElementById('res-label').style.color = pct>50?'var(--green)':pct>20?'var(--yellow)':'var(--red)';
+  const limitPx = room.harvest_limit_ratio * 100;
+  document.getElementById('res-bar-limit').style.left = limitPx+'%';
+  document.getElementById('res-limit-label').textContent = `한계: ${Math.round(room.resource*room.harvest_limit_ratio)}마리`;
+  document.getElementById('res-round-label').textContent = `라운드 ${room.current_round}/${room.total_rounds}`;
+}
+
+function renderScoreCards() {
+  const h = S.myHarvest;
+  document.getElementById('sc-round').textContent = h ? '+'+h.score_gained : '+0';
+}
+
+function renderEventCard() {
+  const evt = S.event;
+  if (!evt || S.room.current_round===0) {
+    document.getElementById('event-card-student').style.display='none'; return;
+  }
+  document.getElementById('event-card-student').style.display='';
+  document.getElementById('ev-s-icon').textContent = evt.icon;
+  document.getElementById('ev-s-name').textContent = evt.name;
+  document.getElementById('ev-s-desc').textContent = evt.desc;
+}
+
+function renderHarvestArea() {
+  const phase = S.room.phase;
+  const harvWrap = document.getElementById('harvest-wrap');
+  const subBadge = document.getElementById('submitted-badge');
+
+  if (phase !== 'harvest') {
+    harvWrap.style.display = 'none';
+    subBadge.style.display = 'none';
+    return;
+  }
+
+  // E15 휴어기 발동됨
+  if (S.event?.effect?.type==='host_can_ban_harvest' && S.room.event_applied) {
+    harvWrap.style.display='none';
+    subBadge.style.display='none';
+    document.getElementById('phase-overlay').style.display='flex';
+    document.getElementById('po-icon').textContent='⛔';
+    document.getElementById('po-title').textContent='긴급 휴어기!';
+    document.getElementById('po-desc').textContent='이번 라운드는 채취할 수 없습니다.';
+    return;
+  }
+
+  // E14: 면허 없는 플레이어
+  if (S.roundRow?.allowed_players && !S.roundRow.allowed_players.includes(MY_ID)) {
+    harvWrap.style.display='none';
+    subBadge.style.display='none';
+    document.getElementById('phase-overlay').style.display='flex';
+    document.getElementById('po-icon').textContent='🚫';
+    document.getElementById('po-title').textContent='이번 라운드 채취 불가';
+    document.getElementById('po-desc').textContent='어업 면허 추첨에서 선정되지 않았습니다.';
+    return;
+  }
+
+  if (mySubmittedAmount !== null) {
+    harvWrap.style.display='none';
+    subBadge.style.display='';
+    document.getElementById('submitted-amount').textContent = mySubmittedAmount+'마리 제출';
+  } else {
+    harvWrap.style.display='';
+    subBadge.style.display='none';
+    updateHarvestNote(parseInt(document.getElementById('harvest-slider').value));
+  }
+}
+
+function renderResultArea() {
+  const phase = S.room.phase;
+  const rWrap = document.getElementById('result-wrap');
+  if (phase !== 'result' && phase !== 'ended') { rWrap.style.display='none'; return; }
+
+  const h = S.myHarvest;
+  const rr = S.roundRow;
+  if (!h) { rWrap.style.display='none'; return; }
+  rWrap.style.display='';
+
+  document.getElementById('r-amount').textContent = h.amount+'마리';
+  document.getElementById('r-event').textContent  = S.event?.name || '-';
+  document.getElementById('r-score').textContent  = '+'+h.score_gained+'pt';
+  document.getElementById('r-total').textContent  = (rr?.total_harvested||0)+'마리';
+  document.getElementById('r-remain').textContent = (rr?.resource_after||S.room.resource)+'마리';
+}
+
+function renderPhaseOverlay() {
+  const phase = S.room.phase;
+  const overlay = document.getElementById('phase-overlay');
+
+  if (phase === 'result') {
+    // result 페이즈: result-wrap이 이미 표시됨 → overlay 숨김
+    // 단, myHarvest가 아직 없으면(집계 전) 대기 메시지 표시
+    if (S.myHarvest && S.myHarvest.score_gained !== null) {
+      overlay.style.display = 'none';
+    } else {
+      overlay.style.display = 'flex';
+      document.getElementById('po-icon').textContent = '📊';
+      document.getElementById('po-title').textContent = '결과 집계 중...';
+      document.getElementById('po-desc').textContent = '진행자가 결과를 공개할 때까지 기다려주세요.';
+    }
+  } else if (phase === 'negotiation' || phase === 'harvest') {
+    overlay.style.display = 'none';
+  }
+}
+
+function renderVote() {
+  const voteWrap = document.getElementById('vote-wrap');
+  const evt = S.event;
+  if (!evt || evt.effect.type !== 'vote_limit_bonus') { voteWrap.style.display='none'; return; }
+  if (S.room.phase !== 'negotiation') { voteWrap.style.display='none'; return; }
+  if (hasVoted) { voteWrap.style.display='none'; return; }
+  voteWrap.style.display='';
+}
+
+function renderEnded() {
+  const room = S.room;
+  const isGameover = room.resource <= 0;
+  document.getElementById('ended-title').textContent = isGameover ? '💀 어장 고갈!' : '🏁 게임 종료!';
+  document.getElementById('ended-desc').textContent  = isGameover
+    ? '공유지의 비극이 현실이 되었습니다.\n협력의 중요성을 배웠나요?'
+    : '모든 라운드가 완료되었습니다. 최종 순위를 확인하세요!';
+
+  const sorted = [...S.players].filter(p=>!p.is_host).sort((a,b)=>b.total_score-a.total_score);
+  document.getElementById('rank-tbody').innerHTML = sorted.map((p,i)=>{
+    const cls = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+    const isMe2 = p.id===MY_ID;
+    return `<tr class="${cls}">
+      <td>${i+1}</td>
+      <td>${p.id}${isMe2?' <span style="color:var(--blue)">(나)</span>':''}</td>
+      <td>${p.total_score}pt</td>
+    </tr>`;
+  }).join('');
+}
+
+// ================================================================
+//  유틸리티
+// ================================================================
+function toast(msg, duration=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.remove('show'), duration);
+}
+</script>
+</body>
+</html>
