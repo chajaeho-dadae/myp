@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>🚀 Mars Colony EP1 — 대원</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="mars_ep1.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+:root {
+  --bg0:#0d0f14; --bg1:#13161e; --bg2:#1a1e2a; --bg3:#222738;
+  --border:#2e3448; --accent:#4f8aff; --green:#3ddc84; --red:#ff5c6a;
+  --yellow:#ffc245; --orange:#ff8c42; --purple:#a78bfa; --cyan:#22d3ee;
+  --text1:#e8eaf0; --text2:#8a90a8; --text3:#555d7a; --r:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg0);color:var(--text1);font-family:'Noto Sans KR',sans-serif;font-size:14px}
+body{padding:12px;min-height:100vh;max-width:480px;margin:0 auto}
+.screen{display:none}.screen.active{display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:var(--r);border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all .15s;width:100%;font-family:'Noto Sans KR',sans-serif}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#6a9fff}
+.btn-success{background:var(--green);color:#000}.btn-success:hover{filter:brightness(1.1)}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}.btn-ghost:hover{color:var(--text1)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+input{background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:var(--r);padding:10px 14px;font-size:14px;font-family:inherit;outline:none;width:100%}
+input:focus{border-color:var(--accent)}
+.panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.panel-title{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.field{margin-bottom:12px}
+.field label{font-size:11px;color:var(--text2);display:block;margin-bottom:5px}
+
+/* ── 입장 화면 ── */
+.join-wrap{padding:40px 0}
+.join-wrap h1{font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--accent);text-align:center;margin-bottom:6px;letter-spacing:.1em}
+.join-wrap p{color:var(--text2);text-align:center;margin-bottom:28px;font-size:12px}
+.room-input{font-family:'JetBrains Mono',monospace;font-size:28px;text-align:center;letter-spacing:.3em;text-transform:uppercase;font-weight:700}
+
+/* ── 역할 선택 화면 ── */
+.role-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.role-card{background:var(--bg2);border:2px solid var(--border);border-radius:var(--r);padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
+.role-card:hover{border-color:var(--accent);background:var(--bg3)}
+.role-card.selected{border-color:var(--accent);background:rgba(79,138,255,.1)}
+.role-card.taken{opacity:.45;cursor:not-allowed;border-style:dashed}
+.role-card .rc-emoji{font-size:26px;margin-bottom:6px}
+.role-card .rc-name{font-size:12px;font-weight:700;color:var(--text1);margin-bottom:3px}
+.role-card .rc-desc{font-size:10px;color:var(--text3);line-height:1.4}
+.role-card .rc-cnt{position:absolute;top:6px;right:8px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3)}
+.role-card.selected .rc-cnt{color:var(--accent)}
+
+/* ── 대기 화면 ── */
+.wait-wrap{text-align:center;padding:40px 0}
+.wait-emoji{font-size:56px;margin-bottom:12px}
+.wait-title{font-size:16px;font-weight:700;margin-bottom:8px}
+.wait-sub{font-size:12px;color:var(--text2);line-height:1.6}
+.my-role-badge{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:var(--bg2);border:1px solid var(--accent);border-radius:30px;margin:16px 0;font-weight:700}
+.my-role-badge .rb-emoji{font-size:22px}
+
+/* ── 게임 화면 ── */
+/* 내 역할 헤더 */
+.my-role-header{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px}
+.mrh-emoji{font-size:32px}
+.mrh-info{flex:1}
+.mrh-role{font-size:16px;font-weight:700}
+.mrh-name{font-size:11px;color:var(--text2)}
+.mrh-status{text-align:right}
+.fatigue-display{font-family:'JetBrains Mono',monospace;font-size:12px}
+
+/* 자원 현황 */
+.res-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}
+.res-mini{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px 4px;text-align:center}
+.res-mini.danger{border-color:var(--red);background:rgba(255,92,106,.06)}
+.res-mini .rm-emoji{font-size:16px}
+.res-mini .rm-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:2px}
+.res-mini .rm-bar{height:3px;background:var(--border);border-radius:2px;margin-top:4px;overflow:hidden}
+.res-mini .rm-bar-i{height:3px;border-radius:2px}
+
+/* 투표 UI */
+.vote-options{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.vote-btn{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg2);border:2px solid var(--border);border-radius:var(--r);cursor:pointer;transition:all .15s;text-align:left}
+.vote-btn:hover{border-color:var(--accent)}
+.vote-btn.selected{border-color:var(--accent);background:rgba(79,138,255,.1)}
+.vote-btn.selected-full{border-color:var(--red);background:rgba(255,92,106,.08)}
+.vote-btn.selected-maintenance{border-color:var(--yellow);background:rgba(255,194,69,.08)}
+.vote-btn .vb-emoji{font-size:24px}
+.vote-btn .vb-info{flex:1}
+.vote-btn .vb-title{font-size:13px;font-weight:700;margin-bottom:2px}
+.vote-btn .vb-desc{font-size:11px;color:var(--text2)}
+.vote-btn .vb-check{font-size:18px;color:var(--accent)}
+
+/* 건설/의료 팀 타겟 선택 */
+.target-select{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.target-btn{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;transition:all .15s;font-size:12px}
+.target-btn:hover{border-color:var(--accent)}
+.target-btn.selected{border-color:var(--green);background:rgba(61,220,132,.08)}
+.target-btn .tb-emoji{font-size:18px}
+.target-btn .tb-check{margin-left:auto;font-size:14px;color:var(--green)}
+
+/* 투표 현황 */
+.team-vote-status{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px}
+.tvs-title{font-size:11px;color:var(--text3);margin-bottom:6px}
+.tvs-bars{display:flex;gap:8px}
+.tvs-bar{flex:1;text-align:center}
+.tvs-bar .tvb-label{font-size:10px;color:var(--text2);margin-bottom:3px}
+.tvs-bar .tvb-count{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700}
+.tvs-bar .tvb-sub{font-size:9px;color:var(--text3)}
+
+/* 이벤트 알림 */
+.event-alert{padding:12px 14px;border-radius:var(--r);margin-bottom:10px;border:1px solid var(--border);display:none}
+.event-alert.show{display:block}
+.event-alert.disaster{border-color:var(--red);background:rgba(255,92,106,.08)}
+.event-alert.bonus{border-color:var(--green);background:rgba(61,220,132,.08)}
+.ea-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.ea-desc{font-size:12px;color:var(--text2);line-height:1.5}
+
+/* 제출 완료 상태 */
+.submitted-banner{text-align:center;padding:16px;background:rgba(61,220,132,.08);border:1px solid var(--green);border-radius:var(--r);margin-bottom:10px}
+.sb-emoji{font-size:32px;margin-bottom:6px}
+.sb-title{font-size:14px;font-weight:700;color:var(--green)}
+.sb-sub{font-size:11px;color:var(--text2);margin-top:4px}
+.sb-tally{display:flex;justify-content:center;gap:16px;margin-top:8px}
+.sb-tally-item{text-align:center}
+.sb-tally-item .sti-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--accent)}
+.sb-tally-item .sti-lbl{font-size:10px;color:var(--text3)}
+
+/* 결과 화면 */
+.result-wrap{text-align:center;padding:40px 0}
+.result-emoji{font-size:64px;margin-bottom:12px}
+.result-title{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;margin-bottom:8px}
+.result-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px}
+
+/* 라운드 전환 오버레이 */
+.round-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+.round-overlay.show{display:flex}
+.ro-round{font-family:'JetBrains Mono',monospace;font-size:48px;font-weight:700;color:var(--accent)}
+.ro-label{font-size:16px;color:var(--text2)}
+.ro-event{margin-top:16px;padding:14px 20px;background:var(--bg2);border-radius:var(--r);text-align:center;max-width:320px}
+</style>
+</head>
+<body>
+
+<!-- ── 입장 화면 ── -->
+<div id="screen-join" class="screen active">
+<div class="join-wrap">
+  <h1>🚀 MARS COLONY</h1>
+  <p>Episode 1: Terraforming</p>
+
+  <div class="panel">
+    <div class="field">
+      <label>내 이름</label>
+      <input type="text" id="player-name" placeholder="이름을 입력하세요" maxlength="8" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>룸 코드 (진행자에게 확인)</label>
+      <input type="text" id="room-code-input" class="room-input" placeholder="A3F7" maxlength="4" autocomplete="off">
+    </div>
+    <button class="btn btn-primary" onclick="joinRoom()">입장하기 →</button>
+  </div>
+</div>
+</div>
+
+<!-- ── 역할 선택 화면 ── -->
+<div id="screen-role" class="screen">
+  <div style="margin-bottom:12px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);margin-bottom:4px">🚀 MARS COLONY EP1</div>
+    <div style="font-size:16px;font-weight:700">역할을 선택하세요</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:4px">한 번 확정하면 변경할 수 없습니다</div>
+  </div>
+
+  <div class="role-cards" id="role-cards"></div>
+
+  <div class="panel" id="role-desc-panel" style="display:none">
+    <div class="panel-title">선택한 역할</div>
+    <div id="role-desc-content"></div>
+  </div>
+
+  <button class="btn btn-success" id="btn-confirm-role" onclick="confirmRole()" disabled>
+    ✅ 이 역할로 확정
+  </button>
+</div>
+
+<!-- ── 대기 화면 ── -->
+<div id="screen-wait" class="screen">
+<div class="wait-wrap">
+  <div class="wait-emoji">🧑‍🚀</div>
+  <div class="wait-title">게임 시작 대기 중</div>
+  <div class="my-role-badge">
+    <span class="rb-emoji" id="wait-role-emoji">🌬</span>
+    <span id="wait-role-name">산소팀</span>
+  </div>
+  <div class="wait-sub" id="wait-sub">
+    진행자가 게임을 시작하면 자동으로 시작됩니다.<br>
+    잠시만 기다려 주세요.
+  </div>
+</div>
+</div>
+
+<!-- ── 게임 화면 ── -->
+<div id="screen-game" class="screen">
+
+  <!-- 내 역할 헤더 -->
+  <div class="my-role-header">
+    <div class="mrh-emoji" id="my-role-emoji">🌬</div>
+    <div class="mrh-info">
+      <div class="mrh-role" id="my-role-name">산소팀</div>
+      <div class="mrh-name" id="my-player-name"></div>
+    </div>
+    <div class="mrh-status">
+      <div class="fatigue-display" id="fatigue-display">피로도 0/10</div>
+      <div style="font-size:10px;color:var(--text3)" id="facility-display">시설 100%</div>
+    </div>
+  </div>
+
+  <!-- 이벤트 알림 -->
+  <div class="event-alert" id="event-alert">
+    <div class="ea-title" id="event-alert-title"></div>
+    <div class="ea-desc" id="event-alert-desc"></div>
+  </div>
+
+  <!-- 자원 현황 -->
+  <div class="panel">
+    <div class="panel-title">📦 식민지 자원 현황</div>
+    <div class="res-row" id="res-row"></div>
+    <div style="font-size:10px;color:var(--text3);text-align:center" id="round-label">라운드 1 / 15</div>
+  </div>
+
+  <!-- 투표 UI -->
+  <div class="panel" id="vote-panel">
+    <div class="panel-title">⚙️ 이번 라운드 행동 선택 <span id="vote-deadline" style="color:var(--text3)"></span></div>
+
+    <!-- 일반 팀: 행동 선택 -->
+    <div id="normal-vote-section">
+      <div class="vote-options" id="vote-options"></div>
+
+      <!-- 건설/의료 팀: 지원 대상 선택 -->
+      <div id="target-section" style="display:none">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px" id="target-label">지원할 팀을 선택하세요</div>
+        <div class="target-select" id="target-select"></div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-vote" onclick="submitVote()" disabled>
+        투표 제출하기
+      </button>
+    </div>
+
+    <!-- 제출 완료 상태 -->
+    <div class="submitted-banner" id="submitted-banner" style="display:none">
+      <div class="sb-emoji">✅</div>
+      <div class="sb-title">투표 제출 완료!</div>
+      <div class="sb-sub">팀원들의 투표를 기다리는 중...</div>
+      <div class="sb-tally" id="sb-tally"></div>
+    </div>
+  </div>
+
+  <!-- 팀 투표 현황 -->
+  <div class="panel">
+    <div class="panel-title">👥 우리 팀 투표 현황</div>
+    <div class="team-vote-status">
+      <div class="tvs-title">현재 투표 집계</div>
+      <div class="tvs-bars" id="tvs-bars"></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:8px" id="team-submit-count">0/0명 제출 완료</div>
+  </div>
+
+</div>
+
+<!-- ── 결과 화면 ── -->
+<div id="screen-result" class="screen">
+<div class="result-wrap">
+  <div class="result-emoji" id="result-emoji">🏆</div>
+  <div class="result-title" id="result-title">식민지 생존!</div>
+  <div class="result-desc" id="result-desc"></div>
+  <button class="btn btn-ghost" style="max-width:200px;margin:0 auto" onclick="location.reload()">
+    ↺ 처음으로
+  </button>
+</div>
+</div>
+
+<!-- 라운드 전환 오버레이 -->
+<div class="round-overlay" id="round-overlay">
+  <div class="ro-round" id="ro-round">R2</div>
+  <div class="ro-label">새 라운드 시작</div>
+  <div class="ro-event" id="ro-event" style="display:none">
+    <div id="ro-event-title" style="font-weight:700;margin-bottom:4px"></div>
+    <div id="ro-event-desc" style="font-size:12px;color:var(--text2)"></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   전역 상태
+================================================================ */
+let S = {
+  playerId: null, playerName: '', roomId: null,
+  myRole: null, confirmed: false,
+  room: null, resources: null, teams: [], players: [], votes: [],
+  currentRound: 0, prevRound: 0, phase: 'waiting',
+  selectedAction: null, selectedTargets: [],
+  voteSubmitted: false, channel: null,
+};
+
+/* ================================================================
+   화면 전환
+================================================================ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+/* ================================================================
+   입장
+================================================================ */
+async function joinRoom() {
+  const name = document.getElementById('player-name').value.trim();
+  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+
+  if (!name) { Utils.toast('이름을 입력하세요'); return; }
+  if (code.length !== 4) { Utils.toast('룸 코드 4자리를 입력하세요'); return; }
+
+  try {
+    Utils.toast('입장 중...');
+    const room = await DB.getRoom(code);
+    if (!room) { Utils.toast('존재하지 않는 룸 코드입니다'); return; }
+    if (room.status === 'finished') { Utils.toast('이미 종료된 게임입니다'); return; }
+
+    S.playerId   = Utils.getPlayerId();
+    S.playerName = name;
+    S.roomId     = code;
+    Utils.setPlayerName(name);
+    Utils.setRoomId(code);
+
+    await DB.joinRoom(code, S.playerId, name);
+
+    S.players = await DB.getPlayers(code);
+    S.room    = room;
+
+    subscribeRoom();
+
+    if (room.status === 'playing') {
+      // 이미 시작된 게임 — 역할 확인
+      const me = S.players.find(p => p.id === S.playerId);
+      if (me?.role_confirmed) {
+        S.myRole = me.role;
+        S.confirmed = true;
+        await loadGameState();
+        showScreen('game');
+      } else {
+        showRoleSelect();
+      }
+    } else {
+      // 로비 — 역할 선택
+      const me = S.players.find(p => p.id === S.playerId);
+      if (me?.role_confirmed) {
+        S.myRole = me.role;
+        S.confirmed = true;
+        showWait();
+      } else {
+        showRoleSelect();
+      }
+    }
+  } catch(e) {
+    Utils.toast('오류: ' + e.message);
+    console.error(e);
+  }
+}
+
+/* ================================================================
+   역할 선택 화면
+================================================================ */
+function showRoleSelect() {
+  showScreen('role');
+  renderRoleCards();
+}
+
+function renderRoleCards() {
+  const container = document.getElementById('role-cards');
+  const roleCounts = {};
+  S.players.forEach(p => {
+    if (p.role) roleCounts[p.role] = (roleCounts[p.role] || 0) + 1;
+  });
+
+  container.innerHTML = Object.entries(EP1.ROLES).map(([role, def]) => {
+    const cnt = roleCounts[role] || 0;
+    return `<div class="role-card" data-role="${role}" onclick="selectRole('${role}')">
+      <div class="rc-cnt">${cnt}명</div>
+      <div class="rc-emoji">${def.emoji}</div>
+      <div class="rc-name">${def.label}</div>
+      <div class="rc-desc">${def.desc}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectRole(role) {
+  S.selectedAction = role; // 임시 저장
+  document.querySelectorAll('.role-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.role === role);
+  });
+  const def = EP1.ROLES[role];
+  const panel = document.getElementById('role-desc-panel');
+  panel.style.display = 'block';
+  document.getElementById('role-desc-content').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:28px">${def.emoji}</span>
+      <div>
+        <div style="font-size:15px;font-weight:700">${def.label}</div>
+        <div style="font-size:11px;color:var(--text2)">${def.desc}</div>
+      </div>
+    </div>
+    ${def.resource ? `<div style="font-size:11px;color:var(--text3)">생산 자원: ${Utils.resEmoji(def.resource)} ${def.resource}</div>` : '<div style="font-size:11px;color:var(--cyan)">지원형 역할 — 다른 팀을 보조합니다</div>'}`;
+  document.getElementById('btn-confirm-role').disabled = false;
+  DB.selectRole(S.playerId, role);
+}
+
+async function confirmRole() {
+  const role = document.querySelector('.role-card.selected')?.dataset.role;
+  if (!role) return;
+  try {
+    await DB.confirmRole(S.playerId);
+    S.myRole = role;
+    S.confirmed = true;
+    showWait();
+  } catch(e) {
+    Utils.toast('오류: ' + e.message);
+  }
+}
+
+/* ================================================================
+   대기 화면
+================================================================ */
+function showWait() {
+  const def = EP1.ROLES[S.myRole];
+  document.getElementById('wait-role-emoji').textContent = def?.emoji || '?';
+  document.getElementById('wait-role-name').textContent = def?.label || '';
+  showScreen('wait');
+}
+
+/* ================================================================
+   게임 상태 로드
+================================================================ */
+async function loadGameState() {
+  if (!S.roomId) return;
+  S.room      = await DB.getRoom(S.roomId);
+  S.resources = await DB.getResources(S.roomId);
+  S.teams     = await DB.getTeams(S.roomId);
+  S.players   = await DB.getPlayers(S.roomId);
+  S.votes     = await DB.getVotes(S.roomId, S.room.round_current);
+
+  S.currentRound = S.room.round_current;
+  S.phase        = S.room.phase;
+
+  // 내 제출 여부 확인
+  const me = S.players.find(p => p.id === S.playerId);
+  S.voteSubmitted = me?.vote_submitted || false;
+
+  // 라운드 전환 감지
+  if (S.prevRound > 0 && S.currentRound > S.prevRound) {
+    await showRoundTransition();
+  }
+  S.prevRound = S.currentRound;
+
+  if (S.room.status === 'finished') {
+    showResult();
+    return;
+  }
+
+  renderGameScreen();
+}
+
+/* ================================================================
+   게임 화면 렌더
+================================================================ */
+function renderGameScreen() {
+  // 내 역할 헤더
+  const def = EP1.ROLES[S.myRole];
+  document.getElementById('my-role-emoji').textContent = def?.emoji || '?';
+  document.getElementById('my-role-name').textContent  = def?.label || '';
+  document.getElementById('my-player-name').textContent = S.playerName;
+
+  const myTeam = S.teams.find(t => t.role === S.myRole);
+  if (myTeam) {
+    document.getElementById('fatigue-display').textContent = `피로도 ${myTeam.fatigue}/10`;
+    document.getElementById('fatigue-display').style.color = Utils.fatigueColor(myTeam.fatigue);
+    document.getElementById('facility-display').textContent = `시설 ${myTeam.facility_hp}%`;
+  }
+
+  // 라운드 표시
+  document.getElementById('round-label').textContent = `라운드 ${S.currentRound} / ${S.room.round_max}`;
+
+  renderResources();
+  renderVoteUI();
+  renderTeamVoteStatus();
+}
+
+/* 자원 현황 */
+function renderResources() {
+  if (!S.resources) return;
+  const el = document.getElementById('res-row');
+  const colors = { oxygen:'#22d3ee', food:'#3ddc84', water:'#4f8aff', energy:'#ffc245', mineral:'#ff8c42' };
+  const emojis = { oxygen:'🌬', food:'🌾', water:'💧', energy:'⚡', mineral:'🪨' };
+
+  el.innerHTML = ['oxygen','food','water','energy','mineral'].map(r => {
+    const val  = S.resources[r] || 0;
+    const init = S.resources[r + '_init'] || 1;
+    const pct  = Math.min(100, Math.round(val / init * 100));
+    const dng  = Utils.stockDanger(r, val);
+    return `<div class="res-mini ${dng ? 'danger' : ''}">
+      <div class="rm-emoji">${emojis[r]}</div>
+      <div class="rm-val" style="color:${dng ? 'var(--red)' : colors[r]}">${val}</div>
+      <div class="rm-bar"><div class="rm-bar-i" style="width:${pct}%;background:${dng ? 'var(--red)' : colors[r]}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* 투표 UI */
+function renderVoteUI() {
+  if (S.voteSubmitted) {
+    document.getElementById('normal-vote-section').style.display = 'none';
+    document.getElementById('submitted-banner').style.display = 'block';
+    renderSubmittedBanner();
+    return;
+  }
+  document.getElementById('normal-vote-section').style.display = 'block';
+  document.getElementById('submitted-banner').style.display = 'none';
+
+  const isSupport = ['construction', 'medical'].includes(S.myRole);
+  const opts = document.getElementById('vote-options');
+
+  opts.innerHTML = Object.entries(EP1.ACTIONS).map(([action, def]) => {
+    const sel = S.selectedAction === action;
+    const selClass = sel ? (action === 'full' ? 'selected-full' : action === 'maintenance' ? 'selected-maintenance' : 'selected') : '';
+    return `<div class="vote-btn ${selClass}" onclick="selectAction('${action}')">
+      <span class="vb-emoji">${def.emoji}</span>
+      <div class="vb-info">
+        <div class="vb-title">${def.label}</div>
+        <div class="vb-desc">${def.desc}</div>
+      </div>
+      ${sel ? '<span class="vb-check">✓</span>' : ''}
+    </div>`;
+  }).join('');
+
+  // 건설/의료 팀: 지원 대상 선택
+  const targetSection = document.getElementById('target-section');
+  if (isSupport && S.selectedAction && S.selectedAction !== 'maintenance') {
+    targetSection.style.display = 'block';
+    const maxTargets = S.selectedAction === 'full'
+      ? (S.myRole === 'construction' ? EP1.SUPPORT.construction_targets_full : EP1.SUPPORT.medical_targets_full)
+      : (S.myRole === 'construction' ? EP1.SUPPORT.construction_targets_normal : EP1.SUPPORT.medical_targets_normal);
+
+    const targetLabel = S.myRole === 'construction'
+      ? `보강할 팀 선택 (최대 ${maxTargets}개)`
+      : `피로도를 회복시킬 팀 선택 (최대 ${maxTargets}개)`;
+    document.getElementById('target-label').textContent = targetLabel;
+
+    const targetSelect = document.getElementById('target-select');
+    const availTargets = Object.entries(EP1.ROLES).filter(([r]) => !['construction','medical'].includes(r));
+    targetSelect.innerHTML = availTargets.map(([role, def]) => {
+      const sel = S.selectedTargets.includes(role);
+      const team = S.teams.find(t => t.role === role);
+      return `<div class="target-btn ${sel ? 'selected' : ''}" onclick="toggleTarget('${role}', ${maxTargets})">
+        <span class="tb-emoji">${def.emoji}</span>
+        <span>${def.label}</span>
+        ${team ? `<span style="font-size:10px;color:var(--text3);margin-left:4px">피로도 ${team.fatigue}</span>` : ''}
+        ${sel ? '<span class="tb-check">✓</span>' : ''}
+      </div>`;
+    }).join('');
+  } else {
+    targetSection.style.display = 'none';
+  }
+
+  // 제출 버튼 활성화 조건
+  const canSubmit = S.selectedAction &&
+    (!isSupport || S.selectedAction === 'maintenance' || S.selectedTargets.length > 0);
+  document.getElementById('btn-vote').disabled = !canSubmit;
+}
+
+function selectAction(action) {
+  S.selectedAction  = action;
+  S.selectedTargets = [];
+  renderVoteUI();
+}
+
+function toggleTarget(role, maxTargets) {
+  if (S.selectedTargets.includes(role)) {
+    S.selectedTargets = S.selectedTargets.filter(r => r !== role);
+  } else if (S.selectedTargets.length < maxTargets) {
+    S.selectedTargets.push(role);
+  } else {
+    Utils.toast(`최대 ${maxTargets}개 팀만 선택 가능합니다`);
+    return;
+  }
+  renderVoteUI();
+}
+
+function renderSubmittedBanner() {
+  const teamVotes = S.votes.filter(v => v.role === S.myRole);
+  const tally = { full:0, normal:0, maintenance:0 };
+  teamVotes.forEach(v => { if(tally[v.action]!==undefined) tally[v.action]++; });
+  const myVote = S.votes.find(v => v.player_id === S.playerId);
+
+  document.getElementById('sb-tally').innerHTML = Object.entries(tally).map(([act, cnt]) => {
+    const labels = { full:'🔥풀가동', normal:'⚙️정상', maintenance:'🔧점검' };
+    return `<div class="sb-tally-item">
+      <div class="sti-val">${cnt}</div>
+      <div class="sti-lbl">${labels[act]}</div>
+    </div>`;
+  }).join('');
+}
+
+/* 팀 투표 현황 */
+function renderTeamVoteStatus() {
+  const teamVotes = S.votes.filter(v => v.role === S.myRole);
+  const tally = { full:0, normal:0, maintenance:0 };
+  teamVotes.forEach(v => { if(tally[v.action]!==undefined) tally[v.action]++; });
+
+  const myTeamMembers = S.players.filter(p => p.role === S.myRole && p.role_confirmed);
+  document.getElementById('team-submit-count').textContent =
+    `${teamVotes.length}/${myTeamMembers.length}명 제출 완료`;
+
+  const labels = { full:'🔥 풀가동', normal:'⚙️ 정상', maintenance:'🔧 점검' };
+  const colors = { full:'var(--red)', normal:'var(--accent)', maintenance:'var(--yellow)' };
+  document.getElementById('tvs-bars').innerHTML = Object.entries(tally).map(([act, cnt]) =>
+    `<div class="tvs-bar">
+      <div class="tvb-label" style="color:${colors[act]}">${labels[act]}</div>
+      <div class="tvb-count" style="color:${colors[act]}">${cnt}</div>
+      <div class="tvb-sub">표</div>
+    </div>`
+  ).join('');
+}
+
+/* ================================================================
+   투표 제출
+================================================================ */
+async function submitVote() {
+  if (!S.selectedAction) return;
+  const btn = document.getElementById('btn-vote');
+  btn.disabled = true;
+  btn.textContent = '제출 중...';
+
+  try {
+    await DB.submitVote(
+      S.roomId, S.currentRound, S.playerId,
+      S.myRole, S.selectedAction, S.selectedTargets
+    );
+    S.voteSubmitted = true;
+    Utils.toast('✅ 투표가 제출되었습니다!');
+    renderVoteUI();
+  } catch(e) {
+    Utils.toast('오류: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '투표 제출하기';
+  }
+}
+
+/* ================================================================
+   라운드 전환 오버레이
+================================================================ */
+async function showRoundTransition() {
+  const overlay = document.getElementById('round-overlay');
+  document.getElementById('ro-round').textContent = `R${S.currentRound}`;
+
+  // 이전 라운드 이벤트 확인
+  const prevEvents = await DB.getUpcomingEvents(S.roomId, S.prevRound, 1);
+  const evt = prevEvents.find(e => e.round === S.prevRound && e.triggered);
+  const roEvent = document.getElementById('ro-event');
+  if (evt && evt.event_code !== 'NONE') {
+    roEvent.style.display = 'block';
+    roEvent.style.borderLeft = `3px solid ${evt.event_type === 'disaster' ? 'var(--red)' : 'var(--green)'}`;
+    document.getElementById('ro-event-title').textContent = evt.event_name;
+    document.getElementById('ro-event-desc').textContent = evt.description;
+  } else {
+    roEvent.style.display = 'none';
+  }
+
+  overlay.classList.add('show');
+  S.selectedAction  = null;
+  S.selectedTargets = [];
+  S.voteSubmitted   = false;
+
+  await new Promise(r => setTimeout(r, 2800));
+  overlay.classList.remove('show');
+}
+
+/* ================================================================
+   이벤트 알림 표시
+================================================================ */
+async function checkAndShowEvent() {
+  const events = await DB.getUpcomingEvents(S.roomId, S.currentRound, 1);
+  const evt = events.find(e => e.round === S.currentRound && e.triggered);
+  const el = document.getElementById('event-alert');
+  if (evt && evt.event_code !== 'NONE') {
+    el.className = `event-alert show ${evt.event_type}`;
+    document.getElementById('event-alert-title').textContent = evt.event_name;
+    document.getElementById('event-alert-desc').textContent  = evt.description;
+  } else {
+    el.className = 'event-alert';
+  }
+}
+
+/* ================================================================
+   결과 화면
+================================================================ */
+async function showResult() {
+  showScreen('result');
+  const log = await DB.getRoundLog(S.roomId);
+  const lastLog = log[log.length - 1];
+  const survived = lastLog?.colony_survived;
+
+  document.getElementById('result-emoji').textContent = survived ? '🎉' : '💥';
+  document.getElementById('result-title').textContent = survived ? '식민지 생존 성공!' : '식민지 붕괴...';
+  document.getElementById('result-desc').textContent  = survived
+    ? `모든 대원이 힘을 합쳐 화성 식민지를 지켜냈습니다!\n테라포밍 1단계 완료. 수고했습니다! 🚀`
+    : `자원이 고갈되어 식민지가 붕괴되었습니다.\n다음에는 더 잘 할 수 있을 거예요.`;
+}
+
+/* ================================================================
+   Realtime 구독
+================================================================ */
+function subscribeRoom() {
+  if (S.channel) S.channel.unsubscribe();
+  S.channel = DB.subscribeRoom(S.roomId, {
+    onRoom: async (payload) => {
+      const newRoom = payload.new;
+      if (!newRoom) return;
+      // 로비 → 게임 전환
+      if (newRoom.status === 'playing' && S.confirmed) {
+        showScreen('game');
+        await loadGameState();
+        return;
+      }
+      // 게임 진행 중
+      if (newRoom.status === 'playing') {
+        await loadGameState();
+        checkAndShowEvent();
+      }
+      // 게임 종료
+      if (newRoom.status === 'finished') {
+        await loadGameState();
+      }
+    },
+    onPlayers: async () => {
+      S.players = await DB.getPlayers(S.roomId);
+      if (document.getElementById('screen-role').classList.contains('active')) {
+        renderRoleCards();
+      }
+    },
+    onVotes: async () => {
+      S.votes = await DB.getVotes(S.roomId, S.currentRound);
+      if (document.getElementById('screen-game').classList.contains('active')) {
+        renderTeamVoteStatus();
+        renderSubmittedBanner();
+      }
+    },
+    onResources: async () => {
+      S.resources = await DB.getResources(S.roomId);
+      renderResources();
+    },
+    onTeams: async () => {
+      S.teams = await DB.getTeams(S.roomId);
+    },
+  });
+}
+
+/* ================================================================
+   초기화: 이전 세션 복원
+================================================================ */
+(async () => {
+  S.playerId   = Utils.getPlayerId();
+  S.playerName = Utils.getPlayerName();
+  S.roomId     = Utils.getRoomId();
+
+  if (S.playerName) document.getElementById('player-name').value = S.playerName;
+  if (S.roomId)     document.getElementById('room-code-input').value = S.roomId;
+
+  if (S.roomId && S.playerName) {
+    try {
+      const room = await DB.getRoom(S.roomId);
+      if (!room) return;
+      S.room = room;
+      const players = await DB.getPlayers(S.roomId);
+      S.players = players;
+      const me = players.find(p => p.id === S.playerId);
+      if (!me) return;
+      subscribeRoom();
+      if (me.role_confirmed) {
+        S.myRole = me.role;
+        S.confirmed = true;
+        if (room.status === 'playing') {
+          showScreen('game');
+          await loadGameState();
+        } else if (room.status === 'finished') {
+          await loadGameState();
+          showResult();
+        } else {
+          showWait();
+        }
+      } else if (me.role) {
+        S.myRole = me.role;
+        showRoleSelect();
+      }
+    } catch(e) { /* 세션 만료 */ }
+  }
+})();
+</script>
+</body>
+</html>
