@@ -10,7 +10,7 @@
    SUPABASE 연결
 ================================================================ */
 const SUPABASE_URL = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc'; // ← 실제 키로 교체
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY'; // ← 실제 키로 교체
 
 const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -587,12 +587,12 @@ const DB = {
   /* ── 실시간 구독 ── */
   subscribeRoom(roomId, callbacks) {
     return _supa.channel(`ep1_room_${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_rooms',      filters: `id=eq.${roomId}` }, callbacks.onRoom      || (() => {}))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_resources',  filters: `room_id=eq.${roomId}` }, callbacks.onResources || (() => {}))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_teams',      filters: `room_id=eq.${roomId}` }, callbacks.onTeams     || (() => {}))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_players',    filters: `room_id=eq.${roomId}` }, callbacks.onPlayers   || (() => {}))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_team_votes', filters: `room_id=eq.${roomId}` }, callbacks.onVotes     || (() => {}))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_events',     filters: `room_id=eq.${roomId}` }, callbacks.onEvents    || (() => {}))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_rooms',      filter: `id=eq.${roomId}` },         callbacks.onRoom      || (() => {}))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_resources',  filter: `room_id=eq.${roomId}` },    callbacks.onResources || (() => {}))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_teams',      filter: `room_id=eq.${roomId}` },    callbacks.onTeams     || (() => {}))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_players',    filter: `room_id=eq.${roomId}` },    callbacks.onPlayers   || (() => {}))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_team_votes', filter: `room_id=eq.${roomId}` },    callbacks.onVotes     || (() => {}))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ep1_events',     filter: `room_id=eq.${roomId}` },    callbacks.onEvents    || (() => {}))
       .subscribe();
   },
 
