@@ -1247,9 +1247,7 @@ function hideTradeBanner() {
    라운드별 실제 진행 시간 계산
    ================================================================ */
 function getRoundDuration(room, round) {
-  const base = room.round_duration || 60;
-  const step = room.round_duration_step || 5;
-  return Math.max(10, base - (round - 1) * step);
+  return Math.max(30, 60 - (round - 1) * 5);
 }
 
 /* ================================================================
