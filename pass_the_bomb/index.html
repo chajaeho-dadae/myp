@@ -426,6 +426,14 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
   background: linear-gradient(135deg, #0d2a28, #231f3a);
 }
 
+#conn-status {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  background: var(--bomb); color: #fff; padding: 6px 16px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; z-index: 10000;
+  display: none; box-shadow: 0 4px 12px rgba(0,0,0,.4);
+}
+#conn-status.show { display: block; }
+
 @media (max-width: 480px) {
   .row { flex-direction: column; }
   .nego-steps { gap: 2px; }
@@ -434,6 +442,8 @@ label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block
 </style>
 </head>
 <body>
+
+<div id="conn-status">🔌 연결이 끊겼습니다. 재연결 중...</div>
 
 <!-- ══════════════════════════════════
      화면 0 : 인트로
@@ -709,6 +719,31 @@ const SUPABASE_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ================================================================
+   세션 저장/복구 (새로고침 · 연결 끊김 대비)
+   ================================================================ */
+const SESSION_KEY = 'bomb_game_session_v1';
+
+function saveSession() {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      roomId: State.roomId,
+      playerId: State.playerId,
+      playerName: State.playerName,
+      isHost: State.isHost,
+    }));
+  } catch (e) {}
+}
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+}
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+/* ================================================================
    앱 상태
    ================================================================ */
 const State = {
@@ -727,6 +762,7 @@ const State = {
   timerInterval: null,
   subs:          [],
   liveMatrix:    {},
+  resyncTimer:   null,
 };
 
 /* ================================================================
@@ -748,17 +784,23 @@ function toast(msg, dur = 2800) {
   el._t = setTimeout(() => el.classList.remove('show'), dur);
 }
 
+function showConnStatus(show) {
+  const el = document.getElementById('conn-status');
+  if (!el) return;
+  el.classList.toggle('show', show);
+}
+
 /* ================================================================
    URL 파싱
    ================================================================ */
-(function parseUrl() {
+function parseUrl() {
   const params = new URLSearchParams(location.search);
   const rid = params.get('room');
   if (rid) {
     document.getElementById('join-room-id').value = rid.toUpperCase();
     document.getElementById('host-intro-card').style.display = 'none';
   }
-})();
+}
 
 /* ================================================================
    방 개설
@@ -781,6 +823,7 @@ async function createRoom() {
 
   State.roomId = roomId; State.playerId = pd.id;
   State.playerName = hostName; State.isHost = true;
+  saveSession();
   enterLobby();
 }
 
@@ -813,6 +856,7 @@ async function joinRoom() {
   State.roomId = roomId; State.playerId = pd.id;
   State.playerName = name; State.isHost = false; State.room = room;
   State.myTradedWith = [];
+  saveSession();
 
   if (room.status === 'playing') {
     await loadMyCard();
@@ -821,6 +865,116 @@ async function joinRoom() {
     enterLobby();
   }
 }
+
+/* ================================================================
+   세션 복구 (페이지 로드 / 새로고침 시)
+   ================================================================ */
+async function tryRestoreSession() {
+  const session = loadSession();
+  if (!session || !session.roomId || !session.playerId) return false;
+
+  try {
+    const { data: room } = await sb.from('bomb_rooms').select().eq('id', session.roomId).single();
+    if (!room) { clearSession(); return false; }
+
+    const { data: player } = await sb.from('bomb_players').select().eq('id', session.playerId).single();
+    if (!player) { clearSession(); return false; }
+
+    State.roomId     = session.roomId;
+    State.playerId    = session.playerId;
+    State.playerName  = player.name;
+    State.isHost       = !!player.is_host;
+    State.room          = room;
+    State.myTradedWith  = player.traded_with || [];
+
+    toast('🔄 이전 화면을 복구했습니다');
+
+    if (room.status === 'playing') {
+      await loadMyCard();
+      await enterGame(room);
+    } else if (room.status === 'finished') {
+      await endGame();
+    } else {
+      await enterLobby();
+    }
+    return true;
+  } catch (e) {
+    console.warn('세션 복구 실패:', e);
+    return false;
+  }
+}
+
+/* ================================================================
+   화면 동기화 (폴링 안전망 + 재연결 시 즉시 동기화)
+   실시간 이벤트를 놓치더라도 주기적으로/재연결 시 DB에서
+   최신 상태를 다시 받아와 화면을 맞춥니다.
+   ================================================================ */
+async function resyncCurrentScreen() {
+  if (!State.roomId || !State.playerId) return;
+  try {
+    const { data: room } = await sb.from('bomb_rooms').select().eq('id', State.roomId).single();
+    if (!room) return;
+    const prevStatus = State.room?.status;
+    const prevRound  = State.room?.current_round;
+    State.room = room;
+
+    if (room.status === 'finished') {
+      if (prevStatus !== 'finished' &&
+          !document.getElementById('screen-result').classList.contains('active')) {
+        await endGame();
+      }
+      return;
+    }
+
+    if (room.status === 'playing') {
+      const onGameScreen = document.getElementById('screen-game').classList.contains('active');
+      if (!onGameScreen) {
+        await loadMyCard();
+        await enterGame(room);
+        return;
+      }
+      // 라운드가 실시간 이벤트 없이 넘어간 경우를 대비한 보정
+      if (prevRound !== room.current_round) {
+        await rebuildLiveMatrix(room);
+        await loadMyCard();
+        renderMyCard();
+        renderMyStatus();
+        resetNegoProgress();
+        hideTradeBanner();
+        startTimer(room);
+      } else if (!State.timerInterval) {
+        startTimer(room);
+      }
+      await loadMyTradedWith();
+      await refreshGamePlayers();
+      if (State.isHost) renderMatrix(room.current_round);
+      return;
+    }
+
+    if (room.status === 'waiting') {
+      const onLobbyScreen = document.getElementById('screen-lobby').classList.contains('active');
+      if (!onLobbyScreen) {
+        await enterLobby();
+      } else {
+        await refreshPlayers();
+      }
+    }
+  } catch (e) {
+    console.warn('resync 실패:', e);
+  }
+}
+
+function startResyncLoop() {
+  if (State.resyncTimer) clearInterval(State.resyncTimer);
+  State.resyncTimer = setInterval(resyncCurrentScreen, 8000);
+}
+
+/* 네트워크 복귀 / 탭 다시 활성화 시 즉시 재동기화 */
+window.addEventListener('online', () => { showConnStatus(false); resyncCurrentScreen(); });
+window.addEventListener('offline', () => { showConnStatus(true); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') resyncCurrentScreen();
+});
 
 /* ================================================================
    대기실
@@ -836,6 +990,7 @@ async function enterLobby() {
   document.getElementById('host-matrix-section').style.display = State.isHost ? 'block' : 'none';
 
   await refreshPlayers();
+  clearSubs();
 
   const roomSub = sb.channel('lobby-room-' + roomId)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bomb_rooms', filter: `id=eq.${roomId}` },
@@ -848,8 +1003,17 @@ async function enterLobby() {
       })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bomb_players', filter: `room_id=eq.${roomId}` },
       () => refreshPlayers())
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') { showConnStatus(false); }
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        showConnStatus(true);
+        setTimeout(() => {
+          if (document.getElementById('screen-lobby').classList.contains('active')) enterLobby();
+        }, 1500);
+      }
+    });
   State.subs.push(roomSub);
+  startResyncLoop();
 }
 
 async function refreshPlayers() {
@@ -903,6 +1067,7 @@ async function startGame() {
           trade_count: 0,
           card_traded: false,
           traded_with: [],
+          negotiating_with: null,
         }).eq('id', p.id)
       )
     );
@@ -920,7 +1085,6 @@ async function startGame() {
 
     const roundEndAt = new Date(Date.now() + roundDuration * 1000).toISOString();
 
-    // round_duration_step 컬럼 존재 여부를 모르므로 분리해서 시도
     const roomUpdate = {
       status: 'playing',
       total_rounds: totalRounds,
@@ -931,14 +1095,12 @@ async function startGame() {
       round_end_at: roundEndAt,
     };
 
-    // round_duration_step 먼저 포함해서 시도
     const { error: roomErr } = await sb.from('bomb_rooms')
       .update({ ...roomUpdate, round_duration_step: 5 })
       .eq('id', State.roomId);
 
     if (roomErr) {
       console.warn('round_duration_step 포함 업데이트 실패, 재시도:', roomErr.message);
-      // 컬럼 없을 경우 제외하고 재시도
       const { error: roomErr2 } = await sb.from('bomb_rooms')
         .update(roomUpdate)
         .eq('id', State.roomId);
@@ -1058,9 +1220,20 @@ async function enterGame(room) {
           appendChat(payload.new);
         }
       })
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') { showConnStatus(false); }
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        showConnStatus(true);
+        setTimeout(() => {
+          if (document.getElementById('screen-game').classList.contains('active') && State.room) {
+            enterGame(State.room);
+          }
+        }, 1500);
+      }
+    });
 
   State.subs.push(gameSub);
+  startResyncLoop();
 }
 
 /* ================================================================
@@ -1382,11 +1555,22 @@ function renderMatrix(currentRound) {
 }
 
 /* ================================================================
-   협상 요청
+   협상 요청 — 동시에 두 개 이상의 협상을 시작하지 못하도록
+   negotiating_with가 null일 때만 잠그는 조건부 업데이트 사용
    ================================================================ */
 async function requestNego(target) {
   if (State.myCardTraded)  { toast('이번 라운드 카드 교환을 완료했습니다'); return; }
   if (State.currentNego)   { toast('이미 협상 중입니다'); return; }
+
+  const { data: lockResult, error: lockErr } = await sb.from('bomb_players')
+    .update({ negotiating_with: target.id })
+    .eq('id', State.playerId)
+    .is('negotiating_with', null)
+    .select();
+  if (lockErr || !lockResult || lockResult.length === 0) {
+    toast('이미 다른 협상을 진행 중입니다. 새로고침 후 다시 시도해주세요.');
+    return;
+  }
 
   const { data: nego, error } = await sb.from('bomb_negotiations').insert({
     room_id: State.roomId,
@@ -1395,9 +1579,12 @@ async function requestNego(target) {
     target_id: target.id,
     status: 'pending',
   }).select().single();
-  if (error) { toast('협상 요청 실패'); return; }
+  if (error) {
+    toast('협상 요청 실패');
+    await sb.from('bomb_players').update({ negotiating_with: null }).eq('id', State.playerId);
+    return;
+  }
 
-  await sb.from('bomb_players').update({ negotiating_with: target.id }).eq('id', State.playerId);
   State.currentNego = nego;
   setNegoStep('requesting');
   toast(`${target.name}에게 협상 요청을 보냈습니다`);
@@ -1490,20 +1677,30 @@ async function handleNegoChange(payload) {
 }
 
 /* ================================================================
-   협상 수락 / 거절
+   협상 수락 / 거절 — 수락 시에도 동시 협상 잠금 적용
    ================================================================ */
 async function acceptNego() {
   const nego = State.pendingNego;
   if (!nego) return;
   document.getElementById('nego-request-banner').classList.remove('show');
 
+  const { data: lockResult, error: lockErr } = await sb.from('bomb_players')
+    .update({ negotiating_with: nego.requester_id })
+    .eq('id', State.playerId)
+    .is('negotiating_with', null)
+    .select();
+  if (lockErr || !lockResult || lockResult.length === 0) {
+    toast('다른 협상을 진행 중이라 수락할 수 없습니다');
+    await sb.from('bomb_negotiations').update({ status: 'rejected' }).eq('id', nego.id);
+    State.pendingNego = null;
+    return;
+  }
+
   const { data: updatedNego } = await sb.from('bomb_negotiations')
     .update({ status: 'active' })
     .eq('id', nego.id)
     .select()
     .single();
-
-  await sb.from('bomb_players').update({ negotiating_with: nego.requester_id }).eq('id', State.playerId);
 
   State.currentNego = updatedNego || nego;
   const partner = State.players.find(p => p.id === nego.requester_id);
@@ -1633,8 +1830,24 @@ function updateTradeStatus(nego) {
 
 /* ================================================================
    카드 교환 실행
+   — DB 함수(bomb_execute_trade RPC)를 호출해 트랜잭션 안에서
+   원자적으로(atomic) 카드/trade_count/traded_with를 갱신합니다.
+   클라이언트에서 읽고-계산하고-쓰는 방식이 아니므로, 여러 협상이
+   비슷한 시점에 끝나도 교환 횟수가 누락되지 않습니다.
+   RPC 함수가 아직 DB에 없는 경우(마이그레이션 전)에는 기존 방식으로
+   자동 대체(fallback) 됩니다 — 단, 가능한 한 빨리 SQL을 적용해주세요.
    ================================================================ */
 async function executeTradeCards(nego) {
+  const { error: rpcErr } = await sb.rpc('bomb_execute_trade', { p_nego_id: nego.id });
+
+  if (!rpcErr) return;
+
+  console.warn('RPC bomb_execute_trade 호출 실패, 기존 방식으로 대체:', rpcErr.message);
+  await executeTradeCardsFallback(nego);
+}
+
+/* 구버전 방식 (RPC 미적용 환경을 위한 안전망) */
+async function executeTradeCardsFallback(nego) {
   const { error: lockErr } = await sb.from('bomb_negotiations')
     .update({ status: 'processing' })
     .eq('id', nego.id)
@@ -1755,6 +1968,7 @@ async function forceEndGame() {
 async function endGame() {
   clearTimer();
   clearSubs();
+  if (State.resyncTimer) { clearInterval(State.resyncTimer); State.resyncTimer = null; }
 
   const { data: players } = await sb.from('bomb_players').select()
     .eq('room_id', State.roomId).order('trade_count', { ascending: false });
@@ -1831,6 +2045,8 @@ async function replayGame() {
    ================================================================ */
 function goHome() {
   clearSubs(); clearTimer();
+  if (State.resyncTimer) { clearInterval(State.resyncTimer); State.resyncTimer = null; }
+  clearSession();
   Object.assign(State, {
     roomId: null, playerId: null, playerName: null, isHost: false,
     room: null, players: [], myCard: null, currentNego: null,
@@ -1908,8 +2124,20 @@ function updateFuse() {
     updateFuse();
   }
 }
-updateFuse();
-fuseInterval = setInterval(updateFuse, 100);
+
+/* ================================================================
+   앱 초기화 — 새로고침/재접속 시 세션 복구를 먼저 시도합니다.
+   ================================================================ */
+async function initApp() {
+  updateFuse();
+  fuseInterval = setInterval(updateFuse, 100);
+  parseUrl();
+  const restored = await tryRestoreSession();
+  if (!restored) {
+    showScreen('screen-intro');
+  }
+}
+initApp();
 </script>
 </body>
 </html>
