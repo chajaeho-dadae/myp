@@ -210,6 +210,12 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
     <p id="start-hint" style="font-size:10px;color:var(--text3);margin-top:8px;text-align:center">
       7개 역할 각각에 1명 이상 배치되면 시작 버튼이 활성화됩니다
     </p>
+
+    <!-- 디버그 패널: 원인 파악용 -->
+    <details style="margin-top:14px">
+      <summary style="font-size:10px;color:var(--text3);cursor:pointer">🔧 디버그: 원본 플레이어 데이터 보기</summary>
+      <pre id="debug-players" style="font-size:9px;color:var(--text2);background:var(--bg2);padding:8px;border-radius:var(--r);margin-top:6px;max-height:200px;overflow:auto;white-space:pre-wrap"></pre>
+    </details>
   </div>
 </div>
 </div>
@@ -344,7 +350,7 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
   <div class="result-title" id="result-title">식민지 생존!</div>
   <div class="result-desc" id="result-desc"></div>
   <div class="result-stats" id="result-stats"></div>
-  <button class="btn btn-ghost" onclick="location.reload()">↺ 새 게임 시작</button>
+  <button class="btn btn-ghost" onclick="restartFresh()">↺ 새 게임 시작</button>
 </div>
 </div>
 
@@ -452,6 +458,14 @@ async function refreshLobby() {
   } else {
     hint.textContent = `✅ 모든 대원 역할 확정 완료 — 시작 준비 완료!`;
     hint.style.color = 'var(--green)';
+  }
+
+  // 디버그: 원본 데이터 덤프
+  const dbg = document.getElementById('debug-players');
+  if (dbg) {
+    dbg.textContent = G.players.map(p =>
+      `${p.name} | role="${p.role}" (${typeof p.role}) | confirmed=${p.role_confirmed} (${typeof p.role_confirmed})`
+    ).join('\n') || '(플레이어 없음)';
   }
 }
 
@@ -769,12 +783,25 @@ function subscribeRoom() {
 /* ================================================================
    초기화
 ================================================================ */
+/* ================================================================
+   세션 정리 후 재시작
+================================================================ */
+function restartFresh() {
+  Utils.clearSession();
+  location.reload();
+}
+
 (async () => {
   // 이전 세션 복원 시도
   const savedRoom = Utils.getRoomId();
   if (savedRoom) {
     try {
       const room = await DB.getRoom(savedRoom);
+      // 종료된 룸은 복원하지 않고 세션을 정리해 새 게임 설정 화면으로
+      if (room && room.status === 'finished') {
+        Utils.clearSession();
+        return;
+      }
       if (room && room.status === 'playing') {
         G.roomId = savedRoom;
         G.roundMax = room.round_max;
