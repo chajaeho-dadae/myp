@@ -270,7 +270,7 @@ input:focus{border-color:var(--accent)}
   <div class="result-emoji" id="result-emoji">🏆</div>
   <div class="result-title" id="result-title">식민지 생존!</div>
   <div class="result-desc" id="result-desc"></div>
-  <button class="btn btn-ghost" style="max-width:200px;margin:0 auto" onclick="location.reload()">
+  <button class="btn btn-ghost" style="max-width:200px;margin:0 auto" onclick="restartFresh()">
     ↺ 처음으로
   </button>
 </div>
@@ -801,6 +801,17 @@ function subscribeRoom() {
 /* ================================================================
    초기화: 이전 세션 복원
 ================================================================ */
+/* ================================================================
+   세션 정리 후 재시작
+   localStorage의 room_id를 지우지 않으면, 새로고침 후 초기화
+   스크립트가 종료된 옛 룸을 다시 불러와 결과 화면으로 즉시
+   되돌아가 버린다 (room.status === 'finished' 분기로 직행).
+================================================================ */
+function restartFresh() {
+  Utils.clearSession();
+  location.reload();
+}
+
 (async () => {
   S.playerId   = Utils.getPlayerId();
   S.playerName = Utils.getPlayerName();
