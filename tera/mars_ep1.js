@@ -10,7 +10,7 @@
    SUPABASE 연결
 ================================================================ */
 const SUPABASE_URL = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc'; // ← 실제 키로 교체
+const SUPABASE_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
 
 const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -489,7 +489,20 @@ const DB = {
 
   /* ── 플레이어 ── */
   async joinRoom(roomId, playerId, name) {
-    const { error } = await _supa.from('ep1_players').upsert({
+    // 이미 존재하는 플레이어인지 먼저 확인 (재입장 시 role/confirmed 보존)
+    const { data: existing } = await _supa.from('ep1_players')
+      .select('id, role, role_confirmed').eq('id', playerId).maybeSingle();
+
+    if (existing) {
+      // 이미 입장한 플레이어 — 이름만 갱신, 역할 정보는 절대 건드리지 않음
+      const { error } = await _supa.from('ep1_players')
+        .update({ name }).eq('id', playerId);
+      if (error) throw error;
+      return;
+    }
+
+    // 신규 플레이어만 role: null로 insert
+    const { error } = await _supa.from('ep1_players').insert({
       id: playerId, room_id: roomId, name, role: null, role_confirmed: false,
     });
     if (error) throw error;
