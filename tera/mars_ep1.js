@@ -520,9 +520,10 @@ const DB = {
     if (error) throw error;
   },
 
-  async confirmRole(playerId) {
+  async confirmRole(playerId, role) {
+    // role과 role_confirmed를 한 번의 요청으로 동시에 기록 (레이스 컨디션 방지)
     const { error } = await _supa.from('ep1_players')
-      .update({ role_confirmed: true }).eq('id', playerId);
+      .update({ role, role_confirmed: true }).eq('id', playerId);
     if (error) throw error;
   },
 
