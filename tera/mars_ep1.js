@@ -722,6 +722,11 @@ const Utils = {
   getRoomId() { return localStorage.getItem('ep1_room_id') || ''; },
   setRoomId(id) { localStorage.setItem('ep1_room_id', id); },
 
+  /* 게임 종료 후 세션 정리 (room_id만 제거, player_id는 유지) */
+  clearSession() {
+    localStorage.removeItem('ep1_room_id');
+  },
+
   /* 자원 이모지 */
   resEmoji(res) {
     return { oxygen: '🌬', food: '🌾', water: '💧', energy: '⚡', mineral: '🪨' }[res] || '?';
