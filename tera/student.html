@@ -381,13 +381,31 @@ function renderRoleCards() {
 
   container.innerHTML = Object.entries(EP1.ROLES).map(([role, def]) => {
     const cnt = roleCounts[role] || 0;
-    return `<div class="role-card" data-role="${role}" onclick="selectRole('${role}')">
+    const isSelected = S.selectedAction === role;
+    return `<div class="role-card ${isSelected ? 'selected' : ''}" data-role="${role}" onclick="selectRole('${role}')">
       <div class="rc-cnt">${cnt}명</div>
       <div class="rc-emoji">${def.emoji}</div>
       <div class="rc-name">${def.label}</div>
       <div class="rc-desc">${def.desc}</div>
     </div>`;
   }).join('');
+
+  // 이전에 선택한 역할이 있으면 설명 패널과 확정 버튼도 복원
+  if (S.selectedAction) {
+    const def = EP1.ROLES[S.selectedAction];
+    const panel = document.getElementById('role-desc-panel');
+    panel.style.display = 'block';
+    document.getElementById('role-desc-content').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:28px">${def.emoji}</span>
+        <div>
+          <div style="font-size:15px;font-weight:700">${def.label}</div>
+          <div style="font-size:11px;color:var(--text2)">${def.desc}</div>
+        </div>
+      </div>
+      ${def.resource ? `<div style="font-size:11px;color:var(--text3)">생산 자원: ${Utils.resEmoji(def.resource)} ${def.resource}</div>` : '<div style="font-size:11px;color:var(--cyan)">지원형 역할 — 다른 팀을 보조합니다</div>'}`;
+    document.getElementById('btn-confirm-role').disabled = false;
+  }
 }
 
 function selectRole(role) {
@@ -412,7 +430,7 @@ function selectRole(role) {
 }
 
 async function confirmRole() {
-  const role = document.querySelector('.role-card.selected')?.dataset.role;
+  const role = S.selectedAction; // DOM이 아닌 상태값에서 직접 읽음 (재렌더링에도 안전)
   if (!role) { Utils.toast('역할을 먼저 선택하세요'); return; }
   const btn = document.getElementById('btn-confirm-role');
   btn.disabled = true;
