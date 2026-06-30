@@ -10,7 +10,7 @@
    SUPABASE 연결
 ================================================================ */
 const SUPABASE_URL = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
-const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY'; // ← 실제 키로 교체
+const SUPABASE_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc'; // ← 실제 키로 교체
 
 const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
