@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🎭 마피아게임</title>
+<style>
+:root {
+  --bg-0:#0d0f14; --bg-1:#161a24; --bg-2:#1e2330; --border:#2e3448;
+  --accent:#4f8aff; --green:#3ddc84; --red:#ff5c6a; --yellow:#ffc245;
+  --text-1:#e8eaf0; --text-2:#8a90a8; --text-3:#555d7a; --radius:10px;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg-0); color:var(--text-1); font-family:'Noto Sans KR',sans-serif; }
+.wrap { max-width:480px; margin:0 auto; padding:20px 16px 40px; }
+h1 { font-size:18px; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.card { background:var(--bg-1); border:1px solid var(--border); border-radius:var(--radius);
+  padding:20px; margin-bottom:16px; }
+input[type=text] { width:100%; background:var(--bg-2); border:1px solid var(--border);
+  color:var(--text-1); border-radius:8px; padding:12px; font-size:15px; margin-bottom:10px; }
+.btn { display:block; width:100%; padding:13px; border:none; border-radius:8px; font-size:15px;
+  font-weight:700; cursor:pointer; background:var(--accent); color:#fff; margin-top:6px; }
+.btn:disabled { background:var(--border); color:var(--text-3); }
+.btn-outline { background:var(--bg-2); color:var(--text-2); border:1px solid var(--border); font-weight:600; }
+.phase-badge { font-size:12px; padding:5px 12px; border-radius:20px; background:var(--bg-2);
+  border:1px solid var(--border); color:var(--text-2); display:inline-block; margin-bottom:12px; }
+.grid-names { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { padding:6px 10px; border-radius:20px; background:var(--bg-2); font-size:12px; }
+.chip.dead { opacity:.4; text-decoration:line-through; }
+.chip.clickable { cursor:pointer; border:1px solid var(--accent); }
+.candidate { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--bg-2);
+  border-radius:8px; margin-bottom:6px; cursor:pointer; border:2px solid transparent; }
+.candidate.selected { border-color:var(--accent); }
+.candidate input { accent-color:var(--accent); }
+.hint { color:var(--text-3); font-size:12px; margin-top:8px; }
+.result-item { background:var(--bg-2); border-radius:8px; padding:10px 14px; font-size:14px; margin-bottom:8px; }
+.reveal-spacer { height:65vh; display:flex; align-items:center; justify-content:center;
+  color:var(--text-3); font-size:13px; flex-direction:column; gap:6px; }
+.reveal-spacer .arrow { font-size:22px; animation:bounce 1.4s infinite; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
+.role-card { text-align:center; padding:32px 20px; }
+.role-card .role-name { font-size:26px; font-weight:800; margin:10px 0; color:var(--accent); }
+.role-card .role-desc { color:var(--text-2); font-size:14px; line-height:1.6; }
+.mafia-team { margin-top:16px; font-size:13px; color:var(--red); }
+.ghost-fx { position:fixed; top:0; bottom:0; width:120px; display:flex; align-items:center;
+  justify-content:center; font-size:64px; opacity:0; pointer-events:none; transition:opacity .4s, transform .4s;
+  z-index:999; }
+.ghost-fx.left  { left:-140px; }
+.ghost-fx.right { right:-140px; }
+.ghost-fx.show.left  { opacity:1; transform:translateX(160px); }
+.ghost-fx.show.right { opacity:1; transform:translateX(-160px); }
+</style>
+</head>
+<body>
+
+<div id="ghost-left"  class="ghost-fx left">👻</div>
+<div id="ghost-right" class="ghost-fx right">👻</div>
+
+<div class="wrap">
+  <h1>🎭 마피아게임</h1>
+  <div id="app"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="mafia_game.js"></script>
+<script>
+/* ================================================================
+   student.html - 학생 화면
+   ================================================================ */
+
+let room = null;
+let me = null;
+let players = [];
+let ghostChannel = null;
+
+const ROLE_DESC = {
+  mafia:      '밤마다 팀원과 함께 한 명을 지목해 제거합니다. 낮에는 정체를 숨기세요.',
+  citizen:    '특별한 능력은 없지만, 토론과 투표로 마피아를 찾아내야 합니다.',
+  police:     '매일 밤 한 명을 조사해 마피아 팀인지 확인할 수 있습니다.',
+  doctor:     '매일 밤 한 명을 지목해 그날 밤의 공격으로부터 보호합니다.',
+  medium:     '매일 밤 사망자 중 한 명을 조사해 실제 역할을 확인할 수 있습니다.',
+  politician: '게임 중 1회, 낮 투표에서 2표를 행사하거나 처형 위기에서 살아남을 수 있습니다.',
+  witch:      '마피아와 무관하게, 매일 밤 원하는 한 명을 지목해 제거할 수 있습니다.',
+  thug:       '마피아가 한 명만 남는 순간, 마피아로 전향할지 선택할 수 있습니다. 그 전까지는 시민입니다.',
+  terrorist:  '투표로 처형될 때, 생존자 중 한 명을 함께 지목해 동반 탈락시킬 수 있습니다.',
+};
+
+function esc(s) { return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function phaseLabel(p) {
+  return {
+    lobby:'대기 중', role_reveal:'역할 확인 중', night:'🌙 밤',
+    night_result:'🌙 밤 결과', day_discussion:'☀️ 낮 토론', day_vote:'☀️ 투표',
+    day_vote_revote:'☀️ 재투표', day_result:'☀️ 낮 결과', ended:'게임 종료',
+  }[p] || p;
+}
+
+// ── 랜딩 (입장 폼) ──────────────────────────────────────────────
+function renderLanding() {
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <label class="hint">방 코드 (4자리)</label>
+      <input type="text" id="in-code" inputmode="numeric" maxlength="4" placeholder="1234">
+      <label class="hint">닉네임</label>
+      <input type="text" id="in-nick" maxlength="12" placeholder="이름">
+      <button class="btn" onclick="doJoin()">입장하기</button>
+      <div id="join-err" class="hint" style="color:var(--red)"></div>
+    </div>`;
+}
+
+async function doJoin() {
+  const code = document.getElementById('in-code').value.trim();
+  const nick = document.getElementById('in-nick').value.trim();
+  if (!code || !nick) return;
+  const res = await joinRoom(code, nick);
+  if (res.error) {
+    document.getElementById('join-err').textContent = res.error;
+    return;
+  }
+  room = res.room;
+  me = res.player;
+
+  ghostChannel = getRoomBroadcastChannel(room.room_code);
+  listenForGhost(ghostChannel, me.id, playGhostFx);
+  ghostChannel.subscribe();
+
+  subscribeRoom(room.id, refreshRoom);
+  subscribePlayers(room.id, refreshPlayers);
+
+  await refreshRoom();
+  await refreshPlayers();
+}
+
+async function refreshRoom() {
+  const { data } = await supabase.from('mafia_rooms').select('*').eq('id', room.id).single();
+  room = data;
+  render();
+}
+
+async function refreshPlayers() {
+  const { data } = await supabase.from('mafia_players').select('*').eq('room_id', room.id).order('joined_at');
+  players = data || [];
+  me = players.find(p => p.id === me.id) || me;
+  render();
+}
+
+function playGhostFx() {
+  ['ghost-left','ghost-right'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2400);
+  });
+}
+
+// ── 공용 이름 목록 (탈락자만 클릭해서 유령 연출 가능) ───────────
+function renderNameGrid() {
+  const chips = players.map(p => {
+    const clickable = !me.is_alive && p.id !== me.id;
+    return `<span class="chip ${p.is_alive?'':'dead'} ${clickable?'clickable':''}"
+      ${clickable ? `onclick="sendGhost('${p.id}')"` : ''}>${p.is_alive?'':'👻 '}${esc(p.nickname)}</span>`;
+  }).join('');
+  return `<div class="card"><div class="grid-names">${chips}</div>
+    ${!me.is_alive ? '<div class="hint">👻 이름을 클릭하면 그 친구 화면에 유령이 나타나요.</div>' : ''}</div>`;
+}
+
+function sendGhost(targetId) {
+  broadcastGhost(ghostChannel, targetId, me.nickname);
+}
+
+// ── 메인 렌더 ────────────────────────────────────────────────
+async function render() {
+  const app = document.getElementById('app');
+  if (!room) { renderLanding(); return; }
+
+  const badge = `<span class="phase-badge">${phaseLabel(room.phase)}${room.round?` · ${room.round}라운드`:''}</span>`;
+  const nameGrid = renderNameGrid();
+  const actionHtml = await renderActionArea();
+  const roleSection = renderRoleSection();
+
+  app.innerHTML = `
+    ${badge}
+    ${nameGrid}
+    <div class="card" id="action-area">${actionHtml}</div>
+    <div class="reveal-spacer"><span>아래로 스크롤하면 내 직업을 볼 수 있어요</span><span class="arrow">⌄</span></div>
+    ${roleSection}`;
+}
+
+// ── 직업 카드 (스크롤로만 보임) ─────────────────────────────────
+function renderRoleSection() {
+  if (!me.role) {
+    return `<div class="card role-card"><p class="hint">아직 역할이 배정되지 않았습니다.</p></div>`;
+  }
+  const teammates = (me.role === 'mafia')
+    ? players.filter(p => p.role === 'mafia' && p.id !== me.id).map(p => esc(p.nickname))
+    : [];
+  return `
+    <div class="card role-card">
+      <div class="hint">나의 역할</div>
+      <div class="role-name">${ROLE_LABEL_KO[me.role]}</div>
+      <div class="role-desc">${ROLE_DESC[me.role]}</div>
+      ${teammates.length ? `<div class="mafia-team">마피아 팀원: ${teammates.join(', ')}</div>` : ''}
+      ${me.role === 'thug' && me.thug_final_decision
+        ? `<div class="mafia-team" style="color:var(--yellow)">전향 결정: ${me.thug_final_decision==='mafia'?'마피아로 전향함':'시민으로 남음'}</div>` : ''}
+      ${!me.is_alive ? `<div class="mafia-team">💀 탈락 상태입니다</div>` : ''}
+    </div>`;
+}
+
+// ── 단계별 액션 영역 ─────────────────────────────────────────
+async function renderActionArea() {
+  if (!me.is_alive && room.phase !== 'ended' && room.phase !== 'lobby') {
+    return `<p>👻 당신은 유령입니다. 위의 이름 목록에서 친구를 놀래켜보세요.</p>`;
+  }
+
+  switch (room.phase) {
+    case 'lobby':
+      return `<p>게임 시작을 기다리는 중입니다. 참가자 ${players.length}명</p>`;
+    case 'role_reveal':
+      return `<p>아래로 스크롤해서 자신의 역할을 확인하세요. 확인 후 다시 위로 스크롤하면 화면에서 숨길 수 있어요.</p>`;
+    case 'night':
+      return await renderNightAction();
+    case 'night_result': {
+      const { victimIds } = await getNightResultInfo(room.id, room.round);
+      if (!victimIds.length) return `<p>✅ 이번 밤엔 아무도 사망하지 않았습니다.</p>`;
+      return victimIds.map(id => {
+        const n = players.find(p=>p.id===id)?.nickname || '?';
+        return `<div class="result-item">😵 <b>${esc(n)}</b> 님이 밤 사이 사망했습니다.</div>`;
+      }).join('');
+    }
+    case 'day_discussion':
+      return `<p>☀️ 낮 토론 시간입니다. 자유롭게 이야기해보세요.</p>`;
+    case 'day_vote':
+      return await renderVoteAction(1);
+    case 'day_vote_revote':
+      return await renderVoteAction(2);
+    case 'day_result': {
+      const r = await getDayResultInfo(room.id, room.round);
+      const nameOf = id => players.find(p=>p.id===id)?.nickname || '?';
+      if (r.immunized) return `<div class="result-item">🛡 정치인이 면책 능력으로 처형을 피했습니다.</div>`;
+      if (!r.executedId) return `<div class="result-item">✅ 이번 낮엔 아무도 처형되지 않았습니다.</div>`;
+      let html = `<div class="result-item">⚖️ <b>${esc(nameOf(r.executedId))}</b> 님이 처형되었습니다.</div>`;
+      if (r.chainKilledId) html += `<div class="result-item">💥 테러리스트였습니다! <b>${esc(nameOf(r.chainKilledId))}</b> 님도 함께 탈락했습니다.</div>`;
+      return html;
+    }
+    case 'ended':
+      return `<p style="font-size:18px;font-weight:700">${room.winner==='mafia'?'🔪 마피아 팀 승리!':'🕊 시민 팀 승리!'}</p>`;
+    default:
+      return '';
+  }
+}
+
+// ── 밤 행동 UI ──────────────────────────────────────────────
+async function renderNightAction() {
+  const role = me.role;
+  const alive = players.filter(p => p.is_alive);
+
+  if (role === 'thug' && !me.thug_final_decision) {
+    const { shouldPrompt } = await checkThugTriggerCondition(room.id);
+    if (shouldPrompt) {
+      return `<p style="margin-bottom:10px">🔦 마피아가 한 명만 남았습니다. 전향하시겠습니까?</p>
+        <button class="btn" onclick="pickThug('mafia')">마피아로 전향한다</button>
+        <button class="btn btn-outline" onclick="pickThug('citizen')">시민으로 남는다</button>`;
+    }
+    return `<p>아직은 대기해주세요. 조건이 되면 선택지가 나타납니다.</p>`;
+  }
+
+  if (role === 'mafia' || me.thug_final_decision === 'mafia') {
+    return await renderTargetForm('mafia_kill_vote', alive.filter(p => !isMafiaTeam(p)), '제거할 대상을 선택하세요');
+  }
+  if (role === 'doctor')   return await renderTargetForm('doctor_protect', alive, '보호할 대상을 선택하세요');
+  if (role === 'witch')    return await renderTargetForm('witch_kill', alive.filter(p=>p.id!==me.id), '제거할 대상을 선택하세요');
+  if (role === 'police')   return await renderInvestigateForm('police_investigate', alive.filter(p=>p.id!==me.id), 'police');
+  if (role === 'medium') {
+    const dead = players.filter(p => !p.is_alive);
+    if (!dead.length) return `<p>아직 조사할 사망자가 없습니다.</p>`;
+    return await renderInvestigateForm('medium_investigate', dead, 'medium');
+  }
+  if (role === 'politician') return `<p>밤에는 특별한 행동이 없습니다. 낮 투표에서 능력을 사용할 수 있어요.
+    ${me.politician_ability_used ? ' (이미 사용함)' : ''}</p>`;
+  if (role === 'terrorist')  return `<p>밤에는 특별한 행동이 없습니다.</p>`;
+  return `<p>🌙 밤 사이 조용히 기다려주세요.</p>`;
+}
+
+async function pickThug(decision) {
+  await submitThugDecision(me.id, decision);
+  await refreshPlayers();
+}
+
+async function renderTargetForm(actionType, candidates, label) {
+  const existing = await getExistingNightAction(actionType);
+  const rows = candidates.map(p => `
+    <label class="candidate ${existing===p.id?'selected':''}">
+      <input type="radio" name="tgt" value="${p.id}" ${existing===p.id?'checked':''}>
+      ${esc(p.nickname)}
+    </label>`).join('');
+  return `<p style="margin-bottom:10px">${label}</p>${rows}
+    <button class="btn" onclick="submitTarget('${actionType}')">선택 제출</button>`;
+}
+
+async function renderInvestigateForm(actionType, candidates, kind) {
+  const existing = await getExistingNightAction(actionType);
+  if (existing) {
+    const result = await getInvestigationResult(kind, existing);
+    const name = players.find(p=>p.id===existing)?.nickname || '?';
+    const resultText = kind === 'police'
+      ? (result.isMafiaTeam ? '마피아 팀입니다 🚨' : '마피아 팀이 아닙니다 ✅')
+      : `실제 역할: ${result.label}`;
+    return `<p>조사 대상: <b>${esc(name)}</b></p><div class="result-item">${resultText}</div>`;
+  }
+  const rows = candidates.map(p => `
+    <label class="candidate">
+      <input type="radio" name="tgt" value="${p.id}">
+      ${esc(p.nickname)}
+    </label>`).join('');
+  return `<p style="margin-bottom:10px">조사할 대상을 선택하세요</p>${rows}
+    <button class="btn" onclick="submitTarget('${actionType}')">조사 제출</button>`;
+}
+
+async function getExistingNightAction(actionType) {
+  const { data } = await supabase.from('mafia_night_actions').select('target_player_id')
+    .eq('room_id', room.id).eq('round', room.round)
+    .eq('actor_player_id', me.id).eq('action_type', actionType).maybeSingle();
+  return data?.target_player_id || null;
+}
+
+async function submitTarget(actionType) {
+  const picked = document.querySelector('input[name=tgt]:checked');
+  if (!picked) return;
+  await submitNightAction(room.id, room.round, me.id, actionType, picked.value);
+  render();
+}
+
+// ── 낮 투표 UI ──────────────────────────────────────────────
+async function renderVoteAction(attempt) {
+  let candidates;
+  if (attempt === 1) {
+    candidates = players.filter(p => p.is_alive && p.id !== me.id);
+  } else {
+    const ids = room.revote_candidates || [];
+    candidates = players.filter(p => ids.includes(p.id) && p.id !== me.id);
+  }
+
+  const { data: existing } = await supabase.from('mafia_day_votes').select('*')
+    .eq('room_id', room.id).eq('round', room.round).eq('vote_attempt', attempt)
+    .eq('voter_player_id', me.id).maybeSingle();
+
+  const canDoubleVote = me.role === 'politician' && !me.politician_ability_used;
+
+  const rows = candidates.map(p => `
+    <label class="candidate ${existing?.target_player_id===p.id?'selected':''}">
+      <input type="radio" name="vote" value="${p.id}" ${existing?.target_player_id===p.id?'checked':''}>
+      ${esc(p.nickname)}
+    </label>`).join('');
+
+  return `
+    <p style="margin-bottom:10px">처형할 대상을 선택하세요</p>
+    ${rows}
+    <label class="candidate">
+      <input type="radio" name="vote" value="" ${existing && !existing.target_player_id?'checked':''}> 기권
+    </label>
+    ${canDoubleVote ? `
+      <label class="candidate">
+        <input type="checkbox" id="double-vote"> 이번 투표에서 2표 행사 (게임 중 1회)
+      </label>` : ''}
+    <button class="btn" onclick="submitDayVote(${attempt})">투표 제출</button>`;
+}
+
+async function submitDayVote(attempt) {
+  const picked = document.querySelector('input[name=vote]:checked');
+  if (!picked) return;
+  const targetId = picked.value || null;
+  const dbl = document.getElementById('double-vote');
+  const weight = (dbl && dbl.checked) ? 2 : 1;
+
+  await submitVote(room.id, room.round, attempt, me.id, targetId, weight);
+  if (dbl && dbl.checked) {
+    await supabase.from('mafia_players').update({ politician_ability_used: true }).eq('id', me.id);
+    await refreshPlayers();
+  }
+  render();
+}
+
+renderLanding();
+</script>
+</body>
+</html>
