@@ -13,8 +13,8 @@
 // ================================================================
 //  0. Supabase 클라이언트 초기화
 // ================================================================
-const SUPABASE_URL      = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'; // TODO: Supabase 프로젝트의 anon key로 교체하세요
+const SUPABASE_URL  = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
