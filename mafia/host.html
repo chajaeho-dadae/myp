@@ -136,7 +136,7 @@ async function init() {
 }
 
 async function refreshRoom() {
-  const { data } = await supabase.from('mafia_rooms').select('*').eq('id', room.id).single();
+  const { data } = await sb.from('mafia_rooms').select('*').eq('id', room.id).single();
   room = data;
   document.getElementById('phase-badge').textContent = phaseLabel(room.phase);
   document.getElementById('round-tag').textContent = room.round ? `· ${room.round}라운드` : '';
@@ -144,7 +144,7 @@ async function refreshRoom() {
 }
 
 async function refreshPlayers() {
-  const { data } = await supabase.from('mafia_players').select('*').eq('room_id', room.id).order('joined_at');
+  const { data } = await sb.from('mafia_players').select('*').eq('room_id', room.id).order('joined_at');
   players = data || [];
   document.getElementById('player-count').textContent = `(${players.length}명)`;
 
@@ -198,7 +198,7 @@ function applyAutoDefaults(N) {
 
 async function persistRoleSettings() {
   if (!roleSettings) return;
-  await supabase.from('mafia_role_settings')
+  await sb.from('mafia_role_settings')
     .upsert({ room_id: room.id, ...roleSettings }, { onConflict: 'room_id' });
 }
 
