@@ -16,7 +16,7 @@
 const SUPABASE_URL  = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 // ================================================================
@@ -112,7 +112,7 @@ async function saveRoleDefaults(room_id, N) {
     terrorist_enabled:    activeSpecials.includes('terrorist'),
   };
 
-  const { error } = await supabase
+  const { error } = await sb
     .from('mafia_role_settings')
     .upsert(settings, { onConflict: 'room_id' });
 
@@ -125,7 +125,7 @@ async function saveRoleDefaults(room_id, N) {
 // ================================================================
 async function createRoom() {
   const room_code = generateRoomCode();
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('mafia_rooms')
     .insert({ room_code })
     .select()
@@ -134,7 +134,7 @@ async function createRoom() {
 }
 
 async function joinRoom(room_code, nickname) {
-  const { data: room, error: roomErr } = await supabase
+  const { data: room, error: roomErr } = await sb
     .from('mafia_rooms')
     .select('*')
     .eq('room_code', room_code)
@@ -143,7 +143,7 @@ async function joinRoom(room_code, nickname) {
   if (roomErr || !room) return { error: '방을 찾을 수 없습니다.' };
   if (room.phase !== 'lobby') return { error: '이미 게임이 시작되었습니다.' };
 
-  const { data: player, error: playerErr } = await supabase
+  const { data: player, error: playerErr } = await sb
     .from('mafia_players')
     .insert({ room_id: room.id, nickname })
     .select()
@@ -157,9 +157,9 @@ async function joinRoom(room_code, nickname) {
 //  5. 역할 배정 (게임 시작)
 // ================================================================
 async function assignRolesAndStart(room_id) {
-  const { data: players } = await supabase
+  const { data: players } = await sb
     .from('mafia_players').select('*').eq('room_id', room_id);
-  const { data: settings } = await supabase
+  const { data: settings } = await sb
     .from('mafia_role_settings').select('*').eq('room_id', room_id).single();
 
   if (!players || !settings) return { error: 'players/settings 조회 실패' };
@@ -178,10 +178,10 @@ async function assignRolesAndStart(room_id) {
   const shuffledDeck = shuffle(deck);
 
   await Promise.all(players.map((p, i) =>
-    supabase.from('mafia_players').update({ role: shuffledDeck[i] }).eq('id', p.id)
+    sb.from('mafia_players').update({ role: shuffledDeck[i] }).eq('id', p.id)
   ));
 
-  await supabase.from('mafia_rooms')
+  await sb.from('mafia_rooms')
     .update({ phase: 'role_reveal', round: 0 }).eq('id', room_id);
 
   return { error: null };
@@ -192,11 +192,11 @@ async function assignRolesAndStart(room_id) {
 //  6. 밤 페이즈
 // ================================================================
 async function startNightPhase(room_id) {
-  const { data: room } = await supabase
+  const { data: room } = await sb
     .from('mafia_rooms').select('round').eq('id', room_id).single();
   const nextRound = (room?.round || 0) + 1;
 
-  await supabase.from('mafia_rooms')
+  await sb.from('mafia_rooms')
     .update({ round: nextRound, phase: 'night' }).eq('id', room_id);
 
   return nextRound;
@@ -210,7 +210,7 @@ async function startNightPhase(room_id) {
  * submitThugDecision() 을 따로 사용합니다 (한 번 정하면 고정이라 처리 방식이 달라서).
  */
 async function submitNightAction(room_id, round, actor_id, action_type, target_id) {
-  const { error } = await supabase.from('mafia_night_actions').upsert(
+  const { error } = await sb.from('mafia_night_actions').upsert(
     { room_id, round, actor_player_id: actor_id, action_type, target_player_id: target_id },
     { onConflict: 'room_id,round,actor_player_id,action_type' }
   );
@@ -219,20 +219,20 @@ async function submitNightAction(room_id, round, actor_id, action_type, target_i
 
 /** 건달 전향 결정 (한 번 저장되면 이후 재작성 차단) */
 async function submitThugDecision(actor_id, decision /* 'mafia' | 'citizen' */) {
-  const { data: existing } = await supabase
+  const { data: existing } = await sb
     .from('mafia_players').select('thug_final_decision').eq('id', actor_id).single();
 
   if (existing?.thug_final_decision) {
     return { error: '이미 결정되었습니다. 변경할 수 없습니다.' };
   }
-  const { error } = await supabase
+  const { error } = await sb
     .from('mafia_players').update({ thug_final_decision: decision }).eq('id', actor_id);
   return { error };
 }
 
 /** 생존 마피아가 정확히 1명인지 확인 (건달 전향 UI를 띄울지 판단하는 용도) */
 async function checkThugTriggerCondition(room_id) {
-  const { data: players } = await supabase
+  const { data: players } = await sb
     .from('mafia_players').select('*').eq('room_id', room_id).eq('is_alive', true);
 
   const aliveMafiaCount = players.filter(isMafiaTeam).length;
@@ -242,8 +242,8 @@ async function checkThugTriggerCondition(room_id) {
 }
 
 async function killPlayer(room_id, round, player_id, cause) {
-  await supabase.from('mafia_players').update({ is_alive: false }).eq('id', player_id);
-  await supabase.from('mafia_death_log').insert({ room_id, round, player_id, cause });
+  await sb.from('mafia_players').update({ is_alive: false }).eq('id', player_id);
+  await sb.from('mafia_death_log').insert({ room_id, round, player_id, cause });
 }
 
 /**
@@ -253,11 +253,11 @@ async function killPlayer(room_id, round, player_id, cause) {
  * 직접 호출해야 낮으로 넘어갑니다 (교사가 진행 속도를 조절할 수 있도록).
  */
 async function resolveNight(room_id) {
-  const { data: room } = await supabase
+  const { data: room } = await sb
     .from('mafia_rooms').select('round').eq('id', room_id).single();
   const round = room.round;
 
-  const { data: actions } = await supabase
+  const { data: actions } = await sb
     .from('mafia_night_actions').select('*').eq('room_id', room_id).eq('round', round);
 
   const doctorTarget = actions.find(a => a.action_type === 'doctor_protect')?.target_player_id;
@@ -274,9 +274,9 @@ async function resolveNight(room_id) {
 
   const winner = await checkWinCondition(room_id);
   if (winner) {
-    await supabase.from('mafia_rooms').update({ phase: 'ended', winner }).eq('id', room_id);
+    await sb.from('mafia_rooms').update({ phase: 'ended', winner }).eq('id', room_id);
   } else {
-    await supabase.from('mafia_rooms').update({ phase: 'night_result' }).eq('id', room_id);
+    await sb.from('mafia_rooms').update({ phase: 'night_result' }).eq('id', room_id);
   }
 
   return { winner, victimIds: [...victims] };
@@ -288,7 +288,7 @@ async function resolveNight(room_id) {
  * medium: target(사망자)의 실제 역할을 그대로 반환
  */
 async function getInvestigationResult(kind, target_player_id) {
-  const { data: target } = await supabase
+  const { data: target } = await sb
     .from('mafia_players').select('*').eq('id', target_player_id).single();
   if (!target) return null;
 
@@ -302,16 +302,16 @@ async function getInvestigationResult(kind, target_player_id) {
 //  7. 낮 페이즈
 // ================================================================
 async function startDayDiscussion(room_id) {
-  await supabase.from('mafia_rooms').update({ phase: 'day_discussion' }).eq('id', room_id);
+  await sb.from('mafia_rooms').update({ phase: 'day_discussion' }).eq('id', room_id);
 }
 
 async function startDayVote(room_id) {
-  await supabase.from('mafia_rooms').update({ phase: 'day_vote' }).eq('id', room_id);
+  await sb.from('mafia_rooms').update({ phase: 'day_vote' }).eq('id', room_id);
 }
 
 /** weight: 기본 1, 정치인이 "2표 행사" 선언한 경우에만 2 */
 async function submitVote(room_id, round, voteAttempt, voter_id, target_id, weight = 1) {
-  const { error } = await supabase.from('mafia_day_votes').upsert(
+  const { error } = await sb.from('mafia_day_votes').upsert(
     { room_id, round, vote_attempt: voteAttempt, voter_player_id: voter_id,
       target_player_id: target_id, weight },
     { onConflict: 'room_id,round,vote_attempt,voter_player_id' }
@@ -328,11 +328,11 @@ async function submitVote(room_id, round, voteAttempt, voter_id, target_id, weig
  *   'ended'       → 게임 종료
  */
 async function resolveDayVote(room_id, voteAttempt = 1) {
-  const { data: room } = await supabase
+  const { data: room } = await sb
     .from('mafia_rooms').select('round').eq('id', room_id).single();
   const round = room.round;
 
-  const { data: votes } = await supabase
+  const { data: votes } = await sb
     .from('mafia_day_votes').select('*')
     .eq('room_id', room_id).eq('round', round).eq('vote_attempt', voteAttempt);
 
@@ -348,24 +348,24 @@ async function resolveDayVote(room_id, voteAttempt = 1) {
 
   // 전원 기권, 또는 득표 자체가 없는 경우 → 처형 없음
   if (topTargets.length === 0) {
-    await supabase.from('mafia_rooms').update({ phase: 'day_result' }).eq('id', room_id);
+    await sb.from('mafia_rooms').update({ phase: 'day_result' }).eq('id', room_id);
     return { phase: 'day_result', executedId: null, immunized: false, chainKilledId: null };
   }
 
   // 동률 처리
   if (topTargets.length > 1) {
     if (voteAttempt === 1) {
-      await supabase.from('mafia_rooms')
+      await sb.from('mafia_rooms')
         .update({ phase: 'day_vote_revote', revote_candidates: topTargets }).eq('id', room_id);
       return { phase: 'revote', topTargets };
     }
     // 재투표도 동률 → 그날은 처형 없음
-    await supabase.from('mafia_rooms').update({ phase: 'day_result' }).eq('id', room_id);
+    await sb.from('mafia_rooms').update({ phase: 'day_result' }).eq('id', room_id);
     return { phase: 'day_result', executedId: null, immunized: false, chainKilledId: null };
   }
 
   const targetId = topTargets[0];
-  const { data: target } = await supabase
+  const { data: target } = await sb
     .from('mafia_players').select('*').eq('id', targetId).single();
 
   let immunized = false;
@@ -374,9 +374,9 @@ async function resolveDayVote(room_id, voteAttempt = 1) {
 
   if (target.role === 'politician' && !target.politician_ability_used) {
     // 면책 발동: 처형 무효, 능력 소모
-    await supabase.from('mafia_players')
+    await sb.from('mafia_players')
       .update({ politician_ability_used: true }).eq('id', targetId);
-    await supabase.from('mafia_events')
+    await sb.from('mafia_events')
       .insert({ room_id, round, event_type: 'politician_immunity', player_id: targetId });
     immunized = true;
 
@@ -384,7 +384,7 @@ async function resolveDayVote(room_id, voteAttempt = 1) {
     await killPlayer(room_id, round, targetId, 'execution');
     executedId = targetId;
 
-    const { data: chain } = await supabase
+    const { data: chain } = await sb
       .from('mafia_night_actions').select('target_player_id')
       .eq('room_id', room_id).eq('round', round)
       .eq('action_type', 'terrorist_chain_target').eq('actor_player_id', targetId)
@@ -402,11 +402,11 @@ async function resolveDayVote(room_id, voteAttempt = 1) {
 
   const winner = await checkWinCondition(room_id);
   if (winner) {
-    await supabase.from('mafia_rooms').update({ phase: 'ended', winner }).eq('id', room_id);
+    await sb.from('mafia_rooms').update({ phase: 'ended', winner }).eq('id', room_id);
     return { phase: 'ended', winner };
   }
 
-  await supabase.from('mafia_rooms').update({ phase: 'day_result' }).eq('id', room_id);
+  await sb.from('mafia_rooms').update({ phase: 'day_result' }).eq('id', room_id);
   return { phase: 'day_result', executedId, immunized, chainKilledId };
 }
 
@@ -415,7 +415,7 @@ async function resolveDayVote(room_id, voteAttempt = 1) {
 //  8. 승리 조건
 // ================================================================
 async function checkWinCondition(room_id) {
-  const { data: players } = await supabase
+  const { data: players } = await sb
     .from('mafia_players').select('role,thug_final_decision,is_alive')
     .eq('room_id', room_id).eq('is_alive', true);
 
@@ -432,7 +432,7 @@ async function checkWinCondition(room_id) {
 //  9. 유령 클릭 연출 (DB 저장 없이 Realtime Broadcast로만 처리)
 // ================================================================
 function getRoomBroadcastChannel(room_code) {
-  return supabase.channel(`mafia_ghost_${room_code}`);
+  return sb.channel(`mafia_ghost_${room_code}`);
 }
 
 /** 학생이 다른 학생 이름을 클릭했을 때 호출 (탈락자만 클릭 가능하도록 UI에서 제한) */
@@ -456,7 +456,7 @@ function listenForGhost(channel, myPlayerId, onGhost) {
 //  10. Realtime 구독 헬퍼 (host.html / student.html 공용)
 // ================================================================
 function subscribeRoom(room_id, onChange) {
-  return supabase
+  return sb
     .channel(`mafia_room_watch_${room_id}`)
     .on('postgres_changes',
       { event: '*', schema: 'public', table: 'mafia_rooms', filter: `id=eq.${room_id}` },
@@ -465,7 +465,7 @@ function subscribeRoom(room_id, onChange) {
 }
 
 function subscribePlayers(room_id, onChange) {
-  return supabase
+  return sb
     .channel(`mafia_players_watch_${room_id}`)
     .on('postgres_changes',
       { event: '*', schema: 'public', table: 'mafia_players', filter: `room_id=eq.${room_id}` },
@@ -474,7 +474,7 @@ function subscribePlayers(room_id, onChange) {
 }
 
 function subscribeDayVotes(room_id, onChange) {
-  return supabase
+  return sb
     .channel(`mafia_votes_watch_${room_id}`)
     .on('postgres_changes',
       { event: '*', schema: 'public', table: 'mafia_day_votes', filter: `room_id=eq.${room_id}` },
@@ -484,7 +484,7 @@ function subscribeDayVotes(room_id, onChange) {
 
 /** 이름까지 함께 붙여서 공개투표 현황을 가져옴 (host.html 실시간 현황판용) */
 async function getVoteBoard(room_id, round, voteAttempt) {
-  const { data } = await supabase
+  const { data } = await sb
     .from('mafia_day_votes')
     .select('*, voter:voter_player_id(nickname), target:target_player_id(nickname)')
     .eq('room_id', room_id).eq('round', round).eq('vote_attempt', voteAttempt);
@@ -493,17 +493,17 @@ async function getVoteBoard(room_id, round, voteAttempt) {
 
 /** 특정 라운드의 밤 사망자 id 목록 (새로고침 후에도 복원 가능) */
 async function getNightResultInfo(room_id, round) {
-  const { data } = await supabase.from('mafia_death_log')
+  const { data } = await sb.from('mafia_death_log')
     .select('player_id').eq('room_id', room_id).eq('round', round).eq('cause', 'night_kill');
   return { victimIds: (data || []).map(d => d.player_id) };
 }
 
 /** 특정 라운드의 낮 처형 결과 (새로고침 후에도 복원 가능) */
 async function getDayResultInfo(room_id, round) {
-  const { data: deaths } = await supabase.from('mafia_death_log')
+  const { data: deaths } = await sb.from('mafia_death_log')
     .select('player_id,cause').eq('room_id', room_id).eq('round', round)
     .in('cause', ['execution', 'terrorist_chain']);
-  const { data: events } = await supabase.from('mafia_events')
+  const { data: events } = await sb.from('mafia_events')
     .select('player_id').eq('room_id', room_id).eq('round', round)
     .eq('event_type', 'politician_immunity');
 
@@ -519,7 +519,7 @@ async function getDayResultInfo(room_id, round) {
 }
 
 function subscribeDeathLog(room_id, onChange) {
-  return supabase
+  return sb
     .channel(`mafia_deathlog_watch_${room_id}`)
     .on('postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'mafia_death_log', filter: `room_id=eq.${room_id}` },
