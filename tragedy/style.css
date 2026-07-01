@@ -1,0 +1,189 @@
+/* ============================================================================
+   화성 공유지의 비극 — 공통 스타일
+   테마: 화성 정착지 관제 인터페이스 (불확실한 스캐너 계측 + 경보등 HUD)
+   팔레트: bg #120B08 / panel #1C130F / rust #C1440E / dust #9A7A5E
+           alert #E4572E / stable #3FA796 / text #F2E9DE
+   폰트: 표제/계측 — 'Space Mono' (모노스페이스, HUD 느낌) / 본문 — 'Inter'
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #120B08;
+  --panel: #1C130F;
+  --panel-raised: #241811;
+  --line: #362419;
+  --rust: #C1440E;
+  --rust-bright: #E86A2E;
+  --dust: #9A7A5E;
+  --alert: #E4572E;
+  --stable: #3FA796;
+  --text: #F2E9DE;
+  --text-dim: #C9B8A6;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 20% -10%, rgba(193,68,14,0.18), transparent 55%),
+    radial-gradient(ellipse at 100% 110%, rgba(63,167,150,0.08), transparent 45%);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mono { font-family: 'Space Mono', monospace; }
+
+h1, h2, h3 { font-family: 'Space Mono', monospace; letter-spacing: 0.02em; margin: 0; }
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 18px 60px;
+  min-height: 100vh;
+}
+
+.eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rust-bright);
+  margin-bottom: 6px;
+}
+
+.panel {
+  background: linear-gradient(180deg, var(--panel-raised), var(--panel));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 12px 30px -18px rgba(0,0,0,0.6);
+}
+
+.btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 20px;
+  cursor: pointer;
+  width: 100%;
+  transition: transform .08s ease, filter .15s ease, opacity .15s ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-primary { background: var(--rust); color: #FFF6EE; }
+.btn-primary:not(:disabled):hover { filter: brightness(1.12); }
+
+.btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.btn-secondary:not(:disabled):hover { border-color: var(--dust); }
+
+.btn-danger { background: var(--alert); color: #FFF6EE; }
+.btn-danger:not(:disabled):hover { filter: brightness(1.1); }
+
+.btn-ghost { background: var(--panel-raised); color: var(--text-dim); border: 1px solid var(--line); }
+
+input[type=text], input[type=number] {
+  width: 100%;
+  font-family: 'Space Mono', monospace;
+  font-size: 16px;
+  background: #0F0906;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 14px;
+  color: var(--text);
+  outline: none;
+}
+input[type=text]:focus, input[type=number]:focus { border-color: var(--rust); }
+
+.muted { color: var(--dust); font-size: 14px; }
+
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dust); }
+.dot.on { background: var(--stable); box-shadow: 0 0 6px var(--stable); }
+.dot.off { background: var(--alert); }
+
+/* ---- 신뢰도 낮은 매장량 스캐너 게이지 (시그니처 요소) ---- */
+.scanner {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  margin: 6px auto 4px;
+  aspect-ratio: 1;
+}
+.scanner svg { width: 100%; height: 100%; display: block; }
+.scanner .sweep {
+  transform-origin: 160px 160px;
+  animation: sweep 3.2s linear infinite;
+}
+@keyframes sweep { to { transform: rotate(360deg); } }
+.scanner .readout {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+}
+.scanner .readout .val {
+  font-family: 'Space Mono', monospace;
+  font-size: 40px; font-weight: 700; color: var(--rust-bright);
+  line-height: 1;
+}
+.scanner .readout .range {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px; color: var(--dust); margin-top: 6px;
+}
+.scanner .readout .label {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dust); margin-top: 10px;
+}
+
+.list-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.list-row:last-child { border-bottom: none; }
+
+table.matrix {
+  width: 100%; border-collapse: collapse; font-family: 'Space Mono', monospace; font-size: 12px;
+}
+table.matrix th, table.matrix td {
+  border: 1px solid var(--line); padding: 6px 8px; text-align: center; white-space: nowrap;
+}
+table.matrix th { background: var(--panel-raised); color: var(--dust); font-weight: 400; }
+table.matrix td.bankrupt { color: var(--alert); }
+table.matrix tr.pool-row td { color: var(--stable); font-weight: 700; }
+
+.center { text-align: center; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: var(--panel-raised); border: 1px solid var(--line);
+  padding: 10px 16px; border-radius: 10px; font-size: 13px; color: var(--text-dim);
+  max-width: 90vw;
+}
+
+.hidden { display: none !important; }
+
+@media (max-width: 420px) {
+  .scanner .readout .val { font-size: 32px; }
+}
