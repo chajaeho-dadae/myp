@@ -14,7 +14,7 @@
 //  0. Supabase 클라이언트 초기화
 // ================================================================
 const SUPABASE_URL  = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
-const SUPABASE_ANON = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
+const SUPABASE_ANON_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
