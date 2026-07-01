@@ -131,13 +131,13 @@ async function doJoin() {
 }
 
 async function refreshRoom() {
-  const { data } = await supabase.from('mafia_rooms').select('*').eq('id', room.id).single();
+  const { data } = await sb.from('mafia_rooms').select('*').eq('id', room.id).single();
   room = data;
   render();
 }
 
 async function refreshPlayers() {
-  const { data } = await supabase.from('mafia_players').select('*').eq('room_id', room.id).order('joined_at');
+  const { data } = await sb.from('mafia_players').select('*').eq('room_id', room.id).order('joined_at');
   players = data || [];
   me = players.find(p => p.id === me.id) || me;
   render();
@@ -315,7 +315,7 @@ async function renderInvestigateForm(actionType, candidates, kind) {
 }
 
 async function getExistingNightAction(actionType) {
-  const { data } = await supabase.from('mafia_night_actions').select('target_player_id')
+  const { data } = await sb.from('mafia_night_actions').select('target_player_id')
     .eq('room_id', room.id).eq('round', room.round)
     .eq('actor_player_id', me.id).eq('action_type', actionType).maybeSingle();
   return data?.target_player_id || null;
@@ -338,7 +338,7 @@ async function renderVoteAction(attempt) {
     candidates = players.filter(p => ids.includes(p.id) && p.id !== me.id);
   }
 
-  const { data: existing } = await supabase.from('mafia_day_votes').select('*')
+  const { data: existing } = await sb.from('mafia_day_votes').select('*')
     .eq('room_id', room.id).eq('round', room.round).eq('vote_attempt', attempt)
     .eq('voter_player_id', me.id).maybeSingle();
 
@@ -372,7 +372,7 @@ async function submitDayVote(attempt) {
 
   await submitVote(room.id, room.round, attempt, me.id, targetId, weight);
   if (dbl && dbl.checked) {
-    await supabase.from('mafia_players').update({ politician_ability_used: true }).eq('id', me.id);
+    await sb.from('mafia_players').update({ politician_ability_used: true }).eq('id', me.id);
     await refreshPlayers();
   }
   render();
