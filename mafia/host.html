@@ -312,8 +312,8 @@ function renderNightResult(panel) {
     <h2>🌙 밤 사이 일어난 일 (${room.round}라운드)</h2>
     <div class="result-list">
       ${names.length
-        ? names.map(n=>`<div class="result-item">😵 <b>${esc(n)}</b> 님이 밤 사이 사망했습니다.</div>`).join('')
-        : `<div class="result-item">✅ 이번 밤엔 아무도 사망하지 않았습니다.</div>`}
+        ? names.map(n=>`<div class="result-item">😵 <b>${esc(n)}</b> 님이 밤 사이 탈락했습니다.</div>`).join('')
+        : `<div class="result-item">✅ 이번 밤엔 아무도 탈락하지 않았습니다.</div>`}
     </div>
     <button class="btn btn-primary" onclick="goDayDiscussion()">☀️ 낮 토론 시작</button>`;
 }
