@@ -14,9 +14,9 @@
 //  0. Supabase 클라이언트 초기화
 // ================================================================
 const SUPABASE_URL  = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
+const SUPABASE_ANON = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 
 // ================================================================
@@ -435,12 +435,16 @@ function getRoomBroadcastChannel(room_code) {
   return sb.channel(`mafia_ghost_${room_code}`);
 }
 
-/** 학생이 다른 학생 이름을 클릭했을 때 호출 (탈락자만 클릭 가능하도록 UI에서 제한) */
-function broadcastGhost(channel, target_player_id, clicked_by_nickname) {
+/**
+ * 탈락자가 대상을 골라 화면을 클릭했을 때(또는 진행자가 장난을 걸 때) 호출.
+ * xPct/yPct: 보내는 쪽 화면 뷰포트 기준 클릭 위치 백분율(0~100).
+ *   지정하지 않으면(null) 받는 쪽 화면에서 무작위 위치에 유령이 나타납니다.
+ */
+function broadcastGhost(channel, target_player_id, clicked_by_nickname, xPct = null, yPct = null) {
   channel.send({
     type: 'broadcast',
     event: 'ghost',
-    payload: { target_player_id, clicked_by: clicked_by_nickname },
+    payload: { target_player_id, clicked_by: clicked_by_nickname, xPct, yPct },
   });
 }
 
