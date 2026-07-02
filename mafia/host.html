@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🎭 마피아게임 - 진행자 화면</title>
+<title>🎭 스파이게임 - 진행자 화면</title>
 <style>
 :root {
   --bg-0:#0d0f14; --bg-1:#161a24; --bg-2:#1e2330; --border:#2e3448;
@@ -61,7 +61,7 @@ h1 { font-size:20px; display:flex; align-items:center; gap:10px; }
 
 <div class="topbar">
   <img src="./images/title.png" />
-  <!-- <h1>🎭 마피아게임 <span class="round-tag" id="round-tag"></span></h1> -->
+  <!-- <h1>🎭 스파이게임 <span class="round-tag" id="round-tag"></span></h1> -->
   <div style="display:flex;align-items:center;gap:14px">
     <span class="phase-badge" id="phase-badge">준비 중</span>
     <span class="roomcode" id="room-code">----</span>
@@ -263,13 +263,13 @@ function renderLobby(panel) {
   panel.innerHTML = `
     <h2>🧑‍🤝‍🧑 대기 중 · 참가자 ${N}명</h2>
     <div class="field-row">
-      <label>마피아 수</label>
+      <label>스파이 수</label>
       <input type="number" min="1" value="${roleSettings.mafia_count}"
         onchange="onEditSettings('mafia_count', parseInt(this.value)||1)">
     </div>
     ${specialFields}
     <div class="summary">
-      마피아 <b>${roleSettings.mafia_count}</b>명 · 특수역할 <b>${specialsCount}</b>명 ·
+      스파이 <b>${roleSettings.mafia_count}</b>명 · 특수역할 <b>${specialsCount}</b>명 ·
       시민 <b>${civilian >= 0 ? civilian : 0}</b>명 (자동 계산, 총 ${N}명 기준)
       ${!canStart ? `<div class="warn">⚠ 역할 수(${total})가 참가 인원(${N})보다 많습니다. ${N<7?'최소 7명이 필요합니다.':'역할을 줄여주세요.'}</div>` : ''}
     </div>
@@ -384,7 +384,7 @@ async function beginNextNight() {
 }
 
 function renderEnded(panel) {
-  const winnerLabel = room.winner === 'mafia' ? '🔪 마피아 팀 승리' : '🕊 시민 팀 승리';
+  const winnerLabel = room.winner === 'mafia' ? '🔪 스파이 팀 승리' : '🕊 시민 팀 승리';
   const rows = players.map(p =>
     `<tr><td>${esc(p.nickname)}</td><td>${ROLE_LABEL_KO[p.role]||p.role}</td>
       <td>${p.is_alive?'생존':'탈락'}</td></tr>`).join('');
