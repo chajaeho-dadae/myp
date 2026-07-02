@@ -286,13 +286,17 @@ async function pickThug(decision) {
 
 async function renderTargetForm(actionType, candidates, label) {
   const existing = await getExistingNightAction(actionType);
+  const existingName = existing ? (players.find(p => p.id === existing)?.nickname || null) : null;
   const rows = candidates.map(p => `
     <label class="candidate ${existing===p.id?'selected':''}">
       <input type="radio" name="tgt" value="${p.id}" ${existing===p.id?'checked':''}>
       ${esc(p.nickname)}
     </label>`).join('');
-  return `<p style="margin-bottom:10px">${label}</p>${rows}
-    <button class="btn" onclick="submitTarget('${actionType}')">선택 제출</button>`;
+  return `
+    ${existingName ? `<div class="result-item">✅ 제출 완료: <b>${esc(existingName)}</b> (다시 선택하면 바꿀 수 있어요)</div>` : ''}
+    <p style="margin-bottom:10px">${label}</p>${rows}
+    <button class="btn" onclick="submitTarget('${actionType}')">선택 제출</button>
+    <div id="submit-msg" class="hint"></div>`;
 }
 
 async function renderInvestigateForm(actionType, candidates, kind) {
@@ -323,8 +327,19 @@ async function getExistingNightAction(actionType) {
 
 async function submitTarget(actionType) {
   const picked = document.querySelector('input[name=tgt]:checked');
-  if (!picked) return;
-  await submitNightAction(room.id, room.round, me.id, actionType, picked.value);
+  const msgEl = document.getElementById('submit-msg');
+  if (!picked) {
+    if (msgEl) { msgEl.style.color = 'var(--red)'; msgEl.textContent = '먼저 대상을 선택해주세요.'; }
+    return;
+  }
+  if (msgEl) { msgEl.style.color = 'var(--text-3)'; msgEl.textContent = '제출 중...'; }
+
+  const { error } = await submitNightAction(room.id, room.round, me.id, actionType, picked.value);
+  if (error) {
+    console.error('submitNightAction 실패:', error);
+    if (msgEl) { msgEl.style.color = 'var(--red)'; msgEl.textContent = '제출 실패: ' + error.message; }
+    return;
+  }
   render();
 }
 
