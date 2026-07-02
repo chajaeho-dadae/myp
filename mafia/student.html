@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🎭 마피아게임</title>
+<title>🎭 스파이게임</title>
 <style>
 :root {
   --bg-0:#0d0f14; --bg-1:#161a24; --bg-2:#1e2330; --border:#2e3448;
@@ -57,7 +57,7 @@ body.haunt-mode { cursor:pointer; }
 
 <div class="wrap">
   <img src="./images/title.png">
-  <!-- <h1>🎭 마피아게임</h1> -->
+  <!-- <h1>🎭 스파이게임</h1> -->
   <div id="app"></div>
 </div>
 
@@ -77,13 +77,13 @@ let hauntListenerBound = false;
 
 const ROLE_DESC = {
   mafia:      '밤마다 팀원과 함께 한 명을 지목해 제거합니다. 낮에는 정체를 숨기세요.',
-  citizen:    '특별한 능력은 없지만, 토론과 투표로 마피아를 찾아내야 합니다.',
-  police:     '매일 밤 한 명을 조사해 마피아 팀인지 확인할 수 있습니다.',
+  citizen:    '특별한 능력은 없지만, 토론과 투표로 스파이를 찾아내야 합니다.',
+  police:     '매일 밤 한 명을 조사해 스파이 팀인지 확인할 수 있습니다.',
   doctor:     '매일 밤 한 명을 지목해 그날 밤의 공격으로부터 보호합니다.',
   medium:     '매일 밤 사망자 중 한 명을 조사해 실제 역할을 확인할 수 있습니다.',
   politician: '게임 중 1회, 낮 투표에서 2표를 행사하거나 처형 위기에서 살아남을 수 있습니다.',
-  witch:      '마피아와 무관하게, 매일 밤 원하는 한 명을 지목해 제거할 수 있습니다.',
-  thug:       '마피아가 한 명만 남는 순간, 마피아로 전향할지 선택할 수 있습니다. 그 전까지는 시민입니다.',
+  witch:      '스파이와 무관하게, 매일 밤 원하는 한 명을 지목해 제거할 수 있습니다.',
+  thug:       '스파이가 한 명만 남는 순간, 스파이로 전향할지 선택할 수 있습니다. 그 전까지는 시민입니다.',
   terrorist:  '투표로 처형될 때, 생존자 중 한 명을 함께 지목해 동반 탈락시킬 수 있습니다.',
 };
 
@@ -274,9 +274,9 @@ function renderRoleSection() {
       <div class="hint">나의 역할</div>
       <div class="role-name">${ROLE_LABEL_KO[me.role]}</div>
       <div class="role-desc">${ROLE_DESC[me.role]}</div>
-      ${teammates.length ? `<div class="mafia-team">마피아 팀원: ${teammates.join(', ')}</div>` : ''}
+      ${teammates.length ? `<div class="mafia-team">스파이 팀원: ${teammates.join(', ')}</div>` : ''}
       ${me.role === 'thug' && me.thug_final_decision
-        ? `<div class="mafia-team" style="color:var(--yellow)">전향 결정: ${me.thug_final_decision==='mafia'?'마피아로 전향함':'시민으로 남음'}</div>` : ''}
+        ? `<div class="mafia-team" style="color:var(--yellow)">전향 결정: ${me.thug_final_decision==='mafia'?'스파이로 전향함':'시민으로 남음'}</div>` : ''}
       ${!me.is_alive ? `<div class="mafia-team">💀 탈락 상태입니다</div>` : ''}
     </div>`;
 }
@@ -318,7 +318,7 @@ async function renderActionArea() {
       return html;
     }
     case 'ended':
-      return `<p style="font-size:18px;font-weight:700">${room.winner==='mafia'?'🔪 마피아 팀 승리!':'🕊 시민 팀 승리!'}</p>`;
+      return `<p style="font-size:18px;font-weight:700">${room.winner==='mafia'?'🔪 스파이 팀 승리!':'🕊 시민 팀 승리!'}</p>`;
     default:
       return '';
   }
@@ -332,8 +332,8 @@ async function renderNightAction() {
   if (role === 'thug' && !me.thug_final_decision) {
     const { shouldPrompt } = await checkThugTriggerCondition(room.id);
     if (shouldPrompt) {
-      return `<p style="margin-bottom:10px">🔦 마피아가 한 명만 남았습니다. 전향하시겠습니까?</p>
-        <button class="btn" onclick="pickThug('mafia')">마피아로 전향한다</button>
+      return `<p style="margin-bottom:10px">🔦 스파이가 한 명만 남았습니다. 전향하시겠습니까?</p>
+        <button class="btn" onclick="pickThug('mafia')">스파이로 전향한다</button>
         <button class="btn btn-outline" onclick="pickThug('citizen')">시민으로 남는다</button>`;
     }
     return `<p>아직은 대기해주세요. 조건이 되면 선택지가 나타납니다.</p>`;
@@ -382,7 +382,7 @@ async function renderInvestigateForm(actionType, candidates, kind) {
     const result = await getInvestigationResult(kind, existing);
     const name = players.find(p=>p.id===existing)?.nickname || '?';
     const resultText = kind === 'police'
-      ? (result.isMafiaTeam ? '마피아 팀입니다 🚨' : '마피아 팀이 아닙니다 ✅')
+      ? (result.isMafiaTeam ? '스파이 팀입니다 🚨' : '스파이 팀이 아닙니다 ✅')
       : `실제 역할: ${result.label}`;
     return `<p>조사 대상: <b>${esc(name)}</b></p><div class="result-item">${resultText}</div>`;
   }
