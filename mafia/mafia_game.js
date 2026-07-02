@@ -4,7 +4,7 @@
  *  로 불러와서 사용합니다.
  *
  *  원칙:
- *    - 모든 판정(사망, 투표 집계, 승리조건)은 클라이언트 카운트를
+ *    - 모든 판정(탈락, 투표 집계, 승리조건)은 클라이언트 카운트를
  *      신뢰하지 않고 매번 DB를 다시 읽어서(재조회) 계산합니다.
  *    - 클라이언트는 상태를 "그리기"만 하고, 상태 변경은 반드시
  *      이 파일의 함수를 통해 Supabase에 씁니다.
@@ -247,9 +247,9 @@ async function killPlayer(room_id, round, player_id, cause) {
 }
 
 /**
- * 밤이 끝나면 호출 — 모든 밤 행동을 재조회해서 사망자 판정.
+ * 밤이 끝나면 호출 — 모든 밤 행동을 재조회해서 탈락자 판정.
  * 판정 후 즉시 낮으로 넘어가지 않고 'night_result' 에서 멈춥니다.
- * 진행자가 사망자 명단을 화면에 보여주고 확인한 뒤 startDayDiscussion() 을
+ * 진행자가 탈락자 명단을 화면에 보여주고 확인한 뒤 startDayDiscussion() 을
  * 직접 호출해야 낮으로 넘어갑니다 (교사가 진행 속도를 조절할 수 있도록).
  */
 async function resolveNight(room_id) {
@@ -285,7 +285,7 @@ async function resolveNight(room_id) {
 /**
  * 경찰/영매사 조사 결과는 별도로 저장하지 않고 조회 시 계산합니다.
  * police: target 이 스파이 팀인지 여부만 반환
- * medium: target(사망자)의 실제 역할을 그대로 반환
+ * medium: target(탈락자)의 실제 역할을 그대로 반환
  */
 async function getInvestigationResult(kind, target_player_id) {
   const { data: target } = await sb
@@ -495,7 +495,7 @@ async function getVoteBoard(room_id, round, voteAttempt) {
   return data || [];
 }
 
-/** 특정 라운드의 밤 사망자 id 목록 (새로고침 후에도 복원 가능) */
+/** 특정 라운드의 밤 탈락자 id 목록 (새로고침 후에도 복원 가능) */
 async function getNightResultInfo(room_id, round) {
   const { data } = await sb.from('mafia_death_log')
     .select('player_id').eq('room_id', room_id).eq('round', round).eq('cause', 'night_kill');
