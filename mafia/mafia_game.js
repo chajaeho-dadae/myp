@@ -1,5 +1,5 @@
 /* ================================================================
- *  마피아게임 (웹 멀티플레이) - 핵심 게임 엔진
+ *  스파이게임 (웹 멀티플레이) - 핵심 게임 엔진
  *  host.html / student.html 이 공통으로 <script src="mafia_game.js">
  *  로 불러와서 사용합니다.
  *
@@ -29,7 +29,7 @@ const SPECIAL_ROLES_PRIORITY = [
 ];
 
 const ROLE_LABEL_KO = {
-  mafia: '마피아', citizen: '시민', police: '경찰', doctor: '의사',
+  mafia: '스파이', citizen: '시민', police: '경찰', doctor: '의사',
   terrorist: '테러리스트', medium: '영매사', politician: '정치인',
   witch: '마녀', thug: '건달',
 };
@@ -49,7 +49,7 @@ function shuffle(arr) {
   return a;
 }
 
-/** 마피아 팀 여부 (건달이 전향했으면 마피아 팀으로 계산) */
+/** 스파이 팀 여부 (건달이 전향했으면 스파이 팀으로 계산) */
 function isMafiaTeam(player) {
   return player.role === 'mafia' || player.thug_final_decision === 'mafia';
 }
@@ -76,7 +76,7 @@ function majorityTarget(actions) {
 
 // ================================================================
 //  3. 참가자 수(N) 기준 역할 기본값 자동계산
-//     (7명 미달 시 시작불가 / 마피아 수 구간 계산 /
+//     (7명 미달 시 시작불가 / 스파이 수 구간 계산 /
 //      특수역할 7종 시도 후 초과시 우선순위대로 제외)
 // ================================================================
 function computeRoleDefaults(N) {
@@ -230,7 +230,7 @@ async function submitThugDecision(actor_id, decision /* 'mafia' | 'citizen' */) 
   return { error };
 }
 
-/** 생존 마피아가 정확히 1명인지 확인 (건달 전향 UI를 띄울지 판단하는 용도) */
+/** 생존 스파이가 정확히 1명인지 확인 (건달 전향 UI를 띄울지 판단하는 용도) */
 async function checkThugTriggerCondition(room_id) {
   const { data: players } = await sb
     .from('mafia_players').select('*').eq('room_id', room_id).eq('is_alive', true);
@@ -284,7 +284,7 @@ async function resolveNight(room_id) {
 
 /**
  * 경찰/영매사 조사 결과는 별도로 저장하지 않고 조회 시 계산합니다.
- * police: target 이 마피아 팀인지 여부만 반환
+ * police: target 이 스파이 팀인지 여부만 반환
  * medium: target(사망자)의 실제 역할을 그대로 반환
  */
 async function getInvestigationResult(kind, target_player_id) {
