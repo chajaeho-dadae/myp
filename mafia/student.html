@@ -80,7 +80,7 @@ const ROLE_DESC = {
   citizen:    '특별한 능력은 없지만, 토론과 투표로 스파이를 찾아내야 합니다.',
   police:     '매일 밤 한 명을 조사해 스파이 팀인지 확인할 수 있습니다.',
   doctor:     '매일 밤 한 명을 지목해 그날 밤의 공격으로부터 보호합니다.',
-  medium:     '매일 밤 사망자 중 한 명을 조사해 실제 역할을 확인할 수 있습니다.',
+  medium:     '매일 밤 탈락자 중 한 명을 조사해 실제 역할을 확인할 수 있습니다.',
   politician: '게임 중 1회, 낮 투표에서 2표를 행사하거나 처형 위기에서 살아남을 수 있습니다.',
   witch:      '스파이와 무관하게, 매일 밤 원하는 한 명을 지목해 제거할 수 있습니다.',
   thug:       '스파이가 한 명만 남는 순간, 스파이로 전향할지 선택할 수 있습니다. 그 전까지는 시민입니다.',
@@ -296,10 +296,10 @@ async function renderActionArea() {
       return await renderNightAction();
     case 'night_result': {
       const { victimIds } = await getNightResultInfo(room.id, room.round);
-      if (!victimIds.length) return `<p>✅ 이번 밤엔 아무도 사망하지 않았습니다.</p>`;
+      if (!victimIds.length) return `<p>✅ 이번 밤엔 아무도 탈락하지 않았습니다.</p>`;
       return victimIds.map(id => {
         const n = players.find(p=>p.id===id)?.nickname || '?';
-        return `<div class="result-item">😵 <b>${esc(n)}</b> 님이 밤 사이 사망했습니다.</div>`;
+        return `<div class="result-item">😵 <b>${esc(n)}</b> 님이 밤 사이 탈락했습니다.</div>`;
       }).join('');
     }
     case 'day_discussion':
@@ -347,7 +347,7 @@ async function renderNightAction() {
   if (role === 'police')   return await renderInvestigateForm('police_investigate', alive.filter(p=>p.id!==me.id), 'police');
   if (role === 'medium') {
     const dead = players.filter(p => !p.is_alive);
-    if (!dead.length) return `<p>아직 조사할 사망자가 없습니다.</p>`;
+    if (!dead.length) return `<p>아직 조사할 탈락자가 없습니다.</p>`;
     return await renderInvestigateForm('medium_investigate', dead, 'medium');
   }
   if (role === 'politician') return `<p>밤에는 특별한 행동이 없습니다. 낮 투표에서 능력을 사용할 수 있어요.
