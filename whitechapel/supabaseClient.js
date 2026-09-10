@@ -7,4 +7,4 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL  = 'https://sdhpzypjqmowhrhxvvsj.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
