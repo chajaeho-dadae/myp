@@ -1,0 +1,91 @@
+:root {
+  --mc-bg: #14171a;
+  --mc-panel: #1e2226;
+  --mc-border: #3a3f45;
+  --mc-text: #d8dadd;
+  --mc-muted: #8a9096;
+  --mc-accent: #b48a3f;
+  --mc-danger: #b4544a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--mc-bg);
+  color: var(--mc-text);
+  font-family: 'Georgia', 'Nanum Myeongjo', serif;
+}
+
+.mc-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mc-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mc-header h1 {
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  margin: 0;
+  color: var(--mc-accent);
+}
+
+.mc-panel {
+  background: var(--mc-panel);
+  border: 1px solid var(--mc-border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 12px;
+}
+
+.mc-board-wrap {
+  margin: 12px;
+  background: #0e1012;
+  border: 1px solid var(--mc-border);
+  border-radius: 6px;
+}
+
+.mc-btn {
+  background: transparent;
+  border: 1px solid var(--mc-border);
+  color: var(--mc-text);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mc-btn:hover { border-color: var(--mc-accent); color: var(--mc-accent); }
+
+.mc-btn-primary {
+  background: var(--mc-accent);
+  color: #1a1400;
+  border: none;
+  font-weight: bold;
+}
+
+.mc-clue-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  color: var(--mc-muted);
+}
+
+.mc-clue-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--mc-border);
+  display: flex;
+  justify-content: space-between;
+}
+
+.mc-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--mc-accent);
+  color: var(--mc-accent);
+}

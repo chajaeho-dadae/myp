@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>Mist Chase - 그림자 조작 화면</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="mc-header">
+    <h1>MIST CHASE · 그림자 조작 화면</h1>
+    <span id="turnBadge" class="mc-badge">대기 중</span>
+  </div>
+
+  <div id="lobbyView" class="mc-panel">
+    <p>세션이 없습니다. 새 세션을 생성하세요.</p>
+    <button id="createSessionBtn" class="mc-btn mc-btn-primary">세션 생성</button>
+    <div id="sessionInfo" style="margin-top:12px; display:none;">
+      <p>참가 코드: <strong id="sessionCode"></strong></p>
+      <p>접속한 학생: <span id="playerCount">0</span>명</p>
+      <ul id="playerList" style="font-size:13px; color:var(--mc-muted);"></ul>
+      <button id="startGameBtn" class="mc-btn mc-btn-primary">판 시작</button>
+    </div>
+  </div>
+
+  <div id="gameView" style="display:none;">
+    <div class="mc-board-wrap">
+      <svg id="boardSvg" width="100%"></svg>
+    </div>
+    <div class="mc-panel">
+      <p style="color:var(--mc-muted); font-size:13px;">현재 위치: <span id="currentNode">-</span></p>
+      <p style="color:var(--mc-muted); font-size:13px;">다음 안개 걷힘: <span id="nextReveal">-</span>턴</p>
+      <button id="confirmMoveBtn" class="mc-btn mc-btn-primary" disabled>이동 확정</button>
+    </div>
+    <div class="mc-panel">
+      <p style="font-size:13px; color:var(--mc-muted); margin:0 0 8px;">클루 이력</p>
+      <ul id="clueList" class="mc-clue-list"></ul>
+    </div>
+  </div>
+
+  <script type="module" src="teacher.js"></script>
+</body>
+</html>
