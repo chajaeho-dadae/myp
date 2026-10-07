@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>고백을 할까? 말까?</title>
+
+<style>
+    body{
+        margin:0;
+        font-family:sans-serif;
+        background:#ffeef5;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        height:100vh;
+    }
+
+    .container{
+        width:90%;
+        max-width:500px;
+        background:white;
+        padding:40px;
+        border-radius:20px;
+        box-shadow:0 0 15px rgba(0,0,0,0.1);
+        text-align:center;
+    }
+
+    h1{
+        color:#ff4f81;
+        margin-bottom:10px;
+    }
+
+    h2{
+        margin-bottom:30px;
+        color:#333;
+    }
+
+    button{
+        width:100%;
+        padding:15px;
+        margin:10px 0;
+        border:none;
+        border-radius:15px;
+        background:#ff4f81;
+        color:white;
+        font-size:16px;
+        cursor:pointer;
+        transition:0.2s;
+    }
+
+    button:hover{
+        background:#ff2f6a;
+    }
+
+    .score{
+        font-size:22px;
+        font-weight:bold;
+        color:#ff2f6a;
+        margin-bottom:20px;
+    }
+
+    #result{
+        font-size:28px;
+        font-weight:bold;
+        margin-top:20px;
+    }
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>💖 고백을 할까? 말까?</h1>
+
+    <div class="score">
+        현재 점수 : <span id="score">0</span>
+    </div>
+
+    <h2 id="question"></h2>
+
+    <div id="answers"></div>
+
+    <div id="result"></div>
+
+</div>
+
+<script>
+
+const questions = [
+    {
+        question: "나와의 친밀도는?",
+        answers: [
+            { text: "매우 친하다 (+10)", score: 10 },
+            { text: "보통이다 (+5)", score: 5 },
+            { text: "별로 안 친하다 (-5)", score: -5 }
+        ]
+    },
+
+    {
+        question: "연락 빈도는?",
+        answers: [
+            { text: "매일 연락한다 (+10)", score: 10 },
+            { text: "가끔 연락한다 (+5)", score: 5 },
+            { text: "거의 안 한다 (-5)", score: -5 }
+        ]
+    },
+
+    {
+        question: "호감 신호가 있는가?",
+        answers: [
+            { text: "확실히 있다 (+15)", score: 15 },
+            { text: "애매하다 (+5)", score: 5 },
+            { text: "없다 (-10)", score: -10 }
+        ]
+    },
+
+    {
+        question: "상대방이 선톡을 하는가?",
+        answers: [
+            { text: "자주 한다 (+10)", score: 10 },
+            { text: "가끔 한다 (+5)", score: 5 },
+            { text: "거의 안 한다 (-5)", score: -5 }
+        ]
+    },
+
+    {
+        question: "지금 썸인 것 같은가?",
+        answers: [
+            { text: "썸 같다 (+15)", score: 15 },
+            { text: "애매하다 (+5)", score: 5 },
+            { text: "아니다 (-10)", score: -10 }
+        ]
+    }
+];
+
+let currentQuestion = 0;
+let totalScore = 0;
+
+const questionEl = document.getElementById("question");
+const answersEl = document.getElementById("answers");
+const scoreEl = document.getElementById("score");
+const resultEl = document.getElementById("result");
+
+function showQuestion(){
+
+    let q = questions[currentQuestion];
+
+    questionEl.innerText = q.question;
+
+    answersEl.innerHTML = "";
+
+    q.answers.forEach(answer => {
+
+        let btn = document.createElement("button");
+
+        btn.innerText = answer.text;
+
+        btn.onclick = function(){
+
+            totalScore += answer.score;
+
+            scoreEl.innerText = totalScore;
+
+            currentQuestion++;
+
+            if(currentQuestion < questions.length){
+                showQuestion();
+            }
+            else{
+                showResult();
+            }
+        };
+
+        answersEl.appendChild(btn);
+    });
+}
+
+function showResult(){
+
+    questionEl.style.display = "none";
+    answersEl.style.display = "none";
+
+    if(totalScore >= 40){
+        resultEl.innerText = "💖 지금 당장 고백한다!";
+    }
+    else if(totalScore >= 15){
+        resultEl.innerText = "😊 조금 더 관계를 쌓는다!";
+    }
+    else{
+        resultEl.innerText = "😢 고백하지 않는다.";
+    }
+}
+
+showQuestion();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>조커 벅샷 룰렛</title>
+<style>
+body{
+    background:#111;
+    color:white;
+    font-family:sans-serif;
+    text-align:center;
+}
+button{
+    padding:10px;
+    margin:5px;
+    font-size:16px;
+}
+.card{
+    display:inline-block;
+    border:1px solid white;
+    padding:8px;
+    margin:4px;
+    width:50px;
+}
+.log{
+    background:#222;
+    padding:10px;
+    height:250px;
+    overflow-y:auto;
+    text-align:left;
+}
+</style>
+</head>
+<body>
+
+<h1>🃏 조커 벅샷 룰렛</h1>
+
+<div id="setup">
+    <h2>직업 선택</h2>
+    <button onclick="startGame('경찰')">경찰</button>
+    <button onclick="startGame('겜블러')">겜블러</button>
+    <button onclick="startGame('의사')">의사</button>
+</div>
+
+<div id="game" style="display:none;">
+
+<h2 id="status"></h2>
+
+<div>
+    <h3>내 카드</h3>
+    <div id="playerCards"></div>
+</div>
+
+<div>
+    <h3>아이템</h3>
+    <div id="items"></div>
+</div>
+
+<div>
+    <button onclick="drawCard()">상대 카드 뽑기</button>
+    <button onclick="useMirror()">거울 사용</button>
+    <button onclick="useHeal()">회복 주사기 사용</button>
+</div>
+
+<h3>로그</h3>
+<div class="log" id="log"></div>
+
+</div>
+
+<script>
+
+const suits = ["♠","♥","◆","♣"];
+let player = {};
+let enemy = {};
+let deck = [];
+
+function log(msg){
+    let div=document.getElementById("log");
+    div.innerHTML += msg+"<br>";
+    div.scrollTop=div.scrollHeight;
+}
+
+function createDeck(){
+    let d=[];
+    for(let s of suits){
+        for(let i=1;i<=5;i++){
+            d.push({suit:s,num:i});
+            d.push({suit:s,num:i});
+        }
+    }
+    d.push({joker:true});
+    return shuffle(d);
+}
+
+function shuffle(array){
+    for(let i=array.length-1;i>0;i--){
+        let j=Math.floor(Math.random()*(i+1));
+        [array[i],array[j]]=[array[j],array[i]];
+    }
+    return array;
+}
+
+function startGame(job){
+
+    document.getElementById("setup").style.display="none";
+    document.getElementById("game").style.display="block";
+
+    deck=createDeck();
+
+    player={
+        name:"플레이어",
+        hp:3,
+        job:job,
+        hand:[],
+        items:[]
+    };
+
+    enemy={
+        name:"AI",
+        hp:3,
+        hand:[],
+        items:[]
+    };
+
+    for(let i=0;i<5;i++){
+        player.hand.push(deck.pop());
+        enemy.hand.push(deck.pop());
+    }
+
+    if(job==="경찰"){
+        player.hp=4;
+    }
+
+    if(job==="겜블러"){
+        player.items.push(randomItem());
+    }
+
+    updateUI();
+
+    log("게임 시작!");
+    log("직업: "+job);
+}
+
+function updateUI(){
+
+    document.getElementById("status").innerHTML=
+    `플레이어 HP:${player.hp} | AI HP:${enemy.hp}`;
+
+    let pc=document.getElementById("playerCards");
+    pc.innerHTML="";
+
+    player.hand.forEach((c,i)=>{
+        let div=document.createElement("div");
+        div.className="card";
+
+        if(c.joker){
+            div.innerHTML="🃏";
+        }else{
+            div.innerHTML=c.num+c.suit;
+        }
+
+        pc.appendChild(div);
+    });
+
+    let items=document.getElementById("items");
+    items.innerHTML=player.items.join(", ");
+}
+
+function drawCard(){
+
+    if(enemy.hand.length===0)return;
+
+    let idx=Math.floor(Math.random()*enemy.hand.length);
+
+    let card=enemy.hand.splice(idx,1)[0];
+
+    player.hand.push(card);
+
+    log("카드를 뽑았습니다.");
+
+    checkPairs(player);
+
+    aiTurn();
+
+    updateUI();
+
+    checkEnd();
+}
+
+function checkPairs(target){
+
+    let map={};
+
+    for(let i=target.hand.length-1;i>=0;i--){
+
+        let c=target.hand[i];
+
+        if(c.joker)continue;
+
+        let key=c.num+c.suit;
+
+        if(map[key]){
+            target.hand.splice(i,1);
+
+            let idx=target.hand.indexOf(map[key]);
+            target.hand.splice(idx,1);
+
+            log(target.name+" 이(가) 카드 한 쌍을 냈습니다!");
+        }else{
+            map[key]=c;
+        }
+    }
+}
+
+function aiTurn(){
+
+    if(player.hand.length===0)return;
+
+    let idx=Math.floor(Math.random()*player.hand.length);
+
+    let card=player.hand.splice(idx,1)[0];
+
+    enemy.hand.push(card);
+
+    checkPairs(enemy);
+
+    log("AI 턴 종료");
+}
+
+function checkEnd(){
+
+    if(player.hand.length===1 && player.hand[0].joker){
+        shotgun(player);
+    }
+
+    if(enemy.hand.length===1 && enemy.hand[0].joker){
+        shotgun(enemy);
+    }
+
+    updateUI();
+
+    if(player.hp<=0){
+        alert("패배!");
+        location.reload();
+    }
+
+    if(enemy.hp<=0){
+        alert("승리!");
+        location.reload();
+    }
+}
+
+function shotgun(target){
+
+    log(target.name+" 이(가) 조커 패배!");
+
+    let shells=["실탄","공포탄","공포탄","공포탄"];
+
+    shuffle(shells);
+
+    let result=shells[0];
+
+    log("샷건 결과: "+result);
+
+    if(result==="실탄"){
+        target.hp--;
+        log(target.name+" 피해!");
+    }else{
+        log("살아남았습니다.");
+    }
+
+    giveItem(player);
+    giveItem(enemy);
+}
+
+function randomItem(){
+
+    let items=["거울","회복주사기","반짝이"];
+
+    return items[Math.floor(Math.random()*items.length)];
+}
+
+function giveItem(target){
+
+    let item=randomItem();
+
+    target.items.push(item);
+
+    if(target===player){
+        log("아이템 획득: "+item);
+    }
+}
+
+function useMirror(){
+
+    let idx=player.items.indexOf("거울");
+
+    if(idx===-1){
+        alert("거울 없음");
+        return;
+    }
+
+    player.items.splice(idx,1);
+
+    let random=enemy.hand[Math.floor(Math.random()*enemy.hand.length)];
+
+    if(random.joker){
+        alert("상대 카드: 조커");
+    }else{
+        alert("상대 카드: "+random.num+random.suit);
+    }
+
+    updateUI();
+}
+
+function useHeal(){
+
+    let idx=player.items.indexOf("회복주사기");
+
+    if(idx===-1){
+        alert("주사기 없음");
+        return;
+    }
+
+    player.items.splice(idx,1);
+
+    player.hp++;
+
+    log("체력 회복!");
+
+    updateUI();
+}
+
+</script>
+
+</body>
+</html>

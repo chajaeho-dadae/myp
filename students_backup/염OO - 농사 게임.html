@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>식물 농장 게임</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; min-height: 100vh; padding: 16px; color: #1a1a1a; }
+.game-wrap { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+h1 { font-size: 20px; font-weight: 600; text-align: center; padding: 12px 0 4px; color: #2d5a27; }
+.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #fff; border: 1px solid #e0ddd5; border-radius: 12px; }
+.coin { font-size: 18px; font-weight: 500; }
+.coin span { color: #BA7517; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab-btn { padding: 6px 14px; border: 1px solid #d0cdc5; border-radius: 8px; background: #fff; color: #666; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+.tab-btn.active { background: #f0f0ea; color: #1a1a1a; font-weight: 500; border-color: #999; }
+.tab-btn:hover { background: #f5f5f0; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.farm-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.plot { background: #fff; border: 1px solid #e0ddd5; border-radius: 12px; padding: 10px 8px; text-align: center; cursor: pointer; transition: all 0.15s; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; position: relative; }
+.plot:hover { border-color: #999; }
+.plot.locked { opacity: 0.4; cursor: not-allowed; }
+.plot-emoji { font-size: 28px; line-height: 1; }
+.plot-label { font-size: 11px; color: #666; }
+.plot-timer { font-size: 12px; font-weight: 500; }
+.progress-bar { width: 100%; height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden; margin-top: 2px; }
+.progress-fill { height: 100%; background: #3B6D11; border-radius: 2px; transition: width 0.5s linear; }
+.plot-action { font-size: 10px; color: #0F6E56; font-weight: 500; }
+.ready-badge { position: absolute; top: 6px; right: 6px; background: #EAF3DE; color: #3B6D11; font-size: 10px; padding: 2px 6px; border-radius: 999px; font-weight: 500; }
+
+.shop-section { margin-bottom: 16px; }
+.shop-title { font-size: 13px; color: #666; font-weight: 500; margin-bottom: 8px; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.shop-item { background: #fff; border: 1px solid #e0ddd5; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.shop-item-top { display: flex; align-items: center; gap: 8px; }
+.item-emoji { font-size: 22px; }
+.item-info { flex: 1; }
+.item-name { font-size: 13px; font-weight: 500; }
+.item-desc { font-size: 11px; color: #666; }
+.item-price { font-size: 12px; color: #BA7517; font-weight: 500; }
+.buy-btn { padding: 5px 0; border: 1px solid #d0cdc5; border-radius: 8px; background: #fff; color: #1a1a1a; font-size: 12px; cursor: pointer; transition: all 0.15s; width: 100%; }
+.buy-btn:hover { background: #f5f5f0; }
+.buy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.owned-badge { font-size: 11px; color: #3B6D11; font-weight: 500; text-align: center; }
+
+.inv-section { margin-bottom: 12px; }
+.inv-title { font-size: 13px; color: #666; font-weight: 500; margin-bottom: 8px; }
+.inv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
+.inv-item { background: #f5f5f0; border: 1px solid #e0ddd5; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; }
+.inv-count { font-size: 12px; color: #666; margin-left: auto; }
+
+.seed-select { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.seed-opt { border: 1px solid #e0ddd5; border-radius: 12px; padding: 10px; text-align: center; cursor: pointer; transition: all 0.15s; background: #fff; }
+.seed-opt:hover { border-color: #999; background: #f5f5f0; }
+.seed-opt.selected { border-color: #3B6D11; background: #EAF3DE; }
+.seed-opt-emoji { font-size: 24px; }
+.seed-opt-name { font-size: 13px; font-weight: 500; margin-top: 2px; }
+.seed-opt-info { font-size: 11px; color: #666; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: #fff; border: 1px solid #d0cdc5; border-radius: 12px; padding: 20px; width: 320px; max-width: 90%; }
+.modal-title { font-size: 15px; font-weight: 500; margin-bottom: 12px; }
+.modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+.modal-btn { flex: 1; padding: 8px; border: 1px solid #d0cdc5; border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; }
+.modal-btn.confirm { background: #EAF3DE; color: #3B6D11; border-color: #C0DD97; }
+.modal-btn:hover { background: #f5f5f0; }
+.modal-btn.confirm:hover { background: #C0DD97; }
+
+.msg-bar { padding: 8px 14px; border-radius: 8px; font-size: 13px; text-align: center; display: none; }
+.msg-bar.show { display: block; }
+.msg-bar.ok { background: #EAF3DE; color: #3B6D11; }
+.msg-bar.err { background: #FCEBEB; color: #A32D2D; }
+.msg-bar.info { background: #E6F1FB; color: #185FA5; }
+
+.log-list { font-size: 12px; color: #666; display: flex; flex-direction: column; gap: 4px; }
+.log-item { padding: 4px 8px; background: #f5f5f0; border-radius: 8px; }
+.hint { font-size: 12px; color: #888; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="game-wrap" id="app">
+  <h1>🌱 식물 농장 게임</h1>
+  <div class="top-bar">
+    <div class="coin">보유 코인: <span id="coins">100</span> 🪙</div>
+    <div style="font-size:12px; color:#666" id="watering-can-info"></div>
+  </div>
+
+  <div id="msg" class="msg-bar"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('farm')">🌾 농장</button>
+    <button class="tab-btn" onclick="switchTab('shop')">🏪 상점</button>
+    <button class="tab-btn" onclick="switchTab('inventory')">🎒 인벤토리</button>
+    <button class="tab-btn" onclick="switchTab('log')">📋 기록</button>
+  </div>
+
+  <div class="panel active" id="panel-farm">
+    <div class="farm-grid" id="farm-grid"></div>
+    <div class="hint">빈 칸을 눌러 씨앗을 심고, 자란 식물을 눌러 수확하세요.<br>재배 중인 식물을 우클릭하면 비료를 사용할 수 있어요.</div>
+  </div>
+
+  <div class="panel" id="panel-shop">
+    <div class="shop-section">
+      <div class="shop-title">🌰 씨앗</div>
+      <div class="shop-grid" id="shop-seeds"></div>
+    </div>
+    <div class="shop-section">
+      <div class="shop-title">🌱 비료</div>
+      <div class="shop-grid" id="shop-fertilizers"></div>
+    </div>
+    <div class="shop-section">
+      <div class="shop-title">💧 물뿌리개</div>
+      <div class="shop-grid" id="shop-cans"></div>
+    </div>
+    <div class="shop-section">
+      <div class="shop-title">🌾 농장 확장</div>
+      <div class="shop-grid" id="shop-plots"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-inventory">
+    <div class="inv-section">
+      <div class="inv-title">씨앗 보유량</div>
+      <div class="inv-grid" id="inv-seeds"></div>
+    </div>
+    <div class="inv-section">
+      <div class="inv-title">비료 보유량</div>
+      <div class="inv-grid" id="inv-fertilizers"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-log">
+    <div class="log-list" id="log-list">
+      <div class="log-item">게임을 시작했습니다. 씨앗을 구매하고 심어보세요!</div>
+    </div>
+  </div>
+</div>
+
+<div id="modal" style="display:none"></div>
+
+<script>
+const SEEDS = [
+  { id:'clover',   name:'클로버',  emoji:'🍀', buyCost:5,  sellPrice:12,  growTime:30,   desc:'30초 성장, 빠른 회전' },
+  { id:'sunflower',name:'해바라기',emoji:'🌻', buyCost:15, sellPrice:45,  growTime:180,  desc:'3분 성장, 안정적 수익' },
+  { id:'rose',     name:'장미',    emoji:'🌹', buyCost:30, sellPrice:120, growTime:600,  desc:'10분 성장, 높은 수익' },
+  { id:'mushroom', name:'버섯',    emoji:'🍄', buyCost:20, sellPrice:70,  growTime:300,  desc:'5분 성장, 무난한 수익' },
+  { id:'cactus',   name:'선인장',  emoji:'🌵', buyCost:50, sellPrice:300, growTime:1800, desc:'30분 성장, 최고 수익' },
+];
+const FERTILIZERS = [
+  { id:'basic', name:'기본 비료', emoji:'🌱', buyCost:10, timeReduce:0.2, desc:'성장 시간 20% 단축' },
+  { id:'super', name:'슈퍼 비료', emoji:'⚡', buyCost:30, timeReduce:0.5, desc:'성장 시간 50% 단축' },
+];
+const WATERING_CANS = [
+  { id:'basic', name:'기본 물뿌리개', emoji:'🪣', buyCost:0,   interval:60,  desc:'60초마다 물 주기 필요' },
+  { id:'good',  name:'좋은 물뿌리개',emoji:'🚿', buyCost:50,  interval:180, desc:'3분마다 물 주기 필요' },
+  { id:'auto',  name:'자동 물뿌리개',emoji:'💧', buyCost:150, interval:600, desc:'10분마다 물 주기 필요' },
+];
+
+let state = {
+  coins: 100,
+  plotCount: 4,
+  plots: [],
+  seeds: {},
+  fertilizers: {},
+  watering_can: 'basic',
+  logs: ['게임을 시작했습니다.'],
+};
+SEEDS.forEach(s => state.seeds[s.id] = 0);
+FERTILIZERS.forEach(f => state.fertilizers[f.id] = 0);
+for (let i = 0; i < 8; i++) {
+  state.plots.push({ status:'empty', seedId:null, plantedAt:null, growTime:null, lastWatered:null });
+}
+
+let selectedSeedPlotIndex = null;
+
+function now() { return Date.now() / 1000; }
+function addLog(msg) { state.logs.unshift(msg); if (state.logs.length > 30) state.logs.pop(); }
+function showMsg(text, type='ok') {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg-bar show ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2500);
+}
+function getCanInterval() {
+  return (WATERING_CANS.find(c => c.id === state.watering_can) || WATERING_CANS[0]).interval;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ['farm','shop','inventory','log'][i] === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  if (tab === 'shop') renderShop();
+  if (tab === 'inventory') renderInventory();
+  if (tab === 'log') renderLog();
+}
+
+function renderCoins() {
+  document.getElementById('coins').textContent = state.coins;
+  const can = WATERING_CANS.find(c => c.id === state.watering_can);
+  document.getElementById('watering-can-info').textContent = can.emoji + ' ' + can.name;
+}
+
+function renderFarm() {
+  const grid = document.getElementById('farm-grid');
+  grid.innerHTML = '';
+  const t = now();
+  for (let i = 0; i < 8; i++) {
+    const div = document.createElement('div');
+    div.className = 'plot' + (i >= state.plotCount ? ' locked' : '');
+    if (i >= state.plotCount) {
+      div.innerHTML = `<div class="plot-emoji">🔒</div><div class="plot-label">잠김</div>`;
+    } else {
+      const p = state.plots[i];
+      if (p.status === 'empty') {
+        div.innerHTML = `<div class="plot-emoji">🪨</div><div class="plot-action">눌러서 씨앗 심기</div>`;
+        div.onclick = () => openSeedModal(i);
+      } else if (p.status === 'growing') {
+        const elapsed = t - p.plantedAt;
+        const progress = Math.min(elapsed / p.growTime, 1);
+        const remaining = Math.max(p.growTime - elapsed, 0);
+        const canInterval = getCanInterval();
+        const timeSinceWater = t - (p.lastWatered || p.plantedAt);
+        const needsWater = timeSinceWater > canInterval;
+        const seed = SEEDS.find(s => s.id === p.seedId);
+        if (needsWater && progress < 1) {
+          div.innerHTML = `<div class="plot-emoji">🥀</div><div class="plot-label">${seed.name} — 물 필요!</div><div class="plot-action" style="color:#A32D2D">눌러서 물 주기</div>`;
+        } else if (progress >= 1) {
+          div.innerHTML = `<div class="plot-emoji">${seed.emoji}</div><span class="ready-badge">수확 가능</span><div class="plot-label">${seed.name}</div><div class="plot-action">눌러서 수확</div>`;
+        } else {
+          const mins = Math.floor(remaining/60), secs = Math.floor(remaining%60);
+          const timeStr = mins > 0 ? `${mins}분 ${secs}초` : `${secs}초`;
+          div.innerHTML = `<div class="plot-emoji">${seed.emoji}</div><div class="plot-label">${seed.name}</div><div class="plot-timer">${timeStr}</div><div class="progress-bar"><div class="progress-fill" style="width:${Math.round(progress*100)}%"></div></div>`;
+          if (state.fertilizers.basic > 0 || state.fertilizers.super > 0) {
+            div.innerHTML += `<div class="plot-action">우클릭: 비료 사용</div>`;
+          }
+        }
+        div.onclick = () => clickPlot(i, progress >= 1, needsWater && progress < 1);
+        div.oncontextmenu = (e) => { e.preventDefault(); openFertModal(i); };
+      }
+    }
+    grid.appendChild(div);
+  }
+}
+
+function clickPlot(i, ready, needsWater) {
+  const p = state.plots[i];
+  if (ready) {
+    const seed = SEEDS.find(s => s.id === p.seedId);
+    state.coins += seed.sellPrice;
+    addLog(`${seed.emoji} ${seed.name} 수확! +${seed.sellPrice}🪙`);
+    showMsg(`${seed.name} 수확 완료! +${seed.sellPrice}🪙`);
+    state.plots[i] = { status:'empty', seedId:null, plantedAt:null, growTime:null, lastWatered:null };
+    renderCoins(); renderFarm();
+  } else if (needsWater) {
+    state.plots[i].lastWatered = now();
+    showMsg('물을 주었습니다! 🌊', 'info');
+    renderFarm();
+  }
+}
+
+function openSeedModal(plotIndex) {
+  selectedSeedPlotIndex = plotIndex;
+  const hasSeeds = SEEDS.some(s => state.seeds[s.id] > 0);
+  if (!hasSeeds) { showMsg('씨앗이 없습니다. 상점에서 구매하세요!', 'err'); return; }
+  const modal = document.getElementById('modal');
+  let html = `<div class="modal-overlay" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-title">심을 씨앗을 선택하세요</div><div class="seed-select">`;
+  SEEDS.forEach(s => {
+    if (state.seeds[s.id] > 0) {
+      html += `<div class="seed-opt" onclick="plantSeed('${s.id}')"><div class="seed-opt-emoji">${s.emoji}</div><div class="seed-opt-name">${s.name}</div><div class="seed-opt-info">${s.desc}</div><div class="seed-opt-info" style="color:#BA7517">보유: ${state.seeds[s.id]}개</div></div>`;
+    }
+  });
+  html += `</div><div class="modal-btns"><button class="modal-btn" onclick="closeModal()">취소</button></div></div></div>`;
+  modal.innerHTML = html;
+  modal.style.display = 'block';
+}
+
+function openFertModal(plotIndex) {
+  const p = state.plots[plotIndex];
+  if (p.status !== 'growing') return;
+  const hasFert = FERTILIZERS.some(f => state.fertilizers[f.id] > 0);
+  if (!hasFert) { showMsg('비료가 없습니다.', 'err'); return; }
+  const modal = document.getElementById('modal');
+  let html = `<div class="modal-overlay" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-title">비료를 선택하세요</div><div class="seed-select">`;
+  FERTILIZERS.forEach(f => {
+    if (state.fertilizers[f.id] > 0) {
+      html += `<div class="seed-opt" onclick="useFert('${f.id}', ${plotIndex})"><div class="seed-opt-emoji">${f.emoji}</div><div class="seed-opt-name">${f.name}</div><div class="seed-opt-info">${f.desc}</div><div class="seed-opt-info" style="color:#BA7517">보유: ${state.fertilizers[f.id]}개</div></div>`;
+    }
+  });
+  html += `</div><div class="modal-btns"><button class="modal-btn" onclick="closeModal()">취소</button></div></div></div>`;
+  modal.innerHTML = html;
+  modal.style.display = 'block';
+}
+
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+function plantSeed(seedId) {
+  const i = selectedSeedPlotIndex;
+  if (i === null) return;
+  const seed = SEEDS.find(s => s.id === seedId);
+  state.seeds[seedId]--;
+  const t = now();
+  state.plots[i] = { status:'growing', seedId, plantedAt:t, growTime:seed.growTime, lastWatered:t };
+  addLog(`${seed.emoji} ${seed.name} 심기 완료!`);
+  showMsg(`${seed.name}을 심었습니다!`, 'info');
+  closeModal(); renderFarm();
+}
+
+function useFert(fertId, plotIndex) {
+  const f = FERTILIZERS.find(x => x.id === fertId);
+  const p = state.plots[plotIndex];
+  const reduction = p.growTime * f.timeReduce;
+  p.growTime = Math.max(p.growTime - reduction, 5);
+  state.fertilizers[fertId]--;
+  addLog(`${f.emoji} ${f.name} 사용! 성장 시간 단축`);
+  showMsg(`${f.name} 사용! 성장 시간이 단축되었습니다.`);
+  closeModal(); renderFarm();
+}
+
+function renderShop() {
+  const seedEl = document.getElementById('shop-seeds');
+  seedEl.innerHTML = '';
+  SEEDS.forEach(s => {
+    seedEl.innerHTML += `<div class="shop-item"><div class="shop-item-top"><div class="item-emoji">${s.emoji}</div><div class="item-info"><div class="item-name">${s.name}</div><div class="item-desc">${s.desc}</div><div class="item-price">구매 ${s.buyCost}🪙 / 판매 ${s.sellPrice}🪙</div></div></div><button class="buy-btn" onclick="buySeed('${s.id}')" ${state.coins < s.buyCost ? 'disabled':''}>구매 (${s.buyCost}🪙)</button></div>`;
+  });
+  const fertEl = document.getElementById('shop-fertilizers');
+  fertEl.innerHTML = '';
+  FERTILIZERS.forEach(f => {
+    fertEl.innerHTML += `<div class="shop-item"><div class="shop-item-top"><div class="item-emoji">${f.emoji}</div><div class="item-info"><div class="item-name">${f.name}</div><div class="item-desc">${f.desc}</div><div class="item-price">${f.buyCost}🪙</div></div></div><button class="buy-btn" onclick="buyFert('${f.id}')" ${state.coins < f.buyCost ? 'disabled':''}>구매 (${f.buyCost}🪙)</button></div>`;
+  });
+  const canEl = document.getElementById('shop-cans');
+  canEl.innerHTML = '';
+  WATERING_CANS.forEach(c => {
+    const alreadyHave = state.watering_can === c.id;
+    canEl.innerHTML += `<div class="shop-item"><div class="shop-item-top"><div class="item-emoji">${c.emoji}</div><div class="item-info"><div class="item-name">${c.name}</div><div class="item-desc">${c.desc}</div><div class="item-price">${c.buyCost > 0 ? c.buyCost+'🪙' : '무료'}</div></div></div>${alreadyHave ? `<div class="owned-badge">현재 사용 중</div>` : `<button class="buy-btn" onclick="buyCan('${c.id}')" ${state.coins < c.buyCost ? 'disabled':''}>구매 (${c.buyCost}🪙)</button>`}</div>`;
+  });
+  const plotEl = document.getElementById('shop-plots');
+  const cost = state.plotCount * 30;
+  plotEl.innerHTML = state.plotCount >= 8
+    ? `<div class="shop-item"><div class="shop-item-top"><div class="item-emoji">🌾</div><div class="item-info"><div class="item-name">최대 확장 완료</div><div class="item-desc">모든 땅이 열렸습니다!</div></div></div></div>`
+    : `<div class="shop-item"><div class="shop-item-top"><div class="item-emoji">🌾</div><div class="item-info"><div class="item-name">농장 확장</div><div class="item-desc">현재 ${state.plotCount}칸 → ${state.plotCount+1}칸</div><div class="item-price">${cost}🪙</div></div></div><button class="buy-btn" onclick="buyPlot()" ${state.coins < cost ? 'disabled':''}>확장 (${cost}🪙)</button></div>`;
+}
+
+function buySeed(id) {
+  const s = SEEDS.find(x => x.id === id);
+  if (state.coins < s.buyCost) { showMsg('코인이 부족합니다!', 'err'); return; }
+  state.coins -= s.buyCost; state.seeds[id]++;
+  addLog(`${s.emoji} ${s.name} 씨앗 구매 (-${s.buyCost}🪙)`);
+  showMsg(`${s.name} 씨앗 구매 완료!`);
+  renderCoins(); renderShop();
+}
+function buyFert(id) {
+  const f = FERTILIZERS.find(x => x.id === id);
+  if (state.coins < f.buyCost) { showMsg('코인이 부족합니다!', 'err'); return; }
+  state.coins -= f.buyCost; state.fertilizers[id]++;
+  addLog(`${f.emoji} ${f.name} 구매 (-${f.buyCost}🪙)`);
+  showMsg(`${f.name} 구매 완료!`);
+  renderCoins(); renderShop();
+}
+function buyCan(id) {
+  const c = WATERING_CANS.find(x => x.id === id);
+  if (state.coins < c.buyCost) { showMsg('코인이 부족합니다!', 'err'); return; }
+  state.coins -= c.buyCost; state.watering_can = id;
+  addLog(`${c.emoji} ${c.name} 구매 (-${c.buyCost}🪙)`);
+  showMsg(`${c.name} 장착 완료!`);
+  renderCoins(); renderShop();
+}
+function buyPlot() {
+  const cost = state.plotCount * 30;
+  if (state.coins < cost) { showMsg('코인이 부족합니다!', 'err'); return; }
+  state.coins -= cost; state.plotCount++;
+  addLog(`🌾 농장 확장! 현재 ${state.plotCount}칸`);
+  showMsg(`농장이 ${state.plotCount}칸으로 확장되었습니다!`);
+  renderCoins(); renderShop(); renderFarm();
+}
+
+function renderInventory() {
+  const seedEl = document.getElementById('inv-seeds');
+  seedEl.innerHTML = '';
+  SEEDS.forEach(s => {
+    seedEl.innerHTML += `<div class="inv-item"><span>${s.emoji}</span><span style="font-size:13px">${s.name}</span><span class="inv-count">${state.seeds[s.id]}개</span></div>`;
+  });
+  const fertEl = document.getElementById('inv-fertilizers');
+  fertEl.innerHTML = '';
+  FERTILIZERS.forEach(f => {
+    fertEl.innerHTML += `<div class="inv-item"><span>${f.emoji}</span><span style="font-size:13px">${f.name}</span><span class="inv-count">${state.fertilizers[f.id]}개</span></div>`;
+  });
+}
+
+function renderLog() {
+  document.getElementById('log-list').innerHTML = state.logs.map(l => `<div class="log-item">${l}</div>`).join('');
+}
+
+setInterval(() => { renderFarm(); renderCoins(); }, 1000);
+renderFarm();
+renderCoins();
+</script>
+</body>
+</html>

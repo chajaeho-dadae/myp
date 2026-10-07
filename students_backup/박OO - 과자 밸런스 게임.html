@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과자 밸런스 게임</title>
+  <style>
+    body{
+      font-family: Arial, sans-serif;
+      background: #fff7e6;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1{
+      background: orange;
+      color: white;
+      padding: 20px;
+      margin: 0;
+    }
+
+    #round{
+      margin-top: 20px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .container{
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 50px;
+      flex-wrap: wrap;
+    }
+
+    .snack{
+      background: white;
+      border-radius: 20px;
+      width: 250px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .snack:hover{
+      transform: scale(1.05);
+      background: #ffe0a3;
+    }
+
+    .snack img{
+      width: 200px;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 15px;
+    }
+
+    .snack h2{
+      margin-top: 15px;
+    }
+
+    #winner{
+      margin-top: 50px;
+      font-size: 35px;
+      color: #ff6600;
+      font-weight: bold;
+    }
+
+    button{
+      margin-top: 20px;
+      padding: 12px 20px;
+      border: none;
+      background: orange;
+      color: white;
+      border-radius: 10px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    button:hover{
+      background: darkorange;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🍪 과자 밸런스 게임 🍪</h1>
+
+  <div id="round">16강</div>
+
+  <div class="container" id="game"></div>
+
+  <div id="winner"></div>
+
+  <script>
+    const snacks = [
+      {
+        name: "포카칩",
+        img: "https://i.imgur.com/B8Q9K8M.png"
+      },
+      {
+        name: "허니버터칩",
+        img: "https://i.imgur.com/Z5XQ8wB.png"
+      },
+      {
+        name: "새우깡",
+        img: "https://i.imgur.com/4m7IWwP.png"
+      },
+      {
+        name: "꼬북칩",
+        img: "https://i.imgur.com/ELh4W8N.png"
+      },
+      {
+        name: "오징어집",
+        img: "https://i.imgur.com/0rVeh4A.png"
+      },
+      {
+        name: "홈런볼",
+        img: "https://i.imgur.com/Xx7K7Yv.png"
+      },
+      {
+        name: "초코송이",
+        img: "https://i.imgur.com/6K0Q4F8.png"
+      },
+      {
+        name: "칸쵸",
+        img: "https://i.imgur.com/Fa9nV3V.png"
+      },
+      {
+        name: "빼빼로",
+        img: "https://i.imgur.com/SlP7Q9Q.png"
+      },
+      {
+        name: "치토스",
+        img: "https://i.imgur.com/jQ7zK5z.png"
+      },
+      {
+        name: "감자깡",
+        img: "https://i.imgur.com/V2mBfQW.png"
+      },
+      {
+        name: "에이스",
+        img: "https://i.imgur.com/8Xqv3Ih.png"
+      },
+      {
+        name: "콘칩",
+        img: "https://i.imgur.com/6zVfXvN.png"
+      },
+      {
+        name: "고래밥",
+        img: "https://i.imgur.com/XA5M6n4.png"
+      },
+      {
+        name: "죠리퐁",
+        img: "https://i.imgur.com/W9j8R2Y.png"
+      },
+      {
+        name: "썬칩",
+        img: "https://i.imgur.com/6LhM8jA.png"
+      }
+    ];
+
+    let currentRound = [...snacks];
+    let nextRound = [];
+    let index = 0;
+
+    const game = document.getElementById("game");
+    const roundText = document.getElementById("round");
+    const winnerText = document.getElementById("winner");
+
+    function showMatch() {
+      game.innerHTML = "";
+
+      if(currentRound.length === 1){
+        winnerText.innerHTML = `
+          🏆 당신이 가장 좋아하는 과자는 <br>
+          ${currentRound[0].name} 입니다!
+          <br>
+          <button onclick="location.reload()">다시하기</button>
+        `;
+        roundText.innerText = "우승!";
+        return;
+      }
+
+      if(index >= currentRound.length){
+        currentRound = nextRound;
+        nextRound = [];
+        index = 0;
+      }
+
+      roundText.innerText = currentRound.length + "강";
+
+      const snack1 = currentRound[index];
+      const snack2 = currentRound[index + 1];
+
+      createSnack(snack1);
+      createSnack(snack2);
+    }
+
+    function createSnack(snack){
+      const div = document.createElement("div");
+      div.className = "snack";
+
+      div.innerHTML = `
+        <img src="${snack.img}" alt="${snack.name}">
+        <h2>${snack.name}</h2>
+      `;
+
+      div.onclick = () => selectSnack(snack);
+
+      game.appendChild(div);
+    }
+
+    function selectSnack(snack){
+      nextRound.push(snack);
+      index += 2;
+      showMatch();
+    }
+
+    showMatch();
+  </script>
+
+</body>
+</html>

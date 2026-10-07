@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>오늘의 메뉴 추천</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #fff8dc;
+      padding: 50px;
+    }
+
+    h1 {
+      color: #ff6600;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      background-color: #ffcc66;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #ffb347;
+    }
+
+    #result {
+      margin-top: 30px;
+      font-size: 24px;
+      color: #333;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🍴 오늘의 메뉴 추천 🍴</h1>
+  <p>먹고 싶은 음식 종류를 선택하세요!</p>
+
+  <button onclick="recommendMenu('한식')">한식</button>
+  <button onclick="recommendMenu('중식')">중식</button>
+  <button onclick="recommendMenu('일식')">일식</button>
+
+  <div id="result"></div>
+
+  <script>
+    function recommendMenu(type) {
+      let menu = [];
+
+      if (type === '한식') {
+        menu = ['비빔밥', '불고기', '된장찌개', '김치찌개'];
+      } 
+      else if (type === '중식') {
+        menu = ['마라탕', '짜장면', '탕수육'];
+      } 
+      else if (type === '일식') {
+        menu = ['초밥', '라멘', '타코야끼'];
+      }
+
+      const randomMenu = menu[Math.floor(Math.random() * menu.length)];
+
+      document.getElementById("result").innerHTML =
+        "오늘의 추천 메뉴는 👉 " + randomMenu + " 👈";
+    }
+  </script>
+
+</body>
+</html>

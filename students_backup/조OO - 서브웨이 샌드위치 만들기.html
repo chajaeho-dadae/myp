@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>써브웨이 샌드위치 만들기</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family:Arial;
+    background:url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=1400');
+    background-size:cover;
+    background-position:center;
+    color:white;
+    text-align:center;
+}
+
+.overlay{
+    background:rgba(0,0,0,0.7);
+    min-height:100vh;
+    padding:20px;
+}
+
+h1{
+    color:#00ff66;
+}
+
+.game-box{
+    max-width:1300px;
+    margin:auto;
+    background:rgba(255,255,255,0.1);
+    border-radius:20px;
+    padding:20px;
+}
+
+.customer{
+    font-size:100px;
+}
+
+.order-box{
+    background:#fff8c6;
+    color:black;
+    padding:15px;
+    border-radius:10px;
+    margin:15px;
+    min-height:150px;
+    font-size:20px;
+}
+
+.timer{
+    font-size:30px;
+    color:yellow;
+}
+
+.score{
+    font-size:24px;
+    color:#00ff66;
+}
+
+.section-title{
+    margin-top:30px;
+    font-size:28px;
+    color:#00ff66;
+}
+
+.ingredient-area{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:15px;
+    margin-top:20px;
+}
+
+.bin{
+    width:120px;
+    background:#333;
+    border-radius:15px;
+    padding:10px;
+    border:3px solid white;
+}
+
+.bin h3{
+    margin:5px;
+    font-size:18px;
+}
+
+.food{
+    width:70px;
+    height:70px;
+    margin:auto;
+    border-radius:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:35px;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.food:hover{
+    transform:scale(1.1);
+}
+
+#sandwich{
+    width:320px;
+    min-height:250px;
+    margin:auto;
+    display:flex;
+    flex-direction:column-reverse;
+    align-items:center;
+}
+
+.layer{
+    width:260px;
+    border-radius:10px;
+    margin-top:2px;
+    text-align:center;
+    font-weight:bold;
+    color:black;
+    padding:8px;
+}
+
+button{
+    margin-top:20px;
+    padding:12px 20px;
+    border:none;
+    border-radius:10px;
+    background:#00aa44;
+    color:white;
+    font-size:20px;
+    cursor:pointer;
+}
+
+.result{
+    font-size:30px;
+    margin-top:20px;
+}
+
+/* 재료 색 */
+
+.white{
+    background:#f5deb3;
+}
+
+.wheat{
+    background:#c68642;
+    color:white;
+}
+
+.flat{
+    background:#deb887;
+}
+
+.ham{
+    background:pink;
+}
+
+.egg{
+    background:#fff4a3;
+}
+
+.shrimp{
+    background:orange;
+}
+
+.avocado{
+    background:#7CFC00;
+}
+
+.lettuce{
+    background:#90EE90;
+}
+
+.tomato{
+    background:red;
+    color:white;
+}
+
+.cucumber{
+    background:green;
+    color:white;
+}
+
+.cheese{
+    background:gold;
+}
+
+.bacon{
+    background:#b22222;
+    color:white;
+}
+
+.sauce{
+    background:white;
+}
+
+.remove{
+    background:#555;
+    color:white;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="overlay">
+
+<h1>🥪 써브웨이 샌드위치 만들기</h1>
+
+<div class="game-box">
+
+<div class="customer">🧑</div>
+
+<div class="timer">
+⏰ 남은 시간 : <span id="time">30</span>초
+</div>
+
+<div class="score">
+⭐ 점수 : <span id="score">0</span>
+</div>
+
+<button onclick="startGame()">게임 시작</button>
+
+<div class="order-box" id="orderBox">
+손님의 주문이 표시됩니다.
+</div>
+
+<!-- 빵 -->
+
+<div class="section-title">🍞 빵 종류</div>
+
+<div class="ingredient-area">
+
+<div class="bin">
+<h3>화이트</h3>
+<div class="food" onclick="addIngredient('화이트빵')">🍞</div>
+</div>
+
+<div class="bin">
+<h3>위트</h3>
+<div class="food" onclick="addIngredient('위트빵')">🥖</div>
+</div>
+
+<div class="bin">
+<h3>플랫브레드</h3>
+<div class="food" onclick="addIngredient('플랫브레드')">🫓</div>
+</div>
+
+</div>
+
+<!-- 메인 -->
+
+<div class="section-title">🥩 메인 메뉴</div>
+
+<div class="ingredient-area">
+
+<div class="bin">
+<h3>햄</h3>
+<div class="food" onclick="addIngredient('햄')">🥓</div>
+</div>
+
+<div class="bin">
+<h3>에그마요</h3>
+<div class="food" onclick="addIngredient('에그마요')">🥚</div>
+</div>
+
+<div class="bin">
+<h3>새우</h3>
+<div class="food" onclick="addIngredient('새우')">🍤</div>
+</div>
+
+</div>
+
+<!-- 야채 -->
+
+<div class="section-title">🥬 야채</div>
+
+<div class="ingredient-area">
+
+<div class="bin">
+<h3>양상추</h3>
+<div class="food" onclick="addIngredient('양상추')">🥬</div>
+</div>
+
+<div class="bin">
+<h3>토마토</h3>
+<div class="food" onclick="addIngredient('토마토')">🍅</div>
+</div>
+
+<div class="bin">
+<h3>오이</h3>
+<div class="food" onclick="addIngredient('오이')">🥒</div>
+</div>
+
+</div>
+
+<!-- 추가 -->
+
+<div class="section-title">➕ 추가 메뉴</div>
+
+<div class="ingredient-area">
+
+<div class="bin">
+<h3>치즈</h3>
+<div class="food" onclick="addIngredient('치즈추가')">🧀</div>
+</div>
+
+<div class="bin">
+<h3>베이컨</h3>
+<div class="food" onclick="addIngredient('베이컨추가')">🥓</div>
+</div>
+
+<div class="bin">
+<h3>아보카도</h3>
+<div class="food" onclick="addIngredient('아보카도추가')">🥑</div>
+</div>
+
+</div>
+
+<!-- 소스 -->
+
+<div class="section-title">🧂 소스</div>
+
+<div class="ingredient-area">
+
+<div class="bin">
+<h3>랜치</h3>
+<div class="food" onclick="addIngredient('랜치소스')">🧂</div>
+</div>
+
+<div class="bin">
+<h3>칠리</h3>
+<div class="food" onclick="addIngredient('스위트칠리')">🌶️</div>
+</div>
+
+</div>
+
+<!-- 제외 -->
+
+<div class="section-title">❌ 빼는 야채</div>
+
+<div class="ingredient-area">
+
+<div class="bin">
+<h3>양상추 제외</h3>
+<div class="food" onclick="addIngredient('양상추제외')">❌</div>
+</div>
+
+<div class="bin">
+<h3>토마토 제외</h3>
+<div class="food" onclick="addIngredient('토마토제외')">❌</div>
+</div>
+
+<div class="bin">
+<h3>오이 제외</h3>
+<div class="food" onclick="addIngredient('오이제외')">❌</div>
+</div>
+
+</div>
+
+<div class="section-title">🥪 실시간 샌드위치</div>
+
+<div id="sandwich"></div>
+
+<button onclick="checkOrder()">완성하기</button>
+
+<div class="result" id="result"></div>
+
+</div>
+
+</div>
+
+<script>
+
+const orders = [
+
+["화이트빵","햄","양상추","토마토","랜치소스"],
+
+["위트빵","에그마요","오이","스위트칠리","치즈추가"],
+
+["플랫브레드","새우","아보카도추가","양상추","토마토제외"],
+
+["화이트빵","햄","베이컨추가","양상추","오이제외"]
+
+];
+
+let currentOrder = [];
+let playerOrder = [];
+let score = 0;
+let time = 30;
+let timer;
+let canMake = false;
+
+function startGame(){
+
+    playerOrder = [];
+
+    document.getElementById("sandwich").innerHTML = "";
+
+    document.getElementById("result").innerText = "";
+
+    currentOrder =
+    orders[Math.floor(Math.random()*orders.length)];
+
+    document.getElementById("orderBox").innerHTML =
+    "📋 주문서<br><br>" +
+    currentOrder.join(", ");
+
+    canMake = false;
+
+    setTimeout(()=>{
+
+        document.getElementById("orderBox").innerHTML =
+        "📝 주문서가 사라졌습니다! 기억해서 만드세요!";
+
+        canMake = true;
+
+    },5000);
+
+    time = 30;
+
+    document.getElementById("time").innerText = time;
+
+    clearInterval(timer);
+
+    timer = setInterval(()=>{
+
+        time--;
+
+        document.getElementById("time").innerText = time;
+
+        if(time <= 0){
+
+            clearInterval(timer);
+
+            document.getElementById("result").innerText =
+            "❌ 시간 초과!";
+        }
+
+    },1000);
+
+}
+
+function addIngredient(item){
+
+    if(!canMake){
+
+        document.getElementById("result").innerText =
+        "⛔ 주문서를 보는 동안에는 만들 수 없습니다!";
+
+        return;
+    }
+
+    playerOrder.push(item);
+
+    createLayer(item);
+}
+
+function createLayer(item){
+
+    const sandwich =
+    document.getElementById("sandwich");
+
+    const layer =
+    document.createElement("div");
+
+    layer.classList.add("layer");
+
+    layer.innerText = item;
+
+    if(item=="화이트빵"){
+        layer.classList.add("white");
+    }
+
+    else if(item=="위트빵"){
+        layer.classList.add("wheat");
+    }
+
+    else if(item=="플랫브레드"){
+        layer.classList.add("flat");
+    }
+
+    else if(item=="햄"){
+        layer.classList.add("ham");
+    }
+
+    else if(item=="에그마요"){
+        layer.classList.add("egg");
+    }
+
+    else if(item=="새우"){
+        layer.classList.add("shrimp");
+    }
+
+    else if(item=="양상추"){
+        layer.classList.add("lettuce");
+    }
+
+    else if(item=="토마토"){
+        layer.classList.add("tomato");
+    }
+
+    else if(item=="오이"){
+        layer.classList.add("cucumber");
+    }
+
+    else if(item.includes("추가")){
+        layer.classList.add("cheese");
+    }
+
+    else if(item.includes("제외")){
+        layer.classList.add("remove");
+    }
+
+    else{
+        layer.classList.add("sauce");
+    }
+
+    sandwich.appendChild(layer);
+}
+
+function checkOrder(){
+
+    clearInterval(timer);
+
+    let success =
+    JSON.stringify(playerOrder.sort()) ==
+    JSON.stringify(currentOrder.sort());
+
+    if(success){
+
+        score += 10;
+
+        document.getElementById("score").innerText =
+        score;
+
+        document.getElementById("result").innerText =
+        "✅ 주문 성공! 손님이 만족했습니다!";
+    }
+
+    else{
+
+        document.getElementById("result").innerText =
+        "❌ 주문 실패!";
+    }
+}
+
+</script>
+
+</body>
+</html>

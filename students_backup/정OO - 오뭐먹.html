@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>오뭐먹🤤?</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family:Arial;
+    background:#fff3e0;
+    text-align:center;
+}
+
+header{
+    background:orange;
+    color:white;
+    padding:20px;
+    font-size:40px;
+    font-weight:bold;
+}
+
+.container{
+    padding:20px;
+}
+
+input, select, button{
+    padding:10px;
+    margin:10px;
+    border:none;
+    border-radius:10px;
+    font-size:16px;
+}
+
+button{
+    background:orange;
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    background:darkorange;
+}
+
+.food-item{
+    display:inline-block;
+    background:white;
+    margin:8px;
+    padding:10px 15px;
+    border-radius:15px;
+    cursor:pointer;
+    box-shadow:0 0 5px gray;
+}
+
+.food-item:hover{
+    background:#ffe0b2;
+}
+
+.selected{
+    background:orange;
+    color:white;
+}
+
+#finalFood{
+    font-size:35px;
+    color:blue;
+    margin-top:20px;
+}
+
+#rankingBox{
+    display:none;
+    background:white;
+    width:350px;
+    margin:auto;
+    margin-top:20px;
+    border-radius:20px;
+    padding:20px;
+    box-shadow:0 0 10px gray;
+}
+
+#recommendBox{
+    display:none;
+    background:white;
+    width:500px;
+    margin:auto;
+    margin-top:20px;
+    border-radius:20px;
+    padding:20px;
+    box-shadow:0 0 10px gray;
+}
+
+.resetBtn{
+    position:fixed;
+    top:20px;
+    right:20px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+🍔 오뭐먹🤤? 🍰
+</header>
+
+<!-- 처음으로 -->
+<button class="resetBtn"
+onclick="resetPage()">
+
+처음으로 돌아가기
+
+</button>
+
+<div class="container">
+
+<h2>오늘 뭐 먹고 싶어?! 한 번 골라보자!</h2>
+
+<!-- 맵기 -->
+<select id="spicyLevel">
+
+<option>매운 음식</option>
+<option>안 매운 음식</option>
+<option>적당히 매운 음식</option>
+
+</select>
+
+<br>
+
+<!-- 검색 -->
+<input type="text"
+id="searchInput"
+placeholder="예: 한식, 양식, 디저트">
+
+<button onclick="searchFood()">
+검색
+</button>
+
+<button onclick="showRecommendMenu()">
+🤖 추천메뉴
+</button>
+
+<button onclick="toggleRanking()">
+🏆 랭킹 보기
+</button>
+
+<!-- 음식 리스트 -->
+<div id="foodList"></div>
+
+<!-- 추천메뉴 -->
+<div id="recommendBox">
+
+<h2>🤖 AI 추천 메뉴</h2>
+
+<div id="recommendList"></div>
+
+</div>
+
+<!-- 최종 음식 -->
+<div id="finalFood"></div>
+
+<!-- 랭킹 -->
+<div id="rankingBox">
+
+<h2>🔥 인기 음식 랭킹 🔥</h2>
+
+<ol id="rankingList"></ol>
+
+</div>
+
+</div>
+
+<script>
+
+// 음식 데이터
+const foods = {
+
+"한식":[
+"김치찌개","된장찌개","비빔밥","불고기","삼겹살",
+"냉면","갈비탕","순두부찌개","부대찌개","보쌈",
+"족발","제육볶음","칼국수","닭갈비","쭈꾸미볶음"
+],
+
+"양식":[
+"파스타","피자","스테이크","리조또","샐러드",
+"감바스","오므라이스","크림파스타","토마토파스타",
+"핫도그","샌드위치","필라프","치킨스테이크",
+"치즈피자","햄버거"
+],
+
+"중식":[
+"짜장면","짬뽕","탕수육","마라탕","훠궈",
+"깐풍기","볶음밥","군만두","탄탄면",
+"양장피","유산슬","동파육","고추잡채",
+"마파두부","샤오롱바오"
+],
+
+"일식":[
+"초밥","라멘","우동","돈까스","규동",
+"텐동","소바","카레","연어덮밥",
+"타코야끼","오코노미야끼","냉모밀",
+"장어덮밥","사시미","가츠동"
+],
+
+"패스트푸드":[
+"햄버거","감자튀김","치즈버거","핫도그","콜라",
+"치킨버거","불고기버거","치킨너겟","토스트",
+"브리또","타코","샌드위치","나초",
+"피자","치킨"
+],
+
+"디저트":[
+"마카롱","케이크","초코케이크","치즈케이크","빙수",
+"아이스크림","와플","팬케이크","쿠키","초콜릿",
+"도넛","타르트","크로플","마들렌","젤리",
+"푸딩","컵케이크","브라우니","크루아상","식빵",
+"호떡","붕어빵","츄러스","티라미수","샤베트",
+"머핀","에그타르트","솜사탕","팥빙수","요거트",
+"수플레","카스테라","바움쿠헨","젤라또","프레첼"
+]
+
+};
+
+let currentFoods = [];
+
+// 랭킹 저장
+let ranking =
+JSON.parse(localStorage.getItem("foodRanking"))
+|| {};
+
+// 음식 검색
+function searchFood(){
+
+    let keyword =
+    document.getElementById("searchInput").value;
+
+    let foodList =
+    document.getElementById("foodList");
+
+    foodList.innerHTML = "";
+
+    if(foods[keyword]){
+
+        // 랜덤 섞기
+        currentFoods =
+        [...foods[keyword]]
+        .sort(()=>Math.random()-0.5);
+
+        currentFoods.forEach(food=>{
+
+            let div =
+            document.createElement("div");
+
+            div.className = "food-item";
+
+            div.innerHTML = food;
+
+            // 클릭 가능
+            div.onclick = function(){
+
+                document.querySelectorAll(".food-item")
+                .forEach(item=>{
+
+                    item.classList.remove("selected");
+
+                });
+
+                div.classList.add("selected");
+
+                document.getElementById("finalFood")
+                .innerHTML =
+                "🍽️ 최종 선택 음식: <br><b>"
+                + food +
+                "</b> 😋";
+
+                saveRanking(food);
+
+            };
+
+            foodList.appendChild(div);
+
+        });
+
+    }else{
+
+        foodList.innerHTML =
+        "<h3>❌ 음식 종류를 찾을 수 없습니다.</h3>";
+
+    }
+
+}
+
+// AI 추천메뉴
+function showRecommendMenu(){
+
+    if(currentFoods.length === 0){
+
+        alert("먼저 음식 종류를 검색해주세요!");
+        return;
+
+    }
+
+    let recommendBox =
+    document.getElementById("recommendBox");
+
+    let recommendList =
+    document.getElementById("recommendList");
+
+    recommendList.innerHTML = "";
+
+    recommendBox.style.display = "block";
+
+    // 디저트는 5개 이상
+    let recommendCount = 15;
+
+    if(document.getElementById("searchInput").value
+    === "디저트"){
+
+        recommendCount = 5;
+
+    }
+
+    let shuffled =
+    [...currentFoods]
+    .sort(()=>Math.random()-0.5);
+
+    let recommends =
+    shuffled.slice(0,recommendCount);
+
+    recommends.forEach(food=>{
+
+        let btn =
+        document.createElement("button");
+
+        btn.innerHTML = food;
+
+        btn.style.display = "block";
+        btn.style.margin = "10px auto";
+
+        btn.onclick = function(){
+
+            document.getElementById("finalFood")
+            .innerHTML =
+            "🍽️ AI 추천 최종 음식: <br><b>"
+            + food +
+            "</b> 😋";
+
+            saveRanking(food);
+
+        };
+
+        recommendList.appendChild(btn);
+
+    });
+
+}
+
+// 랭킹 저장
+function saveRanking(food){
+
+    if(ranking[food]){
+
+        ranking[food]++;
+
+    }else{
+
+        ranking[food] = 1;
+
+    }
+
+    localStorage.setItem(
+    "foodRanking",
+    JSON.stringify(ranking));
+
+    showRanking();
+
+}
+
+// 랭킹 보기
+function toggleRanking(){
+
+    let box =
+    document.getElementById("rankingBox");
+
+    if(box.style.display === "block"){
+
+        box.style.display = "none";
+
+    }else{
+
+        box.style.display = "block";
+
+        showRanking();
+
+    }
+
+}
+
+// 랭킹 표시
+function showRanking(){
+
+    let rankingList =
+    document.getElementById("rankingList");
+
+    rankingList.innerHTML = "";
+
+    let sorted =
+    Object.entries(ranking)
+    .sort((a,b)=>b[1]-a[1]);
+
+    sorted.forEach(item=>{
+
+        let li =
+        document.createElement("li");
+
+        li.innerHTML =
+        item[0] +
+        " (" +
+        item[1] +
+        "번 선택)";
+
+        rankingList.appendChild(li);
+
+    });
+
+}
+
+// 처음으로
+function resetPage(){
+
+    document.getElementById("searchInput")
+    .value = "";
+
+    document.getElementById("foodList")
+    .innerHTML = "";
+
+    document.getElementById("finalFood")
+    .innerHTML = "";
+
+    document.getElementById("recommendBox")
+    .style.display = "none";
+
+    currentFoods = [];
+
+}
+
+</script>
+
+</body>
+</html>

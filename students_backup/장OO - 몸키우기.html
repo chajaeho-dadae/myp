@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>몸키우기 게임</title>
+
+<style>
+
+body{
+    margin:0;
+    background:#1b1b1b;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+}
+
+.container{
+    padding:20px;
+}
+
+h1{
+    color:#ff9800;
+}
+
+.character{
+    margin:30px auto;
+    width:220px;
+    transition:0.5s;
+}
+
+.head{
+    width:70px;
+    height:70px;
+    background:#ffcc99;
+    border-radius:50%;
+    margin:auto;
+}
+
+.body{
+    width:80px;
+    height:130px;
+    background:#4caf50;
+    margin:auto;
+    border-radius:20px;
+    transition:0.5s;
+}
+
+.arms{
+    display:flex;
+    justify-content:center;
+    gap:90px;
+    margin-top:-110px;
+}
+
+.arm{
+    width:18px;
+    height:90px;
+    background:#ffcc99;
+    border-radius:20px;
+    transition:0.5s;
+}
+
+.dialog{
+    font-size:24px;
+    margin-top:20px;
+    min-height:40px;
+    color:#ffd54f;
+}
+
+button{
+    padding:12px 20px;
+    margin:10px;
+    border:none;
+    border-radius:12px;
+    background:#ff9800;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#ffb74d;
+}
+
+.menu{
+    display:none;
+    margin-top:20px;
+}
+
+.stats{
+    margin-top:20px;
+    font-size:20px;
+    line-height:1.8;
+}
+
+.result{
+    font-size:42px;
+    margin-top:20px;
+    font-weight:bold;
+}
+
+.gameover{
+    color:red;
+}
+
+.win{
+    color:#00e676;
+}
+
+#restartBtn{
+    display:none;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>💪 몸키우기 💪</h1>
+
+<div class="character">
+
+    <div class="head"></div>
+
+    <div class="body" id="body"></div>
+
+    <div class="arms">
+        <div class="arm" id="leftArm"></div>
+        <div class="arm" id="rightArm"></div>
+    </div>
+
+</div>
+
+<div class="dialog" id="dialog">
+...
+</div>
+
+<button id="startBtn" style="display:none;" onclick="startGame()">
+게임 시작하기
+</button>
+
+<div class="menu" id="menu">
+
+    <button onclick="homeWorkout()">집에서 홈트하기</button>
+    <button onclick="gym()">체육관가기</button>
+    <button onclick="ramen()">라면먹기</button>
+    <button onclick="diet()">식단하기</button>
+    <button onclick="rest()">쉬기</button>
+    <button onclick="running()">러닝하기</button>
+
+</div>
+
+<div class="stats">
+
+    <div>체력: <span id="hp">5</span></div>
+    <div>근력: <span id="power">1</span></div>
+    <div>정신상태: <span id="mind">5</span></div>
+    <div>몸상태: <span id="bodyState">5</span></div>
+    <div>도파민: <span id="dopamine">5</span></div>
+
+</div>
+
+<div class="result" id="result"></div>
+
+<button id="restartBtn" onclick="restartGame()">
+재시작
+</button>
+
+</div>
+
+<script>
+
+let hp;
+let power;
+let mind;
+let bodyState;
+let dopamine;
+
+let gameEnded = false;
+
+const dialog = document.getElementById("dialog");
+
+function intro(){
+
+    dialog.innerText = "...";
+
+    setTimeout(() => {
+        dialog.innerText = "나도 몸과 마음이 강해지고 싶어!";
+    }, 3000);
+
+    setTimeout(() => {
+        dialog.innerText = "";
+        document.getElementById("startBtn").style.display = "inline-block";
+    }, 6000);
+}
+
+function startGame(){
+
+    document.getElementById("menu").style.display = "block";
+    document.getElementById("startBtn").style.display = "none";
+
+    dialog.innerText = "오늘은 무엇을 하지?";
+}
+
+function resetStats(){
+
+    hp = 5;
+    power = 1;
+    mind = 5;
+    bodyState = 5;
+    dopamine = 5;
+
+    gameEnded = false;
+
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("restartBtn").style.display = "none";
+
+    const result = document.getElementById("result");
+    result.innerText = "";
+    result.className = "result";
+
+    updateStats();
+}
+
+function restartGame(){
+
+    resetStats();
+
+    intro();
+}
+
+function updateStats(){
+
+    document.getElementById("hp").innerText = hp;
+    document.getElementById("power").innerText = power;
+    document.getElementById("mind").innerText = mind;
+    document.getElementById("bodyState").innerText = bodyState;
+    document.getElementById("dopamine").innerText = dopamine;
+
+    const body = document.getElementById("body");
+    const leftArm = document.getElementById("leftArm");
+    const rightArm = document.getElementById("rightArm");
+
+    body.style.width = (80 + power * 4) + "px";
+    body.style.height = (130 + power * 2) + "px";
+
+    leftArm.style.width = (18 + power) + "px";
+    rightArm.style.width = (18 + power) + "px";
+
+    checkGameOver();
+    checkWin();
+}
+
+function endGame(message, resultText, className){
+
+    gameEnded = true;
+
+    document.getElementById("menu").style.display = "none";
+
+    dialog.innerText = message;
+
+    const result = document.getElementById("result");
+
+    result.innerText = resultText;
+    result.classList.add(className);
+
+    document.getElementById("restartBtn").style.display = "inline-block";
+}
+
+function checkGameOver(){
+
+    if(gameEnded) return;
+
+    if(
+        hp <= 0 ||
+        power <= 0 ||
+        mind <= 0 ||
+        bodyState <= 0 ||
+        dopamine <= 0
+    ){
+
+        endGame(
+            "나는 결국 포기하고 말았어...",
+            "GAME OVER",
+            "gameover"
+        );
+    }
+}
+
+function checkWin(){
+
+    if(gameEnded) return;
+
+    if(power >= 50 && hp >= 50){
+
+        endGame(
+            "드디어 몸과 마음이 강해졌어!!",
+            "🎉 승리!! 🎉",
+            "win"
+        );
+    }
+}
+
+function homeWorkout(){
+
+    if(gameEnded) return;
+
+    power += 2;
+    mind -= 1;
+
+    dialog.innerText = "집에서도 열심히 운동해야지!";
+    updateStats();
+}
+
+function gym(){
+
+    if(gameEnded) return;
+
+    power += 3;
+    dopamine -= 2;
+
+    dialog.innerText = "체육관에서 진짜 강해질거야!";
+    updateStats();
+}
+
+function ramen(){
+
+    if(gameEnded) return;
+
+    bodyState -= 2;
+    dopamine += 3;
+
+    dialog.innerText = "오늘만큼은 라면이다!";
+    updateStats();
+}
+
+function diet(){
+
+    if(gameEnded) return;
+
+    bodyState += 1;
+    mind += 1;
+    dopamine -= 1;
+
+    dialog.innerText = "건강한 식단으로 몸을 만든다!";
+    updateStats();
+}
+
+function rest(){
+
+    if(gameEnded) return;
+
+    hp += 2;
+    mind -= 2;
+
+    dialog.innerText = "조금 쉬어야겠어...";
+    updateStats();
+}
+
+function running(){
+
+    if(gameEnded) return;
+
+    hp += 2;
+    power -= 1;
+
+    dialog.innerText = "러닝으로 체력을 키우자!";
+    updateStats();
+}
+
+resetStats();
+intro();
+
+</script>
+
+</body>
+</html>

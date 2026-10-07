@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>피부고민 없애줄게!</title>
+
+<style>
+  body{
+    font-family: Arial, sans-serif;
+    margin:0;
+    padding:0;
+    background:#ffeef5;
+    color:#333;
+    transition:0.3s;
+  }
+
+  .dark{
+    background:#1f1f1f;
+    color:white;
+  }
+
+  .container{
+    max-width:850px;
+    margin:30px auto;
+    background:white;
+    padding:30px;
+    border-radius:20px;
+    box-shadow:0 0 15px rgba(0,0,0,0.1);
+    transition:0.3s;
+  }
+
+  .dark .container{
+    background:#2c2c2c;
+  }
+
+  h1{
+    text-align:center;
+    color:#ff4f87;
+  }
+
+  .question{
+    margin:20px 0;
+    padding:15px;
+    background:#fff5f8;
+    border-radius:15px;
+  }
+
+  .dark .question{
+    background:#3a3a3a;
+  }
+
+  label{
+    display:block;
+    margin:8px 0;
+    cursor:pointer;
+  }
+
+  button{
+    padding:14px 24px;
+    border:none;
+    border-radius:12px;
+    background:#ff4f87;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+    margin-top:20px;
+  }
+
+  button:hover{
+    background:#ff2468;
+  }
+
+  #result{
+    display:none;
+    margin-top:30px;
+    padding:20px;
+    border-radius:15px;
+    background:#fff0f5;
+  }
+
+  .dark #result{
+    background:#444;
+  }
+
+  .product{
+    margin-top:15px;
+  }
+
+  .product a{
+    display:block;
+    margin:10px 0;
+    color:#0066cc;
+    text-decoration:none;
+  }
+
+  img{
+    max-width:250px;
+    margin-top:15px;
+    border-radius:15px;
+  }
+
+  .top-buttons{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin-bottom:20px;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>💖 피부고민 없애줄게! 💖</h1>
+
+  <div class="top-buttons">
+    <button onclick="toggleDarkMode()">🌙 다크모드</button>
+  </div>
+
+  <p>
+    질문에 답하고 피부 사진을 업로드하면
+    피부 타입과 관리 팁, 추천 제품을 알려줍니다!
+  </p>
+
+  <h2>📸 피부 사진 업로드</h2>
+
+  <input type="file" id="skinImage" accept="image/*">
+
+  <br>
+
+  <img id="preview" style="display:none;">
+
+  <div id="questions"></div>
+
+  <button onclick="analyzeSkin()">🔍 피부 분석하기</button>
+
+  <div id="result">
+    <h2>분석 결과</h2>
+
+    <h3 id="skinType"></h3>
+
+    <p id="tip"></p>
+
+    <div class="product">
+      <h3>🧴 추천 제품 링크</h3>
+
+      <div id="products"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+
+const questionList = [
+"피부가 자주 번들거리나요?",
+"여드름이 자주 생기나요?",
+"피부가 건조한가요?",
+"세안 후 당김이 심한가요?",
+"피부가 민감한 편인가요?",
+"붉은기가 자주 올라오나요?",
+"블랙헤드가 많나요?",
+"좁쌀여드름이 있나요?",
+"피부가 쉽게 자극받나요?",
+"각질이 많이 생기나요?",
+"모공이 넓은 편인가요?",
+"화장을 하면 잘 무너지나요?",
+"피부가 칙칙해 보이나요?",
+"피부톤이 고르지 않나요?",
+"트러블 자국이 있나요?",
+"피부가 자주 가렵나요?",
+"피부에 열감이 있나요?",
+"햇빛에 민감한가요?",
+"수면 부족이 심한가요?",
+"물을 자주 안 마시나요?",
+"스트레스를 많이 받나요?",
+"기름진 음식을 자주 먹나요?",
+"야식을 자주 먹나요?",
+"피부 화장이 잘 뜨나요?",
+"세안을 자주 하나요?",
+"수분크림을 잘 안 바르나요?",
+"자외선 차단제를 안 바르나요?",
+"피부 관리에 관심이 많나요?",
+"마스크 때문에 트러블이 생기나요?",
+"피부 고민 때문에 스트레스를 받나요?"
+];
+
+const questionBox = document.getElementById("questions");
+
+questionList.forEach((q,index)=>{
+
+  questionBox.innerHTML += `
+    <div class="question">
+      <h3>${index+1}. ${q}</h3>
+
+      <label>
+        <input type="radio" name="q${index}" value="yes">
+        네
+      </label>
+
+      <label>
+        <input type="radio" name="q${index}" value="no">
+        아니오
+      </label>
+    </div>
+  `;
+});
+
+document.getElementById("skinImage").addEventListener("change", function(event){
+
+  const file = event.target.files[0];
+
+  if(file){
+
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+      const img = document.getElementById("preview");
+      img.src = e.target.result;
+      img.style.display = "block";
+    }
+
+    reader.readAsDataURL(file);
+  }
+});
+
+function analyzeSkin(){
+
+  let yesCount = 0;
+
+  for(let i=0; i<questionList.length; i++){
+
+    let answer = document.querySelector(`input[name="q${i}"]:checked`);
+
+    if(!answer){
+      alert("모든 질문에 답해주세요!");
+      return;
+    }
+
+    if(answer.value === "yes"){
+      yesCount++;
+    }
+  }
+
+  let skinType = "";
+  let tip = "";
+  let productHTML = "";
+
+  // AI 분석 흉내
+  if(yesCount >= 20){
+
+    skinType = "⚠ 지성 & 민감성 피부";
+
+    tip =
+    "피부 트러블과 유분이 많은 상태입니다.<br><br>" +
+    "✔ 물 많이 마시기<br>" +
+    "✔ 기름진 음식 줄이기<br>" +
+    "✔ 충분한 수면 자기<br>" +
+    "✔ 약산성 클렌저 사용하기";
+
+    productHTML =
+    `
+    <a href="https://www.oliveyoung.co.kr" target="_blank">
+      약산성 클렌저 보러가기
+    </a>
+
+    <a href="https://www.laneige.com" target="_blank">
+      수분크림 보러가기
+    </a>
+    `;
+  }
+
+  else if(yesCount >= 10){
+
+    skinType = "💧 복합성 피부";
+
+    tip =
+    "유분과 건조함이 함께 있는 피부입니다.<br><br>" +
+    "✔ 수분 공급하기<br>" +
+    "✔ 피부 자극 줄이기<br>" +
+    "✔ 자외선 차단제 사용하기";
+
+    productHTML =
+    `
+    <a href="https://www.innisfree.com" target="_blank">
+      수분 토너 보러가기
+    </a>
+
+    <a href="https://www.etude.com" target="_blank">
+      진정 크림 보러가기
+    </a>
+    `;
+  }
+
+  else{
+
+    skinType = "🌿 건강한 피부";
+
+    tip =
+    "현재 피부 상태가 좋은 편입니다!<br><br>" +
+    "✔ 꾸준한 세안<br>" +
+    "✔ 충분한 수면<br>" +
+    "✔ 수분 유지하기";
+
+    productHTML =
+    `
+    <a href="https://www.thefaceshop.com" target="_blank">
+      순한 로션 보러가기
+    </a>
+    `;
+  }
+
+  document.getElementById("result").style.display = "block";
+
+  document.getElementById("skinType").innerHTML = skinType;
+
+  document.getElementById("tip").innerHTML = tip;
+
+  document.getElementById("products").innerHTML = productHTML;
+}
+
+function toggleDarkMode(){
+
+  document.body.classList.toggle("dark");
+}
+
+</script>
+
+</body>
+</html>

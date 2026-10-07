@@ -1,0 +1,195 @@
+ <!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>퍼스널 컬러 화장품 추천 게임</title>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:linear-gradient(135deg,#ffd6e7,#fff5d6);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+}
+
+.game{
+  width:90%;
+  max-width:700px;
+  background:white;
+  padding:40px;
+  border-radius:30px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.1);
+  text-align:center;
+}
+
+h1{
+  color:#ff4f8b;
+}
+
+button{
+  padding:15px 22px;
+  margin:10px;
+  border:none;
+  border-radius:16px;
+  background:#ff6fa3;
+  color:white;
+  font-size:16px;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+button:hover{
+  transform:scale(1.05);
+  background:#ff3f84;
+}
+
+.hidden{
+  display:none;
+}
+
+.result{
+  margin-top:20px;
+  padding:25px;
+  border-radius:20px;
+  background:#fff0f6;
+}
+
+.product{
+  font-size:24px;
+  color:#ff3f84;
+  font-weight:bold;
+  margin-top:15px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+
+<h1>💄 퍼스널 컬러 화장품 추천 게임 💄</h1>
+
+<!-- 시작 -->
+<div id="start">
+  <p>나에게 어울리는 올리브영 화장품 찾기 ✨</p>
+  <button onclick="startGame()">게임 시작하기</button>
+</div>
+
+<!-- 퍼스널 컬러 -->
+<div id="colorSelect" class="hidden">
+  <h2>1️⃣ 퍼스널 컬러 선택</h2>
+
+  <button onclick="selectColor('봄 웜')">🌸 봄 웜</button>
+  <button onclick="selectColor('여름 쿨')">❄️ 여름 쿨</button>
+  <button onclick="selectColor('가을 웜')">🍂 가을 웜</button>
+  <button onclick="selectColor('겨울 쿨')">🖤 겨울 쿨</button>
+</div>
+
+<!-- 화장품 종류 -->
+<div id="itemSelect" class="hidden">
+  <h2>2️⃣ 화장품 종류 선택</h2>
+
+  <button onclick="showResult('틴트')">틴트</button>
+  <button onclick="showResult('블러셔')">블러셔</button>
+  <button onclick="showResult('쿠션')">쿠션</button>
+  <button onclick="showResult('섀도우')">섀도우</button>
+</div>
+
+<!-- 결과 -->
+<div id="resultScreen" class="hidden">
+
+  <h2>✨ 추천 결과 ✨</h2>
+
+  <div class="result">
+    <p id="resultColor"></p>
+    <p id="resultType"></p>
+
+    <div class="product" id="resultProduct"></div>
+
+    <p style="margin-top:20px;">
+      🛍️ 올리브영 추천 제품
+    </p>
+  </div>
+
+  <button onclick="restartGame()">다시하기</button>
+
+</div>
+
+</div>
+
+<script>
+
+let selectedColor="";
+
+const makeupData = {
+
+  "봄 웜":{
+    "틴트":"롬앤 쥬시 래스팅 틴트 22 포멜로 스킨",
+    "블러셔":"페리페라 맑게 물든 선샤인 치크 05",
+    "쿠션":"클리오 킬커버 쿠션 란제리",
+    "섀도우":"에뛰드 플레이 컬러 아이즈 피치팜"
+  },
+
+  "여름 쿨":{
+    "틴트":"롬앤 듀이풀 워터 틴트 03 이프 로즈",
+    "블러셔":"릴리바이레드 러브빔 치크 02",
+    "쿠션":"에스쁘아 프로 테일러 쿠션 아이보리",
+    "섀도우":"클리오 프로 아이 팔레트 뮤트 라이브러리"
+  },
+
+  "가을 웜":{
+    "틴트":"페리페라 잉크 무드 글로이 틴트 11",
+    "블러셔":"투쿨포스쿨 바이로댕 블러셔",
+    "쿠션":"웨이크메이크 워터 벨벳 쿠션",
+    "섀도우":"롬앤 베러 댄 팔레트 말린 메밀꽃"
+  },
+
+  "겨울 쿨":{
+    "틴트":"롬앤 블러 퍼지 틴트 06 모브 휩",
+    "블러셔":"페리페라 퓨어 블러쉬드 치크 12",
+    "쿠션":"헤라 블랙 쿠션 21N1",
+    "섀도우":"클리오 프로 아이 팔레트 보스 모브"
+  }
+
+};
+
+function startGame(){
+  document.getElementById("start").classList.add("hidden");
+  document.getElementById("colorSelect").classList.remove("hidden");
+}
+
+function selectColor(color){
+  selectedColor=color;
+
+  document.getElementById("colorSelect").classList.add("hidden");
+  document.getElementById("itemSelect").classList.remove("hidden");
+}
+
+function showResult(type){
+
+  const product=makeupData[selectedColor][type];
+
+  document.getElementById("itemSelect").classList.add("hidden");
+  document.getElementById("resultScreen").classList.remove("hidden");
+
+  document.getElementById("resultColor").innerText=
+    "퍼스널 컬러 : "+selectedColor;
+
+  document.getElementById("resultType").innerText=
+    "선택한 제품 : "+type;
+
+  document.getElementById("resultProduct").innerText=product;
+}
+
+function restartGame(){
+  location.reload();
+}
+
+</script>
+
+</body>
+</html>
