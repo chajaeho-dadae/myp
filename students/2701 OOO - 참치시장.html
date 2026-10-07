@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐟 참치 시장 (Tuna Market)</title>
+<style>
+body{font-family:Arial,sans-serif;background:#ffffff;color:#fff;margin:0;padding:0;text-align:center}
+.container{max-width:900px;margin:auto;padding:20px}
+.panel{background:#222;border-radius:16px;padding:16px;margin:10px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+button{padding:12px 18px;border:none;border-radius:12px;background:#4f46e5;color:#fff;font-size:16px;cursor:pointer;margin:6px}
+button:hover{opacity:.9}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.big{font-size:28px;padding:20px 30px}.shop button{display:block;width:100%}
+.small{font-size:13px;color:#bbb}
+</style>
+</head>
+<body>
+<div class='container'>
+<h1>🐟 참치 시장 (Tuna Market)</h1>
+<div class='panel'>
+<h2 id='gold'>골드: 0</h2>
+<div>레벨 <span id='level'>1</span> | 경험치 <span id='xp'>0</span>/<span id='xpNeed'>10</span></div>
+<div>클릭당 골드: <span id='clickPower'>1</span> | 초당 골드: <span id='gps'>0</span></div>
+<button class='big' onclick='clickGold()'>🐟 클릭하기!</button>
+</div>
+<div class='grid'>
+<div class='panel shop'>
+<h3>🛒 업그레이드 상점</h3>
+<button onclick='buyClick()'>⚔️ 클릭 강화 (<span id='clickCost'>10</span>)</button>
+<button onclick='buyAuto()'>🤖 자동 생산기 (<span id='autoCost'>25</span>)</button>
+<button onclick='buyCrit()'>🔥 치명타 확률 증가 (<span id='critCost'>50</span>)</button>
+</div>
+<div class='panel'>
+<h3>🏆 업적</h3>
+<div id='achievements' class='small'>아직 없음</div>
+<h3>💾 저장</h3>
+<button onclick='saveGame()'>저장</button>
+<button onclick='loadGame()'>불러오기</button>
+<button onclick='resetGame()'>초기화</button>
+</div>
+</div>
+</div>
+<script>
+let game={gold:0,level:1,xp:0,xpNeed:10,clickPower:1,gps:0,clickCost:10,autoCost:25,critCost:50,crit:0,ach:[]};
+function update(){
+for(let k of ['gold','level','xp','xpNeed','clickPower','gps','clickCost','autoCost','critCost']) document.getElementById(k).textContent=Math.floor(game[k]);
+let txt=game.ach.length?game.ach.join('<br>'):'아직 없음';document.getElementById('achievements').innerHTML=txt;
+}
+function gainXP(n){game.xp+=n;while(game.xp>=game.xpNeed){game.xp-=game.xpNeed;game.level++;game.xpNeed=Math.floor(game.xpNeed*1.4);game.clickPower++;unlock('🎉 레벨 '+game.level+' 달성!');}}
+function clickGold(){ringCall();let gain=game.clickPower;if(Math.random()<game.crit) gain*=3;game.gold+=gain;gainXP(1);pulse();checkAch();update();}
+function buyClick(){if(game.gold>=game.clickCost){game.gold-=game.clickCost;game.clickPower++;game.clickCost=Math.floor(game.clickCost*1.6);update();}}
+function buyAuto(){if(game.gold>=game.autoCost){game.gold-=game.autoCost;game.gps++;game.autoCost=Math.floor(game.autoCost*1.8);update();}}
+function buyCrit(){if(game.gold>=game.critCost){game.gold-=game.critCost;game.crit+=0.05;game.critCost=Math.floor(game.critCost*2);update();}}
+function checkAch(){if(game.gold>=100) unlock('💯 골드 100 달성');if(game.level>=10) unlock('⭐ 레벨 10 달성');if(game.gps>=10) unlock('🤖 자동화의 시작');}
+function unlock(a){if(!game.ach.includes(a)) game.ach.push(a);}
+function saveGame(){localStorage.setItem('clickerSave',JSON.stringify(game));alert('저장 완료!');}
+function loadGame(){let s=localStorage.getItem('clickerSave');if(s){game=JSON.parse(s);update();alert('불러오기 완료!');}}
+function resetGame(){if(confirm('초기화할까요?')){localStorage.removeItem('clickerSave');location.reload();}}
+function pulse(){document.querySelector('.big').animate([{transform:'scale(1) rotate(0deg)'},{transform:'scale(1.08) rotate(-6deg)'},{transform:'scale(1.05) rotate(6deg)'},{transform:'scale(1) rotate(0deg)'}],{duration:260});spawnPoop();}
+function ringCall(){}
+function spawnPoop(){let e=document.createElement('div');e.textContent='🐟';e.style.position='fixed';e.style.left=(window.innerWidth/2+(Math.random()*220-110))+'px';e.style.top='55%';e.style.fontSize=(24+Math.random()*26)+'px';e.style.pointerEvents='none';e.style.zIndex='999';document.body.appendChild(e);e.animate([{transform:'translateY(0) scale(0.6)',opacity:0},{transform:'translateY(-80px) scale(1.2)',opacity:1},{transform:'translateY(-180px) scale(0.8)',opacity:0}],{duration:900});setTimeout(()=>e.remove(),900);}
+setInterval(()=>{game.gold+=game.gps;gainXP(game.gps*0.2);checkAch();update();},1000);
+loadGame();update();
+</script>
+</body>
+</html>

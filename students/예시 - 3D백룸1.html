@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D The Backrooms - Level 0</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; user-select: none; }
+        
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            color: #d1ca71;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        #overlay h1 { font-size: 3rem; letter-spacing: 5px; margin-bottom: 20px; text-shadow: 0 0 10px #706b24; }
+        #overlay p { font-size: 1.1rem; color: #aaa; margin: 8px 0; }
+        #overlay .start-btn {
+            margin-top: 30px;
+            padding: 12px 28px;
+            background: #d1ca71;
+            color: #111;
+            font-weight: bold;
+            font-size: 1.1rem;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 4px; height: 4px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="overlay">
+        <h1>THE BACKROOMS</h1>
+        <p>이동: W, A, S, D 또는 화살표 키</p>
+        <p>시점 회전: 마우스 이동</p>
+        <p>일시 정지 / 마우스 해제: ESC</p>
+        <button class="start-btn">클릭하여 탐험 시작</button>
+    </div>
+
+    <div id="crosshair"></div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- 맵 데이터 (1: 벽, 0: 통로) ---
+        const MAP_GRID = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1],
+            [1,0,1,0,1,0,1,1,1,0,1,0,1,1,0,1],
+            [1,0,1,0,0,0,0,0,1,0,0,0,0,1,0,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,0,1,0,1],
+            [1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
+            [1,1,1,0,1,1,1,1,0,1,0,1,1,1,0,1],
+            [1,0,0,0,0,0,0,1,0,1,0,0,0,1,0,1],
+            [1,0,1,1,1,1,0,1,0,1,1,1,0,1,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,1,0,0,0,1],
+            [1,0,1,0,1,1,1,1,1,1,0,1,1,1,0,1],
+            [1,0,0,0,1,0,0,0,0,1,0,0,0,1,0,1],
+            [1,1,1,0,1,0,1,1,0,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,1],
+            [1,0,1,1,1,0,1,0,1,1,0,1,0,1,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        const CELL_SIZE = 4;
+        const WALL_HEIGHT = 3.2;
+
+        // --- 씬 및 기본 설정 ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x2b2814, 0.08); // 특유의 황갈색 밀폐 안개
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // --- 캔버스 기반 절차적 텍스처 생성 함수 ---
+        function createWallTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#b3a25b'; ctx.fillRect(0, 0, 256, 256);
+            ctx.fillStyle = '#9e8f4c';
+            for (let x = 0; x < 256; x += 16) ctx.fillRect(x, 0, 6, 256);
+            const imgData = ctx.getImageData(0, 0, 256, 256);
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                const noise = (Math.random() - 0.5) * 25;
+                imgData.data[i] += noise;
+                imgData.data[i+1] += noise;
+                imgData.data[i+2] += noise;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function createFloorTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#4d462c'; ctx.fillRect(0, 0, 256, 256);
+            const imgData = ctx.getImageData(0, 0, 256, 256);
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                const noise = (Math.random() - 0.5) * 40;
+                imgData.data[i] += noise;
+                imgData.data[i+1] += noise;
+                imgData.data[i+2] += noise;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(24, 24);
+            return tex;
+        }
+
+        function createCeilingTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#c4c0a5'; ctx.fillRect(0, 0, 256, 256);
+            ctx.strokeStyle = '#8c8872'; ctx.lineWidth = 6; ctx.strokeRect(0, 0, 256, 256);
+            for (let i = 0; i < 800; i++) {
+                ctx.fillStyle = 'rgba(80,80,70,0.15)';
+                ctx.beginPath();
+                ctx.arc(Math.random()*256, Math.random()*256, Math.random()*2+1, 0, Math.PI*2);
+                ctx.fill();
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(24, 24);
+            return tex;
+        }
+
+        // --- 맵 생성 ---
+        const wallMat = new THREE.MeshStandardMaterial({ map: createWallTexture(), roughness: 0.8 });
+        const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.9 });
+        const ceilingMat = new THREE.MeshStandardMaterial({ map: createCeilingTexture(), roughness: 0.6 });
+
+        const wallGeo = new THREE.BoxGeometry(CELL_SIZE, WALL_HEIGHT, CELL_SIZE);
+        const mapGroup = new THREE.Group();
+
+        for (let r = 0; r < MAP_GRID.length; r++) {
+            for (let c = 0; c < MAP_GRID[r].length; c++) {
+                if (MAP_GRID[r][c] === 1) {
+                    const wall = new THREE.Mesh(wallGeo, wallMat);
+                    wall.position.set(c * CELL_SIZE, WALL_HEIGHT / 2, r * CELL_SIZE);
+                    mapGroup.add(wall);
+                }
+            }
+        }
+        scene.add(mapGroup);
+
+        const mapWidth = MAP_GRID[0].length * CELL_SIZE;
+        const mapHeight = MAP_GRID.length * CELL_SIZE;
+
+        // 바닥 & 천장
+        const floorGeo = new THREE.PlaneGeometry(mapWidth, mapHeight);
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(mapWidth/2 - CELL_SIZE/2, 0, mapHeight/2 - CELL_SIZE/2);
+        scene.add(floor);
+
+        const ceiling = new THREE.Mesh(floorGeo, ceilingMat);
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.set(mapWidth/2 - CELL_SIZE/2, WALL_HEIGHT, mapHeight/2 - CELL_SIZE/2);
+        scene.add(ceiling);
+
+        // --- 조명 배치 (형광등 효과) ---
+        const ambientLight = new THREE.AmbientLight(0xfff5c0, 0.35);
+        scene.add(ambientLight);
+
+        const lights = [];
+        for (let r = 2; r < MAP_GRID.length - 2; r += 3) {
+            for (let c = 2; c < MAP_GRID[r].length - 2; c += 3) {
+                if (MAP_GRID[r][c] === 0) {
+                    const light = new THREE.PointLight(0xffe28a, 0.9, 12);
+                    light.position.set(c * CELL_SIZE, WALL_HEIGHT - 0.3, r * CELL_SIZE);
+                    scene.add(light);
+                    lights.push(light);
+                }
+            }
+        }
+
+        // --- 플레이어 제어 및 시점 ---
+        camera.position.set(CELL_SIZE * 1.5, 1.6, CELL_SIZE * 1.5); // 플레이어 눈높이 1.6m
+
+        let moveFwd = false, moveBwd = false, moveLft = false, moveRgt = false;
+        let yaw = 0, pitch = 0;
+
+        const overlay = document.getElementById('overlay');
+        let audioInit = false;
+
+        overlay.addEventListener('click', () => {
+            document.body.requestPointerLock();
+            if (!audioInit) {
+                initAudio();
+                audioInit = true;
+            }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) {
+                overlay.style.display = 'none';
+            } else {
+                overlay.style.display = 'flex';
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === document.body) {
+                yaw -= e.movementX * 0.0025;
+                pitch -= e.movementY * 0.0025;
+                pitch = Math.max(-Math.PI / 2.3, Math.min(Math.PI / 2.3, pitch));
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') moveFwd = true;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBwd = true;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') moveLft = true;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') moveRgt = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') moveFwd = false;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBwd = false;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') moveLft = false;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') moveRgt = false;
+        });
+
+        // --- 오디오 합성 (형광등 소음) ---
+        function initAudio() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioCtx();
+                
+                // 60Hz hum sound
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                const filter = ctx.createBiquadFilter();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(60, ctx.currentTime);
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(160, ctx.currentTime);
+                gain.gain.setValueAtTime(0.06, ctx.currentTime);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+            } catch (e) {
+                console.warn('Audio play prevented:', e);
+            }
+        }
+
+        // --- 충돌 판정 ---
+        function checkCollision(px, pz) {
+            const radius = 0.4;
+            const minC = Math.floor((px - radius) / CELL_SIZE);
+            const maxC = Math.floor((px + radius) / CELL_SIZE);
+            const minR = Math.floor((pz - radius) / CELL_SIZE);
+            const maxR = Math.floor((pz + radius) / CELL_SIZE);
+
+            for (let r = minR; r <= maxR; r++) {
+                for (let c = minC; c <= maxC; c++) {
+                    if (r >= 0 && r < MAP_GRID.length && c >= 0 && c < MAP_GRID[0].length) {
+                        if (MAP_GRID[r][c] === 1) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // --- 게임 루프 ---
+        const clock = new THREE.Clock();
+        const SPEED = 4.0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+
+            if (document.pointerLockElement === document.body) {
+                // 시점 회전 적용
+                camera.rotation.order = 'YXZ';
+                camera.rotation.y = yaw;
+                camera.rotation.x = pitch;
+
+                // 이동 계산
+                const dirX = (moveRgt ? 1 : 0) - (moveLft ? 1 : 0);
+                const dirZ = (moveBwd ? 1 : 0) - (moveFwd ? 1 : 0);
+
+                if (dirX !== 0 || dirZ !== 0) {
+                    const frontVector = new THREE.Vector3(0, 0, dirZ);
+                    const sideVector = new THREE.Vector3(dirX, 0, 0);
+                    const moveVector = new THREE.Vector3();
+
+                    moveVector.addVectors(frontVector, sideVector).normalize();
+                    moveVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+                    const nextX = camera.position.x + moveVector.x * SPEED * delta;
+                    const nextZ = camera.position.z + moveVector.z * SPEED * delta;
+
+                    // X축/Z축 축별 충돌 처리 (미끄러짐 지원)
+                    if (!checkCollision(nextX, camera.position.z)) {
+                        camera.position.x = nextX;
+                    }
+                    if (!checkCollision(camera.position.x, nextZ)) {
+                        camera.position.z = nextZ;
+                    }
+
+                    // 걸을 때 상하 흔들림 (Head Bobbing)
+                    camera.position.y = 1.6 + Math.sin(clock.getElapsedTime() * 10) * 0.04;
+                }
+            }
+
+            // 형광등 랜덤 깜빡임 효과
+            lights.forEach(light => {
+                if (Math.random() < 0.005) {
+                    light.intensity = 0.1 + Math.random() * 0.3;
+                    setTimeout(() => { light.intensity = 0.9; }, 50 + Math.random() * 100);
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // 창 크기 조절 대응
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
