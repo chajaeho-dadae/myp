@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>맞춤 공부 플래너 추천기</title>
+   <!-- Tailwind CSS -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <!-- Google Fonts -->
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+   <style>
+       body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+       .tab-btn.active { border-bottom: 2px solid #4f46e5; color: #4f46e5; font-weight: 600; }
+       .tab-content { display: none; }
+       .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+       @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+       /* Custom Scrollbar */
+       ::-webkit-scrollbar { width: 6px; }
+       ::-webkit-scrollbar-track { background: transparent; }
+       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+       ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+       .progress-bar-fill { transition: width 0.8s ease-out; }
+   </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+
+   <header class="bg-white shadow-sm sticky top-0 z-10">
+       <div class="max-w-4xl mx-auto px-4 py-4 sm:py-6">
+           <h1 class="text-2xl font-extrabold text-slate-800 flex items-center gap-2">
+               <svg class="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+               맞춤 공부 플래너 추천기
+           </h1>
+           <p class="text-sm text-slate-500 mt-1">목표 시간을 배분하고 스마트 뽀모도로 타이머로 효율을 높이세요.</p>
+       </div>
+       <div class="max-w-4xl mx-auto px-4 flex gap-6">
+           <button onclick="switchTab('planner')" id="btn-planner" class="tab-btn active pb-3 px-1 text-slate-500 hover:text-indigo-600 transition-colors">플래너</button>
+           <button onclick="switchTab('timer')" id="btn-timer" class="tab-btn pb-3 px-1 text-slate-500 hover:text-indigo-600 transition-colors">타이머</button>
+       </div>
+   </header>
+
+
+   <main class="max-w-4xl mx-auto px-4 py-8 flex-1 w-full">
+       <!-- ================= PLANNER TAB ================= -->
+       <div id="tab-planner" class="tab-content active space-y-6">
+          
+           <!-- Subject Input Card -->
+           <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+               <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                   <span class="bg-indigo-100 text-indigo-700 p-1.5 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></span>
+                   과목 추가
+               </h2>
+               <div class="flex flex-col sm:flex-row gap-3">
+                   <input type="text" id="subj-name" placeholder="과목명 (예: 수학)" class="flex-1 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                   <input type="number" id="subj-score" placeholder="이전 점수 (0-100)" min="0" max="100" class="w-full sm:w-36 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                   <select id="subj-pref" class="w-full sm:w-32 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                       <option value="normal">보통</option>
+                       <option value="like">선호</option>
+                       <option value="dislike">불호</option>
+                   </select>
+                   <button onclick="addSubject()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors">추가</button>
+               </div>
+           </div>
+
+
+           <!-- Subject List & Settings Card -->
+           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <div class="md:col-span-2 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+                   <div class="flex justify-between items-center mb-4">
+                       <h2 class="text-lg font-bold">등록된 과목</h2>
+                       <span class="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-medium">평균: <span id="avg-display" class="font-bold text-indigo-600">0.0</span>점</span>
+                   </div>
+                   <div class="overflow-x-auto">
+                       <table class="w-full text-left text-sm whitespace-nowrap">
+                           <thead class="bg-slate-50 border-b border-slate-200 text-slate-500">
+                               <tr>
+                                   <th class="p-3 font-semibold rounded-tl-lg">과목명</th>
+                                   <th class="p-3 font-semibold">점수</th>
+                                   <th class="p-3 font-semibold">선호도</th>
+                                   <th class="p-3 font-semibold rounded-tr-lg text-center">삭제</th>
+                               </tr>
+                           </thead>
+                           <tbody id="subject-list" class="divide-y divide-slate-100">
+                               <!-- JS Injected -->
+                               <tr><td colspan="4" class="p-8 text-center text-slate-400">등록된 과목이 없습니다.</td></tr>
+                           </tbody>
+                       </table>
+                   </div>
+               </div>
+
+
+               <!-- Plan Generation Panel -->
+               <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                   <h2 class="text-lg font-bold mb-4">플랜 생성 설정</h2>
+                   <div class="mb-4 flex-1">
+                       <label class="block text-sm font-medium text-slate-700 mb-2">목표 공부 시간 (분)</label>
+                       <input type="number" id="target-time" placeholder="예: 120" class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-lg font-semibold">
+                       <p class="text-xs text-slate-500 mt-2">※ 모든 과목에 최소 30분씩 배정됩니다.</p>
+                   </div>
+                   <div class="flex flex-col gap-2 mt-auto">
+                       <button onclick="generatePlan()" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-colors shadow-sm">맞춤 플랜 생성</button>
+                       <div class="flex gap-2">
+                           <button onclick="saveData()" class="flex-1 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-semibold rounded-xl text-sm transition-colors">저장</button>
+                           <button onclick="loadData()" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-colors">불러오기</button>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+
+           <!-- AI Recommendation Result -->
+           <div id="plan-result-container" class="hidden bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                   <h2 class="text-xl font-bold flex items-center gap-2">
+                       <span class="text-amber-500">✨</span> AI 추천 플랜 결과
+                   </h2>
+                   <div class="bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium text-slate-600">
+                       총 예상 소요 (휴식 포함): <span id="total-expected-time" class="font-bold text-indigo-600">0분</span>
+                   </div>
+               </div>
+               <div id="plan-bars" class="space-y-4">
+                   <!-- JS Injected Progress Bars -->
+               </div>
+               <div class="mt-6 pt-6 border-t border-slate-100 text-center">
+                   <button onclick="switchTab('timer')" class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md">
+                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                       스마트 타이머로 공부 시작
+                   </button>
+               </div>
+           </div>
+       </div>
+
+
+       <!-- ================= TIMER TAB ================= -->
+       <div id="tab-timer" class="tab-content">
+           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+               <!-- Timer Display -->
+               <div class="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center min-h-[400px]">
+                   <div class="text-center mb-8">
+                       <span id="timer-mode-badge" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700 mb-4 transition-colors">📖 공부 중</span>
+                       <h3 id="timer-subject-name" class="text-2xl font-bold text-slate-800">자유 과목</h3>
+                      
+                       <!-- Free mode time input -->
+                       <div id="free-mode-input" class="mt-4 flex items-center justify-center gap-2">
+                           <input type="number" id="free-minutes" value="60" min="1" class="w-20 px-3 py-1 text-center border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 font-bold">
+                           <span class="text-slate-500 font-medium">분으로 설정</span>
+                           <button onclick="setFreeTime()" class="ml-2 px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition-colors">적용</button>
+                       </div>
+                   </div>
+
+
+                   <div class="text-7xl sm:text-8xl font-black font-mono text-slate-800 mb-8 tracking-tighter" id="timer-display">
+                       60:00
+                   </div>
+
+
+                   <div class="flex gap-4">
+                       <button onclick="toggleTimer()" id="btn-toggle-timer" class="w-32 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-colors flex justify-center items-center gap-2">
+                           시작
+                       </button>
+                       <button onclick="resetTimer()" class="w-32 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-colors">
+                           초기화
+                       </button>
+                   </div>
+               </div>
+
+
+               <!-- Smart Queue -->
+               <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                   <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                       <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                       스마트 대기열
+                   </h3>
+                   <div id="queue-empty" class="py-12 text-center text-slate-400 text-sm">
+                       생성된 플랜이 없습니다.<br>자유 모드로 동작합니다.
+                   </div>
+                   <div id="queue-list" class="space-y-3 hidden">
+                       <!-- JS Injected -->
+                   </div>
+               </div>
+           </div>
+       </div>
+   </main>
+
+
+   <!-- Custom Modal -->
+   <div id="custom-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+       <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm transform scale-95 transition-transform duration-300" id="custom-modal-content">
+           <div class="p-6 text-center">
+               <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+               </div>
+               <h3 id="modal-title" class="text-lg font-bold text-slate-900 mb-2">알림</h3>
+               <p id="modal-message" class="text-sm text-slate-500 leading-relaxed"></p>
+           </div>
+           <div class="bg-slate-50 px-6 py-4 rounded-b-2xl flex justify-center">
+               <button onclick="closeModal()" class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors">확인</button>
+           </div>
+       </div>
+   </div>
+
+
+   <script>
+       // --- State Management ---
+       const state = {
+           subjects: [], // {id, name, score, pref}
+           plan: null,   // { targetMins, subjects: [{...subject, allocatedMins, leftSecs}] }
+           timer: {
+               isRunning: false,
+               intervalId: null,
+               globalMode: 'study', // 'study' or 'rest'
+               globalLeftSecs: 3600, // 60 mins
+               globalTotalSecs: 3600,
+               queueIndex: 0,
+               freeModeTotalSecs: 3600
+           }
+       };
+
+
+       // --- Utils & Modals ---
+       function showModal(title, msg) {
+           document.getElementById('modal-title').innerText = title;
+           document.getElementById('modal-message').innerText = msg;
+           const modal = document.getElementById('custom-modal');
+           const content = document.getElementById('custom-modal-content');
+           modal.classList.remove('hidden');
+           setTimeout(() => {
+               modal.classList.remove('opacity-0');
+               modal.classList.add('opacity-100');
+               content.classList.remove('scale-95');
+               content.classList.add('scale-100');
+           }, 10);
+       }
+
+
+       function closeModal() {
+           const modal = document.getElementById('custom-modal');
+           const content = document.getElementById('custom-modal-content');
+           modal.classList.remove('opacity-100');
+           modal.classList.add('opacity-0');
+           content.classList.remove('scale-100');
+           content.classList.add('scale-95');
+           setTimeout(() => modal.classList.add('hidden'), 300);
+       }
+
+
+       function formatTime(secs) {
+           if (secs < 0) secs = 0;
+           const m = Math.floor(secs / 60).toString().padStart(2, '0');
+           const s = (secs % 60).toString().padStart(2, '0');
+           return `${m}:${s}`;
+       }
+
+
+       // --- Tabs ---
+       function switchTab(tabId) {
+           document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+           document.querySelectorAll('.tab-btn').forEach(btn => {
+               btn.classList.remove('active', 'border-bottom', 'border-indigo-600', 'text-indigo-600', 'font-semibold');
+           });
+           document.getElementById(`tab-${tabId}`).classList.add('active');
+          
+           const btn = document.getElementById(`btn-${tabId}`);
+           btn.classList.add('active', 'text-indigo-600', 'font-semibold');
+           btn.style.borderBottom = '2px solid #4f46e5';
+       }
+
+
+       // --- Planner Logic ---
+       function addSubject() {
+           const nameEl = document.getElementById('subj-name');
+           const scoreEl = document.getElementById('subj-score');
+           const prefEl = document.getElementById('subj-pref');
+
+
+           const name = nameEl.value.trim();
+           let score = parseInt(scoreEl.value);
+           const pref = prefEl.value;
+
+
+           if (!name) return showModal('오류', '과목명을 입력해주세요.');
+           if (isNaN(score)) score = 0;
+           if (score < 0 || score > 100) return showModal('오류', '점수는 0~100 사이여야 합니다.');
+
+
+           state.subjects.push({
+               id: Date.now().toString(),
+               name, score, pref
+           });
+
+
+           nameEl.value = ''; scoreEl.value = ''; prefEl.value = 'normal';
+           renderSubjects();
+       }
+
+
+       function updateLiveSubject(id, field, value) {
+           const subj = state.subjects.find(s => s.id === id);
+           if (!subj) return;
+          
+           if (field === 'score') {
+               let v = parseInt(value);
+               if(isNaN(v) || v < 0 || v > 100) return;
+               subj.score = v;
+           } else {
+               subj[field] = value;
+           }
+           calcAverage();
+       }
+
+
+       function deleteSubject(id) {
+           state.subjects = state.subjects.filter(s => s.id !== id);
+           renderSubjects();
+       }
+
+
+       function calcAverage() {
+           const display = document.getElementById('avg-display');
+           if (state.subjects.length === 0) {
+               display.innerText = '0.0'; return;
+           }
+           const sum = state.subjects.reduce((acc, curr) => acc + curr.score, 0);
+           display.innerText = (sum / state.subjects.length).toFixed(1);
+       }
+
+
+       function renderSubjects() {
+           const list = document.getElementById('subject-list');
+           list.innerHTML = '';
+          
+           if (state.subjects.length === 0) {
+               list.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400">등록된 과목이 없습니다.</td></tr>`;
+               calcAverage();
+               return;
+           }
+
+
+           state.subjects.forEach(s => {
+               const tr = document.createElement('tr');
+               tr.innerHTML = `
+                   <td class="p-2 border-b border-slate-100">
+                       <input type="text" value="${s.name}" onchange="updateLiveSubject('${s.id}', 'name', this.value)" class="w-full px-2 py-1 bg-transparent border border-transparent hover:border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                   </td>
+                   <td class="p-2 border-b border-slate-100">
+                       <input type="number" min="0" max="100" value="${s.score}" onchange="updateLiveSubject('${s.id}', 'score', this.value)" class="w-16 px-2 py-1 bg-transparent border border-transparent hover:border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                   </td>
+                   <td class="p-2 border-b border-slate-100">
+                       <select onchange="updateLiveSubject('${s.id}', 'pref', this.value)" class="px-2 py-1 bg-transparent border border-transparent hover:border-slate-300 rounded focus:outline-none cursor-pointer">
+                           <option value="normal" ${s.pref === 'normal'?'selected':''}>보통</option>
+                           <option value="like" ${s.pref === 'like'?'selected':''}>선호</option>
+                           <option value="dislike" ${s.pref === 'dislike'?'selected':''}>불호</option>
+                       </select>
+                   </td>
+                   <td class="p-2 border-b border-slate-100 text-center">
+                       <button onclick="deleteSubject('${s.id}')" class="p-1 text-slate-400 hover:text-rose-500 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                   </td>
+               `;
+               list.appendChild(tr);
+           });
+           calcAverage();
+       }
+
+
+       function generatePlan() {
+           if (state.subjects.length === 0) return showModal('알림', '과목을 먼저 추가해주세요.');
+          
+           const timeInput = document.getElementById('target-time').value;
+           let targetMins = parseInt(timeInput);
+           if (isNaN(targetMins) || targetMins <= 0) return showModal('알림', '올바른 목표 공부 시간을 입력해주세요.');
+
+
+           const minTime = 30;
+           const requiredMinTime = state.subjects.length * minTime;
+
+
+           if (targetMins < requiredMinTime) {
+               return showModal('시간 부족', `모든 과목에 최소 ${minTime}분씩 배정하려면 총 ${requiredMinTime}분이 필요합니다. 목표 시간을 늘려주세요.`);
+           }
+
+
+           const remaining = targetMins - requiredMinTime;
+           let totalWeight = 0;
+
+
+           // Calculate weights
+           const subjectsCopy = JSON.parse(JSON.stringify(state.subjects));
+           subjectsCopy.forEach(s => {
+               let prefWeight = 1.0;
+               if (s.pref === 'dislike') prefWeight = 1.5;
+               else if (s.pref === 'like') prefWeight = 0.5;
+              
+               s.weight = Math.max(0, 100 - s.score) * prefWeight;
+               totalWeight += s.weight;
+           });
+
+
+           // Allocate
+           subjectsCopy.forEach(s => {
+               let extra = totalWeight > 0 ? Math.floor((s.weight / totalWeight) * remaining) : Math.floor(remaining / subjectsCopy.length);
+               s.allocatedMins = minTime + extra;
+           });
+
+
+           // Fix rounding error
+           let allocatedSum = subjectsCopy.reduce((acc, s) => acc + s.allocatedMins, 0);
+           let diff = targetMins - allocatedSum;
+           if (diff !== 0 && subjectsCopy.length > 0) {
+               // sort by allocated to give remaining to max
+               subjectsCopy.sort((a, b) => b.allocatedMins - a.allocatedMins);
+               subjectsCopy[0].allocatedMins += diff;
+           }
+
+
+           // Sort finally by allocated mins desc
+           subjectsCopy.sort((a, b) => b.allocatedMins - a.allocatedMins);
+          
+           // Setup Plan State
+           state.plan = {
+               targetMins,
+               subjects: subjectsCopy.map(s => ({
+                   ...s,
+                   leftSecs: s.allocatedMins * 60
+               }))
+           };
+
+
+           renderPlanUI();
+           resetTimer(true); // reset timer based on new plan
+       }
+
+
+       function renderPlanUI() {
+           const container = document.getElementById('plan-result-container');
+           const barsContainer = document.getElementById('plan-bars');
+          
+           if (!state.plan) {
+               container.classList.add('hidden');
+               return;
+           }
+           container.classList.remove('hidden');
+           barsContainer.innerHTML = '';
+
+
+           // Calc expected time: (Study time) + (Rest time)
+           // 5 min rest for every full 60 mins studied
+           const restCount = Math.floor(state.plan.targetMins / 60);
+           const totalRest = restCount * 5;
+           const expectedTotal = state.plan.targetMins + totalRest;
+          
+           const hours = Math.floor(expectedTotal / 60);
+           const mins = expectedTotal % 60;
+           document.getElementById('total-expected-time').innerText = hours > 0 ? `${hours}시간 ${mins}분` : `${mins}분`;
+
+
+           state.plan.subjects.forEach(s => {
+               const percent = Math.min(100, Math.max(5, (s.allocatedMins / state.plan.targetMins) * 100));
+               let color = s.pref === 'dislike' ? 'bg-rose-500' : (s.pref === 'like' ? 'bg-emerald-500' : 'bg-indigo-500');
+               let prefText = s.pref === 'dislike' ? '불호' : (s.pref === 'like' ? '선호' : '보통');
+              
+               barsContainer.innerHTML += `
+                   <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                       <div class="flex justify-between items-center mb-2">
+                           <div class="font-bold text-sm text-slate-800">
+                               ${s.name} <span class="font-normal text-slate-500 text-xs ml-1">(${s.score}점, ${prefText})</span>
+                           </div>
+                           <div class="text-sm font-bold text-indigo-600">${s.allocatedMins}분</div>
+                       </div>
+                       <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                           <div class="${color} h-full rounded-full progress-bar-fill" style="width: 0%"></div>
+                       </div>
+                   </div>
+               `;
+           });
+
+
+           // Trigger animation
+           setTimeout(() => {
+               const fills = barsContainer.querySelectorAll('.progress-bar-fill');
+               state.plan.subjects.forEach((s, idx) => {
+                   const percent = Math.min(100, (s.allocatedMins / state.plan.targetMins) * 100);
+                   if(fills[idx]) fills[idx].style.width = `${percent}%`;
+               });
+           }, 50);
+       }
+
+
+       // --- Timer Logic ---
+       function setFreeTime() {
+           if (state.plan) return; // Only in free mode
+           const input = document.getElementById('free-minutes').value;
+           let m = parseInt(input);
+           if (isNaN(m) || m <= 0) return;
+          
+           state.timer.freeModeTotalSecs = m * 60;
+           resetTimer(true);
+       }
+
+
+       function toggleTimer() {
+           const btn = document.getElementById('btn-toggle-timer');
+           if (state.timer.isRunning) {
+               // Pause
+               clearInterval(state.timer.intervalId);
+               state.timer.isRunning = false;
+               btn.innerText = '계속';
+               btn.className = 'w-32 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-colors';
+           } else {
+               // Start
+               state.timer.isRunning = true;
+               btn.innerText = '일시정지';
+               btn.className = 'w-32 py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md transition-colors';
+               state.timer.intervalId = setInterval(timerTick, 1000);
+           }
+       }
+
+
+       function resetTimer(forceSetup = false) {
+           if (state.timer.isRunning) {
+               clearInterval(state.timer.intervalId);
+               state.timer.isRunning = false;
+           }
+          
+           state.timer.globalMode = 'study';
+           state.timer.globalTotalSecs = 60 * 60; // 60 mins default
+           state.timer.globalLeftSecs = state.timer.globalTotalSecs;
+           state.timer.queueIndex = 0;
+
+
+           if (state.plan) {
+               // Reset plan left secs
+               state.plan.subjects.forEach(s => s.leftSecs = s.allocatedMins * 60);
+           } else {
+               state.timer.globalTotalSecs = state.timer.freeModeTotalSecs;
+               state.timer.globalLeftSecs = state.timer.globalTotalSecs;
+           }
+
+
+           const btn = document.getElementById('btn-toggle-timer');
+           btn.innerText = '시작';
+           btn.className = 'w-32 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-colors';
+          
+           updateTimerUI();
+       }
+
+
+       function timerTick() {
+           if (state.timer.globalMode === 'study') {
+               state.timer.globalLeftSecs--;
+              
+               // Smart mode queue deduction
+               if (state.plan) {
+                   let currSubj = state.plan.subjects[state.timer.queueIndex];
+                   if (currSubj && currSubj.leftSecs > 0) {
+                       currSubj.leftSecs--;
+                       // If subject finished, move to next smoothly
+                       if (currSubj.leftSecs <= 0) {
+                           state.timer.queueIndex++;
+                           // Check if all done
+                           if (state.timer.queueIndex >= state.plan.subjects.length) {
+                               completePlan();
+                               return;
+                           }
+                       }
+                   }
+               } else {
+                   // Free mode completion check
+                   if (state.timer.globalLeftSecs <= 0) {
+                       clearInterval(state.timer.intervalId);
+                       state.timer.isRunning = false;
+                       showModal('완료', '설정한 자유 공부 시간을 모두 달성했습니다!');
+                       resetTimer();
+                       return;
+                   }
+               }
+
+
+               // Global 60 min cycle end -> Rest
+               if (state.plan && state.timer.globalLeftSecs <= 0) {
+                   switchToRest();
+               }
+
+
+           } else {
+               // Rest mode
+               state.timer.globalLeftSecs--;
+               if (state.timer.globalLeftSecs <= 0) {
+                   switchToStudy();
+               }
+           }
+
+
+           updateTimerUI();
+       }
+
+
+       function switchToRest() {
+           state.timer.globalMode = 'rest';
+           state.timer.globalTotalSecs = 5 * 60; // 5 min rest
+           state.timer.globalLeftSecs = state.timer.globalTotalSecs;
+           showModal('알림', '60분 집중 완료! 5분간 휴식을 취하세요. ☕');
+       }
+
+
+       function switchToStudy() {
+           state.timer.globalMode = 'study';
+           state.timer.globalTotalSecs = 60 * 60;
+           state.timer.globalLeftSecs = state.timer.globalTotalSecs;
+           showModal('알림', '휴식 끝! 다시 공부에 집중해봅시다. 📖');
+       }
+
+
+       function completePlan() {
+           clearInterval(state.timer.intervalId);
+           state.timer.isRunning = false;
+           showModal('축하합니다!', '🎉 계획된 맞춤 플랜을 모두 완료했습니다! 고생하셨습니다.');
+           resetTimer();
+       }
+
+
+       function updateTimerUI() {
+           // Display Global Time
+           document.getElementById('timer-display').innerText = formatTime(state.timer.globalLeftSecs);
+          
+           const badge = document.getElementById('timer-mode-badge');
+           const subjNameEl = document.getElementById('timer-subject-name');
+           const inputArea = document.getElementById('free-mode-input');
+           const queueList = document.getElementById('queue-list');
+           const queueEmpty = document.getElementById('queue-empty');
+
+
+           // Badge & Mode styling
+           if (state.timer.globalMode === 'rest') {
+               badge.innerText = '☕ 휴식 중';
+               badge.className = 'inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-emerald-100 text-emerald-700 mb-4 transition-colors';
+               subjNameEl.innerText = '뇌를 쉬어주는 시간';
+               inputArea.classList.add('hidden');
+           } else {
+               badge.innerText = '📖 공부 중';
+               badge.className = 'inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700 mb-4 transition-colors';
+              
+               if (state.plan) {
+                   inputArea.classList.add('hidden');
+                   let currentSubject = state.plan.subjects[state.timer.queueIndex];
+                   subjNameEl.innerText = currentSubject ? currentSubject.name : '완료됨';
+               } else {
+                   inputArea.classList.remove('hidden');
+                   subjNameEl.innerText = '자유 과목';
+               }
+           }
+
+
+           // Queue rendering
+           if (state.plan) {
+               queueEmpty.classList.add('hidden');
+               queueList.classList.remove('hidden');
+               queueList.innerHTML = '';
+              
+               state.plan.subjects.forEach((s, idx) => {
+                   let statusClass = "text-slate-500 bg-slate-50";
+                   let leftMins = Math.ceil(s.leftSecs / 60);
+                   let label = `${leftMins}분 남음`;
+
+
+                   if (idx < state.timer.queueIndex) {
+                       statusClass = "text-emerald-600 bg-emerald-50 opacity-60 line-through";
+                       label = "완료";
+                   } else if (idx === state.timer.queueIndex) {
+                       if(state.timer.globalMode === 'study') {
+                           statusClass = "text-indigo-700 bg-indigo-50 border border-indigo-200 font-bold shadow-sm";
+                       } else {
+                           statusClass = "text-slate-500 bg-slate-100"; // paused conceptually
+                       }
+                   }
+
+
+                   queueList.innerHTML += `
+                       <div class="flex justify-between items-center p-3 rounded-lg ${statusClass} transition-colors text-sm">
+                           <span class="truncate pr-2">${s.name}</span>
+                           <span class="whitespace-nowrap font-mono">${label}</span>
+                       </div>
+                   `;
+               });
+           } else {
+               queueEmpty.classList.remove('hidden');
+               queueList.classList.add('hidden');
+           }
+       }
+
+
+       function saveData() {
+           try {
+               const data = {
+                   subjects: state.subjects,
+                   targetTime: document.getElementById('target-time').value,
+                   plan: state.plan
+               };
+               localStorage.setItem('studyPlannerData', JSON.stringify(data));
+               showModal('성공', '현재 입력된 과목과 플랜 정보가 저장되었습니다.');
+           } catch(e) {
+               showModal('오류', '저장에 실패했습니다.');
+           }
+       }
+
+
+       function loadData() {
+           try {
+               const saved = localStorage.getItem('studyPlannerData');
+               if (!saved) return showModal('알림', '저장된 데이터가 없습니다.');
+              
+               const data = JSON.parse(saved);
+               state.subjects = data.subjects || [];
+               document.getElementById('target-time').value = data.targetTime || '';
+               state.plan = data.plan || null;
+
+
+               renderSubjects();
+               renderPlanUI();
+               resetTimer(true);
+               showModal('성공', '데이터를 성공적으로 불러왔습니다.');
+           } catch(e) {
+               showModal('오류', '데이터를 불러오는 중 문제가 발생했습니다.');
+           }
+       }
+
+
+       // Initialize on load
+       window.onload = () => {
+           renderSubjects();
+           updateTimerUI();
+       };
+
+
+   </script>
+</body>
+</html>

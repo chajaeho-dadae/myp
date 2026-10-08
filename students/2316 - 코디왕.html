@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lan<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>코디왕 👑</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, "Noto Sans KR", sans-serif;
+    background: linear-gradient(135deg, #f7f2ff, #eef7ff);
+    color: #24212b;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 18px 60px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.logo {
+    font-size: 55px;
+}
+
+h1 {
+    margin: 5px 0;
+    font-size: 40px;
+}
+
+.subtitle {
+    color: #777;
+    font-size: 17px;
+}
+
+.card {
+    background: white;
+    border-radius: 24px;
+    padding: 25px;
+    margin: 18px 0;
+    box-shadow: 0 10px 30px rgba(60,40,90,.10);
+}
+
+.step {
+    display: none;
+}
+
+.step.active {
+    display: block;
+}
+
+.step-title {
+    font-size: 25px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.help {
+    color: #777;
+    margin-bottom: 20px;
+}
+
+label {
+    font-weight: 700;
+    display: block;
+    margin: 14px 0 8px;
+}
+
+input {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid #e7e2ef;
+    border-radius: 13px;
+    font-size: 16px;
+    outline: none;
+}
+
+input:focus {
+    border-color: #8b6cff;
+}
+
+button {
+    border: 0;
+    border-radius: 14px;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    background: #6d4aff;
+    color: white;
+    margin-top: 16px;
+    transition: .15s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+}
+
+button.secondary {
+    background: #eeeaf5;
+    color: #3b3447;
+}
+
+button.yes {
+    background: #ff4f87;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.result {
+    background: linear-gradient(135deg, #faf8ff, #f3f8ff);
+    border-radius: 18px;
+    padding: 18px;
+    margin-top: 15px;
+}
+
+.result h3 {
+    margin-top: 0;
+}
+
+.combo {
+    font-size: 19px;
+    font-weight: 800;
+    margin: 8px 0;
+}
+
+.color-dot {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 5px;
+    border: 1px solid #ccc;
+}
+
+.tags {
+    display: flex;
+    gap: 9px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.tag {
+    padding: 10px 14px;
+    background: #f3efff;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 700;
+    border: 2px solid transparent;
+}
+
+.tag.selected {
+    border-color: #7657ff;
+    background: #e9e3ff;
+}
+
+.final {
+    text-align: center;
+    background: #24212b;
+    color: white;
+    border-radius: 22px;
+    padding: 28px;
+    margin-top: 20px;
+}
+
+.final .big {
+    font-size: 28px;
+    font-weight: 900;
+    margin: 10px 0;
+}
+
+.small {
+    font-size: 14px;
+    color: #aaa;
+}
+
+ul {
+    line-height: 1.8;
+}
+
+.progress {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+.bar {
+    height: 7px;
+    flex: 1;
+    background: #ddd8e8;
+    border-radius: 10px;
+}
+
+.bar.on {
+    background: #6d4aff;
+}
+
+@media(max-width:600px) {
+    h1 {
+        font-size: 32px;
+    }
+
+    .card {
+        padding: 19px;
+    }
+
+    .actions button {
+        flex: 1;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+    <div class="logo">👑</div>
+    <h1>코디왕</h1>
+    <div class="subtitle">
+        오늘은 내가 코디왕! 내 옷으로 어울리는 색조합과 코디를 찾아보자 👕
+    </div>
+</header>
+
+<div class="progress">
+    <div class="bar on" id="bar1"></div>
+    <div class="bar" id="bar2"></div>
+    <div class="bar" id="bar3"></div>
+    <div class="bar" id="bar4"></div>
+</div>
+
+
+<!-- 1단계 -->
+
+<div class="card step active" id="step1">
+
+    <div class="step-title">
+        1️⃣ 가지고 있는 옷을 알려줘!
+    </div>
+
+    <div class="help">
+        상·하의의 색과 종류를 입력하면 코디왕이 어울리는 조합을 찾아줄게.
+    </div>
+
+    <label>상의</label>
+
+    <input
+        id="top"
+        placeholder="예: 흰색 반팔 티셔츠"
+    >
+
+    <label>하의</label>
+
+    <input
+        id="bottom"
+        placeholder="예: 검은색 와이드 팬츠"
+    >
+
+    <label>추가로 가지고 있는 옷 (선택)</label>
+
+    <input
+        id="extra"
+        placeholder="예: 청바지, 베이지 셔츠, 회색 후드티"
+    >
+
+    <button onclick="makeRecommend()">
+        코디 추천받기 👑
+    </button>
+
+</div>
+
+
+<!-- 2단계 -->
+
+<div class="card step" id="step2">
+
+    <div class="step-title">
+        2️⃣ 오늘의 코디 추천!
+    </div>
+
+    <div class="help">
+        네가 알려준 옷을 기준으로 색조합과 코디를 추천했어.
+    </div>
+
+    <div class="result" id="recommend"></div>
+
+    <button onclick="goStep(3)">
+        액세서리도 하고 싶어 ✨
+    </button>
+
+    <button
+        class="secondary"
+        onclick="finishNoAccessory()"
+    >
+        액세서리는 괜찮아 🙅
+    </button>
+
+</div>
+
+
+<!-- 3단계 -->
+
+<div class="card step" id="step3">
+
+    <div class="step-title">
+        3️⃣ 어떤 액세서리를 할까?
+    </div>
+
+    <div class="help">
+        원하는 액세서리를 하나 골라줘.
+    </div>
+
+    <div class="tags">
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'목걸이')"
+        >
+            📿 목걸이
+        </div>
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'반지')"
+        >
+            💍 반지
+        </div>
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'귀걸이')"
+        >
+            ✨ 귀걸이
+        </div>
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'피어싱')"
+        >
+            💎 피어싱
+        </div>
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'팔찌')"
+        >
+            ⌚ 팔찌
+        </div>
+
+    </div>
+
+    <button onclick="makeAccessory()">
+        다음으로 →
+    </button>
+
+</div>
+
+
+<!-- 4단계 -->
+
+<div class="card step" id="step4">
+
+    <div class="step-title">
+        4️⃣ 액세서리 색 추천!
+    </div>
+
+    <div class="help">
+        오늘의 코디에는 어떤 색이 더 잘 어울릴까?
+    </div>
+
+    <div
+        class="result"
+        id="accessoryResult"
+    ></div>
+
+    <button onclick="finish()">
+        OK! 최종 코디 보기 👑
+    </button>
+
+</div>
+
+
+<!-- 최종 -->
+
+<div class="card step" id="finalStep">
+
+    <div class="step-title">
+        🏆 오늘의 최종 코디
+    </div>
+
+    <div id="finalResult"></div>
+
+    <button onclick="location.reload()">
+        처음부터 다시 하기 🔄
+    </button>
+
+</div>
+
+</div>
+
+
+<script>
+
+let data = {
+    top: "",
+    bottom: "",
+    extra: "",
+    accessory: "",
+    metal: ""
+};
+
+
+/* 단계 이동 */
+
+function goStep(n) {
+
+    document
+        .querySelectorAll(".step")
+        .forEach(x => x.classList.remove("active"));
+
+    if (n === 5) {
+        document
+            .getElementById("finalStep")
+            .classList.add("active");
+    } else {
+        document
+            .getElementById("step" + n)
+            .classList.add("active");
+    }
+
+    document
+        .querySelectorAll(".bar")
+        .forEach(x => x.classList.remove("on"));
+
+    for (
+        let i = 1;
+        i <= Math.min(n, 4);
+        i++
+    ) {
+        document
+            .getElementById("bar" + i)
+            .classList.add("on");
+    }
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+
+/* 색상 알아내기 */
+
+function getColor(text) {
+
+    text = text.toLowerCase();
+
+    if (
+        text.includes("검정") ||
+        text.includes("블랙")
+    )
+        return "black";
+
+    if (
+        text.includes("흰") ||
+        text.includes("화이트")
+    )
+        return "white";
+
+    if (
+        text.includes("회색") ||
+        text.includes("그레이")
+    )
+        return "gray";
+
+    if (text.includes("베이지"))
+        return "beige";
+
+    if (
+        text.includes("갈색") ||
+        text.includes("브라운")
+    )
+        return "brown";
+
+    if (text.includes("네이비"))
+        return "navy";
+
+    if (
+        text.includes("파랑") ||
+        text.includes("블루") ||
+        text.includes("청")
+    )
+        return "blue";
+
+    if (
+        text.includes("빨강") ||
+        text.includes("레드")
+    )
+        return "red";
+
+    if (
+        text.includes("초록") ||
+        text.includes("그린")
+    )
+        return "green";
+
+    if (
+        text.includes("노랑") ||
+        text.includes("옐로")
+    )
+        return "yellow";
+
+    if (
+        text.includes("분홍") ||
+        text.includes("핑크")
+    )
+        return "pink";
+
+    if (
+        text.includes("보라") ||
+        text.includes("퍼플")
+    )
+        return "purple";
+
+    return "unknown";
+}
+
+
+/* 색상 이름 */
+
+const names = {
+
+    black: "블랙",
+    white: "화이트",
+    gray: "그레이",
+    beige: "베이지",
+    brown: "브라운",
+    navy: "네이비",
+    blue: "블루",
+    red: "레드",
+    green: "그린",
+    yellow: "옐로",
+    pink: "핑크",
+    purple: "퍼플",
+    unknown: "기본색"
+
+};
+
+
+/* 색상 원 */
+
+const dots = {
+
+    black: "#111",
+    white: "#fff",
+    gray: "#999",
+    beige: "#d8c09b",
+    brown: "#795548",
+    navy: "#18244d",
+    blue: "#4687d7",
+    red: "#d33",
+    green: "#43895a",
+    yellow: "#e8c531",
+    pink: "#ef91ad",
+    purple: "#8a5ab5",
+    unknown: "#bbb"
+
+};
+
+
+function colorText(c) {
+
+    return `
+        <span
+            class="color-dot"
+            style="background:${dots[c]}"
+        ></span>
+        ${names[c]}
+    `;
+
+}
+
+
+/* 코디 추천 */
+
+function makeRecommend() {
+
+    data.top =
+        document.getElementById("top").value.trim();
+
+    data.bottom =
+        document.getElementById("bottom").value.trim();
+
+    data.extra =
+        document.getElementById("extra").value.trim();
+
+
+    if (!data.top || !data.bottom) {
+
+        alert("상의와 하의는 꼭 입력해줘!");
+
+        return;
+    }
+
+
+    const t = getColor(data.top);
+
+    const b = getColor(data.bottom);
+
+    let advice = "";
+
+
+    if (
+        t === "unknown" ||
+        b === "unknown"
+    ) {
+
+        advice =
+            "기본색 계열이라면 대부분 무난하게 어울려! 신발이나 가방은 블랙·화이트처럼 깔끔한 색을 추천해.";
+
+    }
+
+    else if (t === b) {
+
+        advice =
+            "같은 색끼리는 깔끔한 톤온톤 코디가 좋아. 상의와 하의의 밝기를 다르게 하면 더 멋스러워!";
+
+    }
+
+    else if (
+        (t === "white" || t === "gray") &&
+        (b === "black" ||
+         b === "navy" ||
+         b === "blue")
+    ) {
+
+        advice =
+            "깔끔하고 실패하기 어려운 조합이야. 흰색·회색 상의에 어두운 하의를 입으면 심플하면서 세련돼 보여!";
+
+    }
+
+    else if (
+        (b === "beige" || b === "brown") &&
+        (t === "white" ||
+         t === "black" ||
+         t === "navy")
+    ) {
+
+        advice =
+            "따뜻하고 차분한 느낌의 조합이야. 갈색이나 베이지 계열 신발을 더하면 통일감이 생겨!";
+
+    }
+
+    else {
+
+        advice =
+            "색이 너무 복잡해지지 않도록 신발이나 가방은 블랙·화이트·베이지 같은 기본색으로 맞추는 것을 추천해!";
+
+    }
+
+
+    let extraText =
+        data.extra
+        ? `<li>추가 아이템: ${data.extra}</li>`
+        : "";
+
+
+    document.getElementById("recommend").innerHTML = `
+
+        <h3>👕 추천 코디</h3>
+
+        <div class="combo">
+            ${data.top} + ${data.bottom}
+        </div>
+
+        <p>
+            <b>색 조합:</b>
+            ${colorText(t)} + ${colorText(b)}
+        </p>
+
+        <p>
+            <b>코디 설명:</b>
+            ${advice}
+        </p>
+
+        <ul>
+
+            <li>
+                신발: 화이트 스니커즈 또는 블랙 신발 추천
+            </li>
+
+            <li>
+                가방: 블랙·브라운 계열 추천
+            </li>
+
+            ${extraText}
+
+            <li>
+                포인트 아이템은 1~2개 정도만 추가하면 깔끔해!
+            </li>
+
+        </ul>
+
+    `;
+
+
+    goStep(2);
+}
+
+
+/* 액세서리 선택 */
+
+function chooseAccessory(el, name) {
+
+    document
+        .querySelectorAll(".tag")
+        .forEach(x =>
+            x.classList.remove("selected")
+        );
+
+    el.classList.add("selected");
+
+    data.accessory = name;
+
+}
+
+
+/* 액세서리 추천 */
+
+function makeAccessory() {
+
+    if (!data.accessory) {
+
+        alert("액세서리를 하나 골라줘!");
+
+        return;
+    }
+
+
+    const t = getColor(data.top);
+
+    const b = getColor(data.bottom);
+
+    let metal;
+
+
+    if (
+        [t, b].includes("black") ||
+        [t, b].includes("gray") ||
+        [t, b].includes("navy") ||
+        [t, b].includes("blue")
+    ) {
+
+        metal = "실버";
+
+    }
+
+    else if (
+        [t, b].includes("beige") ||
+        [t, b].includes("brown") ||
+        [t, b].includes("yellow") ||
+        [t, b].includes("red")
+    ) {
+
+        metal = "골드";
+
+    }
+
+    else {
+
+        metal = "실버 또는 골드";
+
+    }
+
+
+    data.metal = metal;
+
+
+    document.getElementById(
+        "accessoryResult"
+    ).innerHTML = `
+
+        <h3>
+            ✨ ${data.accessory} 추천
+        </h3>
+
+        <p>
+            오늘의 옷 색조합에는
+            <b>${metal}</b>
+            계열이 잘 어울려!
+        </p>
+
+        <p>
+            ${data.accessory}는 너무 큰 디자인보다는
+            깔끔하고 심플한 디자인을 추천해.
+        </p>
+
+    `;
+
+
+    goStep(4);
+
+}
+
+
+/* 최종 결과 */
+
+function finish() {
+
+    document.getElementById(
+        "finalResult"
+    ).innerHTML = `
+
+        <div class="final">
+
+            <div class="small">
+                TODAY'S LOOK
+            </div>
+
+            <div class="big">
+                ${data.top} + ${data.bottom}
+            </div>
+
+            <p>
+                🎨 색조합:
+                ${names[getColor(data.top)]}
+                +
+                ${names[getColor(data.bottom)]}
+            </p>
+
+            <p>
+                ✨ 액세서리:
+                ${data.accessory}
+                /
+                ${data.metal}
+            </p>
+
+            <p>
+                👑 깔끔하게 색을 맞추고
+                액세서리로 포인트를 준 코디!
+            </p>
+
+            <p>
+                오늘의 코디왕은 바로 너! 🏆
+            </p>
+
+        </div>
+
+    `;
+
+
+    goStep(5);
+
+}
+
+
+/* 액세서리 없이 최종 결과 */
+
+function finishNoAccessory() {
+
+    document.getElementById(
+        "finalResult"
+    ).innerHTML = `
+
+        <div class="final">
+
+            <div class="small">
+                TODAY'S LOOK
+            </div>
+
+            <div class="big">
+                ${data.top} + ${data.bottom}
+            </div>
+
+            <p>
+                🎨 색조합:
+                ${names[getColor(data.top)]}
+                +
+                ${names[getColor(data.bottom)]}
+            </p>
+
+            <p>
+                ✨ 액세서리: 없음
+            </p>
+
+            <p>
+                👑 기본 아이템만으로 깔끔하게 완성!
+            </p>
+
+            <p>
+                오늘의 코디왕은 바로 너! 🏆
+            </p>
+
+        </div>
+
+    `;
+
+
+    goStep(5);
+
+}
+
+</script>
+
+</body>
+</html>
+g="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>코디왕 👑</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, "Noto Sans KR", sans-serif;
+    background: linear-gradient(135deg, #f7f2ff, #eef7ff);
+    color: #24212b;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 18px 60px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.logo {
+    font-size: 55px;
+}
+
+h1 {
+    margin: 5px 0;
+    font-size: 40px;
+}
+
+.subtitle {
+    color: #777;
+    font-size: 17px;
+}
+
+.card {
+    background: white;
+    border-radius: 24px;
+    padding: 25px;
+    margin: 18px 0;
+    box-shadow: 0 10px 30px rgba(60,40,90,.10);
+}
+
+.step {
+    display: none;
+}
+
+.step.active {
+    display: block;
+}
+
+.step-title {
+    font-size: 25px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.help {
+    color: #777;
+    margin-bottom: 20px;
+}
+
+label {
+    font-weight: 700;
+    display: block;
+    margin: 14px 0 8px;
+}
+
+input {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid #e7e2ef;
+    border-radius: 13px;
+    font-size: 16px;
+    outline: none;
+}
+
+input:focus {
+    border-color: #8b6cff;
+}
+
+button {
+    border: 0;
+    border-radius: 14px;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    background: #6d4aff;
+    color: white;
+    margin-top: 16px;
+    transition: .15s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+}
+
+button.secondary {
+    background: #eeeaf5;
+    color: #3b3447;
+}
+
+button.yes {
+    background: #ff4f87;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.result {
+    background: linear-gradient(135deg, #faf8ff, #f3f8ff);
+    border-radius: 18px;
+    padding: 18px;
+    margin-top: 15px;
+}
+
+.result h3 {
+    margin-top: 0;
+}
+
+.combo {
+    font-size: 19px;
+    font-weight: 800;
+    margin: 8px 0;
+}
+
+.color-dot {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 5px;
+    border: 1px solid #ccc;
+}
+
+.tags {
+    display: flex;
+    gap: 9px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.tag {
+    padding: 10px 14px;
+    background: #f3efff;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 700;
+    border: 2px solid transparent;
+}
+
+.tag.selected {
+    border-color: #7657ff;
+    background: #e9e3ff;
+}
+
+.final {
+    text-align: center;
+    background: #24212b;
+    color: white;
+    border-radius: 22px;
+    padding: 28px;
+    margin-top: 20px;
+}
+
+.final .big {
+    font-size: 28px;
+    font-weight: 900;
+    margin: 10px 0;
+}
+
+.small {
+    font-size: 14px;
+    color: #aaa;
+}
+
+ul {
+    line-height: 1.8;
+}
+
+.progress {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+.bar {
+    height: 7px;
+    flex: 1;
+    background: #ddd8e8;
+    border-radius: 10px;
+}
+
+.bar.on {
+    background: #6d4aff;
+}
+
+@media(max-width:600px) {
+    h1 {
+        font-size: 32px;
+    }
+
+    .card {
+        padding: 19px;
+    }
+
+    .actions button {
+        flex: 1;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+    <div class="logo">👑</div>
+    <h1>코디왕</h1>
+    <div class="subtitle">
+        오늘은 내가 코디왕! 내 옷으로 어울리는 색조합과 코디를 찾아보자 👕
+    </div>
+</header>
+
+<div class="progress">
+    <div class="bar on" id="bar1"></div>
+    <div class="bar" id="bar2"></div>
+    <div class="bar" id="bar3"></div>
+    <div class="bar" id="bar4"></div>
+</div>
+
+
+<!-- 1단계 -->
+
+<div class="card step active" id="step1">
+
+    <div class="step-title">
+        1️⃣ 가지고 있는 옷을 알려줘!
+    </div>
+
+    <div class="help">
+        상·하의의 색과 종류를 입력하면 코디왕이 어울리는 조합을 찾아줄게.
+    </div>
+
+    <label>상의</label>
+
+    <input
+        id="top"
+        placeholder="예: 흰색 반팔 티셔츠"
+    >
+
+    <label>하의</label>
+
+    <input
+        id="bottom"
+        placeholder="예: 검은색 와이드 팬츠"
+    >
+
+    <label>추가로 가지고 있는 옷 (선택)</label>
+
+    <input
+        id="extra"
+        placeholder="예: 청바지, 베이지 셔츠, 회색 후드티"
+    >
+
+    <button onclick="makeRecommend()">
+        코디 추천받기 👑
+    </button>
+
+</div>
+
+
+<!-- 2단계 -->
+
+<div class="card step" id="step2">
+
+    <div class="step-title">
+        2️⃣ 오늘의 코디 추천!
+    </div>
+
+    <div class="help">
+        네가 알려준 옷을 기준으로 색조합과 코디를 추천했어.
+    </div>
+
+    <div class="result" id="recommend"></div>
+
+    <button onclick="goStep(3)">
+        액세서리도 하고 싶어 ✨
+    </button>
+
+    <button
+        class="secondary"
+        onclick="finishNoAccessory()"
+    >
+        액세서리는 괜찮아 🙅
+    </button>
+
+</div>
+
+
+<!-- 3단계 -->
+
+<div class="card step" id="step3">
+
+    <div class="step-title">
+        3️⃣ 어떤 액세서리를 할까?
+    </div>
+
+    <div class="help">
+        원하는 액세서리를 하나 골라줘.
+    </div>
+
+    <div class="tags">
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'목걸이')"
+        >
+            📿 목걸이
+        </div>
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'반지')"
+        >
+            💍 반지
+        </div>
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'귀걸이')"
+        >
+            ✨ 귀걸이
+        </div>
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'피어싱')"
+        >
+            💎 피어싱
+        </div>
+
+        <div
+            class="tag"
+            onclick="chooseAccessory(this,'팔찌')"
+        >
+            ⌚ 팔찌
+        </div>
+
+    </div>
+
+    <button onclick="makeAccessory()">
+        다음으로 →
+    </button>
+
+</div>
+
+
+<!-- 4단계 -->
+
+<div class="card step" id="step4">
+
+    <div class="step-title">
+        4️⃣ 액세서리 색 추천!
+    </div>
+
+    <div class="help">
+        오늘의 코디에는 어떤 색이 더 잘 어울릴까?
+    </div>
+
+    <div
+        class="result"
+        id="accessoryResult"
+    ></div>
+
+    <button onclick="finish()">
+        OK! 최종 코디 보기 👑
+    </button>
+
+</div>
+
+
+<!-- 최종 -->
+
+<div class="card step" id="finalStep">
+
+    <div class="step-title">
+        🏆 오늘의 최종 코디
+    </div>
+
+    <div id="finalResult"></div>
+
+    <button onclick="location.reload()">
+        처음부터 다시 하기 🔄
+    </button>
+
+</div>
+
+</div>
+
+
+<script>
+
+let data = {
+    top: "",
+    bottom: "",
+    extra: "",
+    accessory: "",
+    metal: ""
+};
+
+
+/* 단계 이동 */
+
+function goStep(n) {
+
+    document
+        .querySelectorAll(".step")
+        .forEach(x => x.classList.remove("active"));
+
+    if (n === 5) {
+        document
+            .getElementById("finalStep")
+            .classList.add("active");
+    } else {
+        document
+            .getElementById("step" + n)
+            .classList.add("active");
+    }
+
+    document
+        .querySelectorAll(".bar")
+        .forEach(x => x.classList.remove("on"));
+
+    for (
+        let i = 1;
+        i <= Math.min(n, 4);
+        i++
+    ) {
+        document
+            .getElementById("bar" + i)
+            .classList.add("on");
+    }
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+
+/* 색상 알아내기 */
+
+function getColor(text) {
+
+    text = text.toLowerCase();
+
+    if (
+        text.includes("검정") ||
+        text.includes("블랙")
+    )
+        return "black";
+
+    if (
+        text.includes("흰") ||
+        text.includes("화이트")
+    )
+        return "white";
+
+    if (
+        text.includes("회색") ||
+        text.includes("그레이")
+    )
+        return "gray";
+
+    if (text.includes("베이지"))
+        return "beige";
+
+    if (
+        text.includes("갈색") ||
+        text.includes("브라운")
+    )
+        return "brown";
+
+    if (text.includes("네이비"))
+        return "navy";
+
+    if (
+        text.includes("파랑") ||
+        text.includes("블루") ||
+        text.includes("청")
+    )
+        return "blue";
+
+    if (
+        text.includes("빨강") ||
+        text.includes("레드")
+    )
+        return "red";
+
+    if (
+        text.includes("초록") ||
+        text.includes("그린")
+    )
+        return "green";
+
+    if (
+        text.includes("노랑") ||
+        text.includes("옐로")
+    )
+        return "yellow";
+
+    if (
+        text.includes("분홍") ||
+        text.includes("핑크")
+    )
+        return "pink";
+
+    if (
+        text.includes("보라") ||
+        text.includes("퍼플")
+    )
+        return "purple";
+
+    return "unknown";
+}
+
+
+/* 색상 이름 */
+
+const names = {
+
+    black: "블랙",
+    white: "화이트",
+    gray: "그레이",
+    beige: "베이지",
+    brown: "브라운",
+    navy: "네이비",
+    blue: "블루",
+    red: "레드",
+    green: "그린",
+    yellow: "옐로",
+    pink: "핑크",
+    purple: "퍼플",
+    unknown: "기본색"
+
+};
+
+
+/* 색상 원 */
+
+const dots = {
+
+    black: "#111",
+    white: "#fff",
+    gray: "#999",
+    beige: "#d8c09b",
+    brown: "#795548",
+    navy: "#18244d",
+    blue: "#4687d7",
+    red: "#d33",
+    green: "#43895a",
+    yellow: "#e8c531",
+    pink: "#ef91ad",
+    purple: "#8a5ab5",
+    unknown: "#bbb"
+
+};
+
+
+function colorText(c) {
+
+    return `
+        <span
+            class="color-dot"
+            style="background:${dots[c]}"
+        ></span>
+        ${names[c]}
+    `;
+
+}
+
+
+/* 코디 추천 */
+
+function makeRecommend() {
+
+    data.top =
+        document.getElementById("top").value.trim();
+
+    data.bottom =
+        document.getElementById("bottom").value.trim();
+
+    data.extra =
+        document.getElementById("extra").value.trim();
+
+
+    if (!data.top || !data.bottom) {
+
+        alert("상의와 하의는 꼭 입력해줘!");
+
+        return;
+    }
+
+
+    const t = getColor(data.top);
+
+    const b = getColor(data.bottom);
+
+    let advice = "";
+
+
+    if (
+        t === "unknown" ||
+        b === "unknown"
+    ) {
+
+        advice =
+            "기본색 계열이라면 대부분 무난하게 어울려! 신발이나 가방은 블랙·화이트처럼 깔끔한 색을 추천해.";
+
+    }
+
+    else if (t === b) {
+
+        advice =
+            "같은 색끼리는 깔끔한 톤온톤 코디가 좋아. 상의와 하의의 밝기를 다르게 하면 더 멋스러워!";
+
+    }
+
+    else if (
+        (t === "white" || t === "gray") &&
+        (b === "black" ||
+         b === "navy" ||
+         b === "blue")
+    ) {
+
+        advice =
+            "깔끔하고 실패하기 어려운 조합이야. 흰색·회색 상의에 어두운 하의를 입으면 심플하면서 세련돼 보여!";
+
+    }
+
+    else if (
+        (b === "beige" || b === "brown") &&
+        (t === "white" ||
+         t === "black" ||
+         t === "navy")
+    ) {
+
+        advice =
+            "따뜻하고 차분한 느낌의 조합이야. 갈색이나 베이지 계열 신발을 더하면 통일감이 생겨!";
+
+    }
+
+    else {
+
+        advice =
+            "색이 너무 복잡해지지 않도록 신발이나 가방은 블랙·화이트·베이지 같은 기본색으로 맞추는 것을 추천해!";
+
+    }
+
+
+    let extraText =
+        data.extra
+        ? `<li>추가 아이템: ${data.extra}</li>`
+        : "";
+
+
+    document.getElementById("recommend").innerHTML = `
+
+        <h3>👕 추천 코디</h3>
+
+        <div class="combo">
+            ${data.top} + ${data.bottom}
+        </div>
+
+        <p>
+            <b>색 조합:</b>
+            ${colorText(t)} + ${colorText(b)}
+        </p>
+
+        <p>
+            <b>코디 설명:</b>
+            ${advice}
+        </p>
+
+        <ul>
+
+            <li>
+                신발: 화이트 스니커즈 또는 블랙 신발 추천
+            </li>
+
+            <li>
+                가방: 블랙·브라운 계열 추천
+            </li>
+
+            ${extraText}
+
+            <li>
+                포인트 아이템은 1~2개 정도만 추가하면 깔끔해!
+            </li>
+
+        </ul>
+
+    `;
+
+
+    goStep(2);
+}
+
+
+/* 액세서리 선택 */
+
+function chooseAccessory(el, name) {
+
+    document
+        .querySelectorAll(".tag")
+        .forEach(x =>
+            x.classList.remove("selected")
+        );
+
+    el.classList.add("selected");
+
+    data.accessory = name;
+
+}
+
+
+/* 액세서리 추천 */
+
+function makeAccessory() {
+
+    if (!data.accessory) {
+
+        alert("액세서리를 하나 골라줘!");
+
+        return;
+    }
+
+
+    const t = getColor(data.top);
+
+    const b = getColor(data.bottom);
+
+    let metal;
+
+
+    if (
+        [t, b].includes("black") ||
+        [t, b].includes("gray") ||
+        [t, b].includes("navy") ||
+        [t, b].includes("blue")
+    ) {
+
+        metal = "실버";
+
+    }
+
+    else if (
+        [t, b].includes("beige") ||
+        [t, b].includes("brown") ||
+        [t, b].includes("yellow") ||
+        [t, b].includes("red")
+    ) {
+
+        metal = "골드";
+
+    }
+
+    else {
+
+        metal = "실버 또는 골드";
+
+    }
+
+
+    data.metal = metal;
+
+
+    document.getElementById(
+        "accessoryResult"
+    ).innerHTML = `
+
+        <h3>
+            ✨ ${data.accessory} 추천
+        </h3>
+
+        <p>
+            오늘의 옷 색조합에는
+            <b>${metal}</b>
+            계열이 잘 어울려!
+        </p>
+
+        <p>
+            ${data.accessory}는 너무 큰 디자인보다는
+            깔끔하고 심플한 디자인을 추천해.
+        </p>
+
+    `;
+
+
+    goStep(4);
+
+}
+
+
+/* 최종 결과 */
+
+function finish() {
+
+    document.getElementById(
+        "finalResult"
+    ).innerHTML = `
+
+        <div class="final">
+
+            <div class="small">
+                TODAY'S LOOK
+            </div>
+
+            <div class="big">
+                ${data.top} + ${data.bottom}
+            </div>
+
+            <p>
+                🎨 색조합:
+                ${names[getColor(data.top)]}
+                +
+                ${names[getColor(data.bottom)]}
+            </p>
+
+            <p>
+                ✨ 액세서리:
+                ${data.accessory}
+                /
+                ${data.metal}
+            </p>
+
+            <p>
+                👑 깔끔하게 색을 맞추고
+                액세서리로 포인트를 준 코디!
+            </p>
+
+            <p>
+                오늘의 코디왕은 바로 너! 🏆
+            </p>
+
+        </div>
+
+    `;
+
+
+    goStep(5);
+
+}
+
+
+/* 액세서리 없이 최종 결과 */
+
+function finishNoAccessory() {
+
+    document.getElementById(
+        "finalResult"
+    ).innerHTML = `
+
+        <div class="final">
+
+            <div class="small">
+                TODAY'S LOOK
+            </div>
+
+            <div class="big">
+                ${data.top} + ${data.bottom}
+            </div>
+
+            <p>
+                🎨 색조합:
+                ${names[getColor(data.top)]}
+                +
+                ${names[getColor(data.bottom)]}
+            </p>
+
+            <p>
+                ✨ 액세서리: 없음
+            </p>
+
+            <p>
+                👑 기본 아이템만으로 깔끔하게 완성!
+            </p>
+
+            <p>
+                오늘의 코디왕은 바로 너! 🏆
+            </p>
+
+        </div>
+
+    `;
+
+
+    goStep(5);
+
+}
+
+</script>
+
+</body>
+</html>
