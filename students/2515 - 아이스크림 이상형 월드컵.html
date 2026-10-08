@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>아이스크림 이상형 월드컵</title>
+<style>
+:root{--bg1:#ffe3ef;--bg2:#e0f2ff;--fg:#2b2340;--card:#fff;--muted:#7a7391;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#2a1e3a;--bg2:#13263a;--fg:#f4eefc;--card:#2e2745;--muted:#b3abc9}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:var(--fg);background:linear-gradient(135deg,var(--bg1),var(--bg2));text-align:center;padding:20px 14px 40px}
+h1{margin:6px 0 4px;font-size:clamp(22px,5vw,34px)}
+.sub{color:var(--muted);font-size:14px;margin-bottom:14px}
+.bar{max-width:560px;margin:0 auto 6px;height:10px;border-radius:99px;background:rgba(128,128,160,.25);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff7eb3,#7eb6ff);transition:width .3s}
+.info{font-size:13px;color:var(--muted);margin-bottom:18px}
+.arena{display:flex;align-items:center;justify-content:center;gap:14px;max-width:760px;margin:0 auto;flex-wrap:wrap}
+.card{flex:1 1 260px;min-height:260px;background:var(--card);border-radius:24px;box-shadow:0 8px 24px rgba(60,40,100,.15);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;border:4px solid transparent;transition:transform .2s,border-color .2s;position:relative;user-select:none}
+.card:hover{transform:translateY(-4px) scale(1.02);border-color:#ff7eb3}
+.emoji{font-size:84px;line-height:1}
+.name{font-size:clamp(22px,5vw,28px);font-weight:800;margin-top:14px;word-break:keep-all}
+.badge{position:absolute;top:10px;right:12px;background:#ff7eb3;color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
+.vs{font-weight:900;font-size:26px;color:#ff5c9a}
+.pop{animation:pop .35s ease}
+@keyframes pop{from{opacity:0;transform:scale(.8) translateY(20px)}to{opacity:1;transform:none}}
+.win{background:var(--card);max-width:420px;margin:20px auto;border-radius:28px;padding:30px;box-shadow:0 8px 24px rgba(60,40,100,.2)}
+.win .emoji{font-size:110px}
+details.ed{max-width:560px;margin:30px auto 0;text-align:left}summary{cursor:pointer;font-weight:700}textarea{width:100%;border-radius:12px;border:1px solid var(--muted);padding:10px;font:inherit;background:var(--card);color:var(--fg)}button{font:inherit;font-weight:700;border:0;border-radius:99px;padding:12px 28px;margin-top:18px;background:#ff5c9a;color:#fff;cursor:pointer}
+.hide{display:none}
+</style>
+</head>
+<body>
+<h1>🍦 아이스크림 이상형 월드컵 <small style="font-size:.6em">32강</small></h1>
+<div class="sub">아이스크림 할인점에서 볼 수 있는 아이스크림 중 마음에 드는 걸 고르세요! 300가지 중 무작위 32개가 출전! 선택한 건 그대로, 선택 안 한 건 새 도전자로 바뀝니다.</div>
+<div class="bar"><i id="prog"></i></div>
+<div class="info" id="info"></div>
+<div class="arena" id="arena">
+  <div class="card" id="cardL"></div>
+  <div class="vs">VS</div>
+  <div class="card" id="cardR"></div>
+</div>
+<div class="win hide" id="win"></div>
+<details class="ed"><summary>🛠 아이스크림 목록 확인 · 수정</summary>
+<p class="sub">한 줄에 하나(또는 쉼표 구분). 중복은 자동 제거돼요. 우리 동네 가게에 없는 건 지우고 다른 걸 넣어보세요.</p>
+<textarea id="list" rows="10"></textarea>
+<div class="sub" id="msg"></div>
+<button id="apply">적용하고 다시 시작</button></details>
+
+<script>
+const RAW = `
+월드콘,월드콘 바닐라,월드콘 초코,구구콘,구구99,구구바,구구크러스터,구구크러스터 홈,구구크러스터 바닐라,구구크러스터 초코,
+빵빠레,빵빠레 초코,빵빠레 딸기,빵빠레 커피,설레임,설레임 초코,설레임 딸기,설레임 커피,설레임 밀크쉐이크,더블비얀코,
+티코,티코 초코,셀렉션,찰떡아이스,본젤라또,찰옥수수,거북알,거북이,거북이바,쿠키오,
+쮸쮸바,아맛나,초코퍼지,보석바,테트리스,와삭바,돼지바,돼지바 핑크,돼지바 요거트,별난바,
+디저트아이스바,라베스트,자바초코칩카페,델몬트 망고바,델몬트 샤인머스켓앤청포도 바,델몬트 오렌지 아이스,그릭요거트,그릭요거트바,티라미수,찰떡인절미바,
+국화빵,국화빵 찰떡,백제신라고구마,우유빙수,정통팥빙수,쿨샷,판나코타,왕밤바,프라임,빠삐코,
+까마쿤,옥메와까,죠크박,옥동자,메가톤바,와일드바디,죠스바,스크류바,수박바,고드름,
+빙빙바,와쿠와크,위즐,와,와 바닐라,조안나,누크바,제로 미니바이트,가나 초코 크럼블 바,가나 말차초코 크럼블 바,
+제로말차크림모나카,이츠케이크,알껌바,찹쌀떡아이스,더블콘,
+끌레도르,끌레도르 파르페,끌레도르 쿠키앤초코 바,메로나,메로나 딸기,메로나 바나나,메로나 망고,메로나 코코넛,붕어싸만코,떡붕어싸만코,
+붕어싸만코 초코,붕어싸만코 호두과자,투게더,투게더 바닐라,투게더 딸기,투게더 초콜릿,투게더 아몬드,슈퍼콘,엑설런트,엑설런트 바닐라,
+엑설런트 초코,빵또아,빵또아 쿠앤크케이크,비비빅,엔초,요맘때,요맘때 딸기,요맘때 플레인 바,요맘때 복숭아 바,요맘때 ABC,
+요맘때 초코크러쉬 딸기,쿠앤크,쿠앤크 말차,더위사냥,더위사냥 저당 디카페인 커피,졸음사냥,뽕따,캔디바,생귤탱귤,제티 아이스,
+까페오레,꽃보다 인절미,디핀다트,디핀다트 상큼사과포도,트리컬러,부라보콘,탱크보이,쌍쌍바,폴라포,바밤바,
+토마토마,젤루조아,파시통통,누가바,호두마루,체리마루,녹차마루,밤마루,고구마루,팽이팽이,
+시모나,찰떡 시모나,시모나 꿀 호떡,인절미통통,베스트원,폭신폭신 솜사탕바,아이스가이,모히또바,키위아작,따옴바,
+따옴바 키위,파워캡,링키바,딥앤로우,딥앤로우 소프트 바닐라,리틀텐,깐도리,대롱대롱,가리비,말랑카우,
+마카롱아이스바,순수밀크,빅바,쑥떡쑥떡바,아이스파인,아시나요,울퉁불퉁,찬호박,토끼,홈런볼 아이스,
+무지바,비빙수,마루홈,미니홈,
+서주 아이스캔디,서주 한손빙수,서주 포도젤로바,서주 왕포도알 제로,서주 제주담은 녹차빙수,서주 캬라멜로바,웰팜 아이스 과일바 스트로베리,동그린 얼려쮸 샤인머스캣,라벨리 디요거트 망고,라벨리 디요거트 플레인,
+라벨리 디요거트 허니유자,라벨리 세부망고빙수,라벨리 영원한봄,미니멜츠,
+하겐다즈 마카다미아 넛,하겐다즈 크리스피 샌드,하겐다즈 말차,하겐다즈 바닐라,하겐다즈 스트로베리,하겐다즈 초콜릿,
+마그넘 클래식,마그넘 아몬드,마그넘 화이트,마그넘 더블 카라멜,콘 코르네토,솔레로,
+벤앤제리스 체리 가르시아,벤앤제리스 청키 몽키,벤앤제리스 피쉬 푸드,벤앤제리스 하프 베이크드,벤앤제리스 초콜릿 퍼지 브라우니,벤앤제리스 쿠키 도우,벤앤제리스 카라멜 수트라,벤앤제리스 밀크 앤 쿠키즈,벤앤제리스 피넛버터컵,
+가리가리군,가리가리군 소다,가리가리군 콜라,파피코,피노,아즈키바,에세루 슈퍼컵,자이언트 콘,
+아이스께끼,팥 아이스바,옥수수 아이스바,홍시 아이스바,수박 아이스바,포도 아이스바,오렌지 아이스바,딸기 아이스바,레몬 아이스바,파인애플 아이스바,
+코코넛 아이스바,망고 아이스바,콜라 아이스바,사이다 아이스바,녹두 아이스바,자두 아이스바,초코 아이스바,커피 아이스바,바나나 아이스바,복숭아 아이스바,
+청포도 아이스바,멜론 아이스바,고구마 아이스바,인절미 아이스바,쑥 아이스바,흑임자 아이스바,밤 아이스바,요거트 아이스바,우유 아이스바,
+팥빙수 컵,과일 빙수 컵,망고 빙수 컵,딸기 빙수 컵,녹차 빙수 컵,인절미 빙수 컵,커피 빙수 컵,초코 빙수 컵,치즈 빙수 컵,블루베리 빙수 컵,
+호두과자 아이스,찰떡 모나카,인절미 모나카,팥 모나카,초코 모나카,커피 모나카,초코 샌드 아이스,바닐라 샌드 아이스,쿠키 샌드 아이스,
+얼려먹는 요구르트 딸기,얼려먹는 요구르트 블루베리,얼려먹는 요구르트 샤인머스캣,얼려먹는 요구르트 복숭아,얼려먹는 요구르트 플레인,얼려먹는 요구르트 망고,얼려먹는 요구르트 사과,얼려먹는 요구르트 포도,
+펜슬 아이스 딸기,펜슬 아이스 포도,펜슬 아이스 오렌지,펜슬 아이스 사과,펜슬 아이스 콜라,펜슬 아이스 메론,
+미니홈 바닐라,미니홈 초코,미니홈 딸기,구슬 아이스크림 딸기,구슬 아이스크림 초코,구슬 아이스크림 바닐라,구슬 아이스크림 오렌지,구슬 아이스크림 블루베리,구슬 아이스크림 망고,
+부라보 하드바,요맘때 콘,얼려먹는 요구르트 청포도,얼려먹는 요구르트 레몬,펜슬 아이스 레몬,펜슬 아이스 청포도,펜슬 아이스 복숭아,구슬 아이스크림 청포도,구슬 아이스크림 복숭아,딸기 샌드 아이스,커피 샌드 아이스,
+`;
+let NAMES = [...new Set(RAW.split(',').map(s => s.trim()).filter(Boolean))].slice(0, 300);
+console.assert(NAMES.length === 300, '아이스크림 개수:', NAMES.length);
+
+const EMOJIS = ['🍦','🍨','🍧','🍡','🍭','🍰'];
+const hash = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+let pool, left, right, next, round, streakSide, streak, locked;
+const $ = id => document.getElementById(id);
+
+function draw(side, animate) {
+  const name = side === 'L' ? left : right;
+  const el = $('card' + side);
+  const h = hash(name);
+  el.innerHTML = (streakSide === side && streak > 0 ? `<span class="badge">${streak}연승 👑</span>` : '') +
+    `<div class="emoji">
+name.endsWith('바')||name.endsWith('콘')?'🍦':EMOJIS[h%EMOJIS.length]</div><divclass="name">{name}</div>`;
+  el.style.background = `hsl(h%360,80%,{matchMedia('(prefers-color-scheme: dark)').matches ? 22 : 90}%)`;
+  if (animate) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+}
+
+function info() {
+  $('prog').style.width = (round / (pool.length - 1) * 100) + '%';
+  $('info').textContent = `32강 · 대결 ${round} / ${pool.length - 1}  ·  남은 도전자 ${pool.length - next}명`;
+}
+
+function start() {
+  pool = shuffle(NAMES).slice(0, 32);
+  left = pool[0]; right = pool[1]; next = 2; round = 1; streakSide = null; streak = 0; locked = false;
+  $('win').classList.add('hide'); $('arena').classList.remove('hide');
+  draw('L', true); draw('R', true); info();
+}
+
+function pick(side) {
+  if (locked) return;
+  locked = true;
+  const winner = side === 'L' ? left : right;
+  streak = streakSide === side ? streak + 1 : 1;
+  streakSide = side;
+  if (next >= pool.length) { champion(winner); return; }
+  const other = side === 'L' ? 'R' : 'L';
+  if (other === 'L') left = pool[next++]; else right = pool[next++];
+  round++;
+  draw(side, false);
+  draw(other, true);
+  info();
+  setTimeout(() => locked = false, 250);
+}
+
+function champion(name) {
+  $('prog').style.width = '100%';
+  $('arena').classList.add('hide');
+  const w = $('win');
+  w.classList.remove('hide');
+  w.innerHTML = `<div style="font-size:18px;color:var(--muted)">🏆 최종 우승 아이스크림 🏆</div><div class="emoji">🍦</div><div class="name">name</div><divclass="sub"style="margin-top:10px">{NAMES.length}가지 중 32강을 뚫고 우승!</div><button onclick="start()">다시 하기</button>`;
+}
+
+$('cardL').onclick = () => pick('L');
+$('cardR').onclick = () => pick('R');
+function syncList(){ $('list').value = NAMES.join('\n'); $('msg').textContent = `현재 ${NAMES.length}개 (중복 없음)`; }
+$('apply').onclick = () => {
+  const arr = $('list').value.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  const uniq = [...new Set(arr)];
+  if (uniq.length < 32) { $('msg').textContent = '32강이라 최소 32개 이상 필요해요.'; return; }
+  NAMES = uniq; start(); syncList();
+  $('msg').textContent = `적용 완료: ${NAMES.length}개` + (arr.length !== uniq.length ? ` (중복 ${arr.length - uniq.length}개 제거)` : '') + (NAMES.length !== 300 ? ' · 300개가 아니에요!' : '');
+};
+start(); syncList();
+</script>
+</body>
+</html>
