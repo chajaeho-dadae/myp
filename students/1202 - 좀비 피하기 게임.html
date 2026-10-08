@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>좀비 피하기 게임</title>
+<style>
+  body{margin:0;padding:16px;background:#e9efe6;color:#1d2a1f;
+       font-family:"Noto Sans KR","Malgun Gothic",sans-serif;
+       display:flex;flex-direction:column;align-items:center}
+  .hud{display:flex;gap:10px;width:100%;max-width:640px;margin-bottom:8px}
+  .hud div{flex:1;background:#fff;border-radius:8px;padding:8px 12px;font-size:.8rem;color:#53665a}
+  .hud b{display:block;font-size:1.25rem;color:#1d2a1f}
+  .wrap{position:relative;width:100%;max-width:640px}
+  canvas{width:100%;height:auto;display:block;border-radius:10px;background:#2c3a2e;touch-action:none}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+           justify-content:center;background:rgba(10,16,11,.8);border-radius:10px;
+           color:#f1f6f2;text-align:center;padding:20px}
+  button{font:inherit;font-weight:700;background:#b3261e;color:#fff;border:0;
+         border-radius:8px;padding:12px 28px;cursor:pointer}
+  .diff{display:flex;gap:8px;margin-bottom:16px}
+  .diff button{background:transparent;border:2px solid #f1f6f2;padding:8px 16px}
+  .diff button.on{background:#f1f6f2;color:#1d2a1f}
+  .sec{background:#fff;color:#1d2a1f;padding:8px 16px;margin-top:10px}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<h1>🧟 좀비 피하기</h1>
+<div class="hud">
+  <div>생존 시간<b id="t">0.0초</b></div>
+  <div>점수<b id="s">0</b></div>
+  <div>최고 점수<b id="b">0</b></div>
+</div>
+<div class="wrap">
+  <canvas id="c" width="640" height="480"></canvas>
+  <div class="overlay" id="ov">
+    <h2 id="ovT">좀비 피하기</h2>
+    <p id="ovP">방향키(또는 WASD)로 움직이세요.</p>
+    <div class="diff" id="df">
+      <button data-d="easy">쉬움</button>
+      <button data-d="normal" class="on">보통</button>
+      <button data-d="hard">어려움</button>
+    </div>
+    <button id="go">게임 시작</button>
+  </div>
+</div>
+<button class="sec" id="pz">일시정지 (P)</button>
+
+<script>
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const $ = id => document.getElementById(id);
+const ov = $('ov'), go = $('go'), df = $('df');
+
+// ===== 설정 =====
+// 난이도별 좀비 속도 / 생성 간격
+const DIFF = {
+  easy:   { base: 45, grow: 2, max: 200, int0: 3.5, intMin: 1.2, decay: 0.025, label: '쉬움' },
+  normal: { base: 60, grow: 3, max: 240, int0: 3.0, intMin: 0.9, decay: 0.03,  label: '보통' },
+  hard:   { base: 80, grow: 4, max: 300, int0: 2.5, intMin: 0.6, decay: 0.04,  label: '어려움' }
+};
+const SAFE_DIST = 160;   // 좀비 생성 시 플레이어와의 최소 거리
+let diff = 'normal', D = DIFF[diff];
+
+// ===== 상태 =====
+let player, zombies, time, score, spawnT;
+let running = false, paused = false, last = 0, best = 0;
+const keys = {};
+let pointer = null;
+
+function loadBest() {
+  best = 0;
+  try { best = +localStorage.getItem('zombieBest_' + diff) || 0 } catch (e) {}
+  $('b').textContent = best;
+}
+loadBest();
+
+// ===== 1. 초기화 =====
+function reset() {
+  player = { x: W / 2, y: H / 2, r: 12, speed: 220 };
+  zombies = [];
+  time = 0; score = 0; spawnT = 0;
+  $('t').textContent = '0.0초';
+  $('s').textContent = '0';
+  for (let i = 0; i < 2; i++) spawn();
+}
+
+// 좀비 생성: 가장자리 랜덤 위치, 플레이어와 SAFE_DIST 이상 떨어진 곳만
+function spawn() {
+  let x, y, tries = 0;
+  do {
+    const side = Math.floor(Math.random() * 4);
+    if (side === 0)      { x = Math.random() * W; y = -20; }
+    else if (side === 1) { x = W + 20; y = Math.random() * H; }
+    else if (side === 2) { x = Math.random() * W; y = H + 20; }
+    else                 { x = -20; y = Math.random() * H; }
+    tries++;
+  } while (Math.hypot(x - player.x, y - player.y) < SAFE_DIST && tries < 30);
+  zombies.push({ x, y, r: 12 });
+}
+
+// 시간이 지날수록 빨라지는 좀비 속도
+function zombieSpeed() { return Math.min(D.base + time * D.grow, D.max); }
+
+// ===== 2. 매 프레임 갱신 =====
+function update(dt) {
+  time += dt;
+
+  // 입력 → 플레이어 이동
+  let dx = 0, dy = 0;
+  if (keys.ArrowLeft  || keys.a) dx -= 1;
+  if (keys.ArrowRight || keys.d) dx += 1;
+  if (keys.ArrowUp    || keys.w) dy -= 1;
+  if (keys.ArrowDown  || keys.s) dy += 1;
+  if (pointer) {
+    const px = pointer.x - player.x, py = pointer.y - player.y;
+    const d = Math.hypot(px, py);
+    if (d > 8) { dx = px / d; dy = py / d; }
+  }
+  const len = Math.hypot(dx, dy);
+  if (len > 0) {
+    player.x += dx / len * player.speed * dt;
+    player.y += dy / len * player.speed * dt;
+  }
+  player.x = Math.max(player.r, Math.min(W - player.r, player.x));
+  player.y = Math.max(player.r, Math.min(H - player.r, player.y));
+
+  // 좀비 추적 + 충돌 검사
+  const sp = zombieSpeed();
+  for (const z of zombies) {
+    const vx = player.x - z.x, vy = player.y - z.y;
+    const d = Math.hypot(vx, vy) || 1;
+    z.x += vx / d * sp * dt;
+    z.y += vy / d * sp * dt;
+    if (d < player.r + z.r - 4) { gameOver(); return; }
+  }
+
+  // 좀비 추가 생성
+  spawnT += dt;
+  const interval = Math.max(D.intMin, D.int0 - time * D.decay);
+  if (spawnT >= interval && zombies.length < 30) {
+    spawnT = 0;
+    spawn();
+  }
+
+  // 점수 및 화면 표시
+  score = Math.floor(time * 10);
+  $('t').textContent = time.toFixed(1) + '초';
+  $('s').textContent = score;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = '#344637';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y <= H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '26px sans-serif';
+  for (const z of zombies) ctx.fillText('🧟', z.x, z.y);
+  ctx.fillText('🏃', player.x, player.y);
+}
+
+// 게임 루프 (일시정지 중에는 멈춤)
+function loop(ts) {
+  if (!running || paused) return;
+  const dt = Math.min((ts - last) / 1000, 0.05);
+  last = ts;
+  update(dt);
+  if (running) { draw(); requestAnimationFrame(loop); }
+}
+
+function start() {
+  reset();
+  running = true; paused = false;
+  ov.classList.add('hide');
+  last = performance.now();
+  requestAnimationFrame(loop);
+}
+
+// ===== 일시정지 / 계속 =====
+function pause() {
+  if (!running || paused) return;
+  paused = true;
+  $('ovT').textContent = '일시정지';
+  $('ovP').textContent = 'P 키 또는 버튼으로 계속할 수 있어요.';
+  go.textContent = '계속하기';
+  df.classList.add('hide');
+  ov.classList.remove('hide');
+}
+function resume() {
+  if (!paused) return;
+  paused = false;
+  ov.classList.add('hide');
+  last = performance.now();
+  requestAnimationFrame(loop);
+}
+
+// ===== 3. 게임 종료 =====
+function gameOver() {
+  running = false;
+  draw();
+  const isBest = score > best;
+  if (isBest) {
+    best = score;
+    $('b').textContent = best;
+    try { localStorage.setItem('zombieBest_' + diff, best) } catch (e) {}
+  }
+  $('ovT').textContent = '좀비에게 잡혔어요!';
+  $('ovP').innerHTML = '[' + D.label + '] 생존 시간 ' + time.toFixed(1) + '초 · 점수 ' + score +
+                       (isBest ? '<br>🎉 최고 점수를 갱신했어요!' : '');
+  go.textContent = '다시 도전';
+  df.classList.remove('hide');
+  ov.classList.remove('hide');
+}
+
+// ===== 입력 이벤트 =====
+// 난이도 선택
+df.addEventListener('click', e => {
+  const d = e.target.dataset && e.target.dataset.d;
+  if (!d) return;
+  diff = d; D = DIFF[d];
+  loadBest();
+  df.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.d === d));
+});
+
+go.addEventListener('click', () => paused ? resume() : start());
+$('pz').addEventListener('click', () => { paused ? resume() : pause(); $('pz').blur(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+window.addEventListener('keydown', e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  if (k === 'p') { paused ? resume() : pause(); return; }
+  if (e.key === 'Enter' || e.key === ' ') {
+    if (paused) { resume(); return; }
+    if (!running) { start(); return; }
+  }
+  keys[k] = true;
+});
+window.addEventListener('keyup', e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  keys[k] = false;
+});
+
+// 터치/마우스: 누른 위치 방향으로 이동
+function ptr(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
+}
+cv.addEventListener('pointerdown', e => { pointer = ptr(e); cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', e => { if (pointer) pointer = ptr(e); });
+cv.addEventListener('pointerup',   () => { pointer = null; });
+
+reset();
+draw();
+</script>
+</body>
+</html>
