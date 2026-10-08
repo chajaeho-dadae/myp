@@ -3,282 +3,560 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 경찰관 도심 순찰 게임</title>
+    <title>1인칭 3D 경찰관 시뮬레이터</title>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
-            overflow: hidden;
-            font-family: 'Arial', sans-serif;
-            user-select: none;
+            padding: 0;
         }
-        #ui {
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #000;
+        }
+        #game-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 4px rgba(0,255,255,0.8);
+        }
+        #crosshair::before {
+            top: 7px;
+            left: 0;
+            width: 16px;
+            height: 2px;
+        }
+        #crosshair::after {
+            top: 0;
+            left: 7px;
+            width: 2px;
+            height: 16px;
+        }
+        #hud {
             position: absolute;
             top: 20px;
             left: 20px;
-            color: white;
+            color: #fff;
+            font-family: sans-serif;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            font-size: 18px;
             pointer-events: none;
+            z-index: 10;
         }
-        #instructions {
+        .hud-panel {
+            background: rgba(0, 20, 40, 0.65);
+            border: 1px solid rgba(0, 200, 255, 0.4);
+            padding: 12px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+        .hud-panel h2 {
+            font-size: 18px;
+            color: #00e5ff;
+            margin-bottom: 5px;
+        }
+        .hud-panel p {
+            font-size: 15px;
+            margin: 3px 0;
+        }
+        #click-prompt {
             position: absolute;
-            bottom: 20px;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 20;
+            cursor: pointer;
+        }
+        #click-prompt h1 {
+            font-size: 32px;
+            color: #00e5ff;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0,229,255,0.5);
+        }
+        #click-prompt p {
+            font-size: 16px;
+            color: #ccc;
+        }
+        #action-msg {
+            position: absolute;
+            bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
-            color: white;
-            background: rgba(0,0,0,0.6);
-            padding: 10px 20px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 14px;
+            color: #ffd700;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
             pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #ffd700;
         }
     </style>
 </head>
 <body>
-    <div id="ui">
-        <h2>경찰 순찰 모드</h2>
-        <div>체포한 범인 수: <span id="score">0</span></div>
-    </div>
-    <div id="instructions">
-        이동: <b>W, A, S, D</b> 또는 <b>화살표 키</b> | 마우스 드래그: <b>시점 회전</b>
+
+    <div id="crosshair"></div>
+
+    <div id="hud">
+        <div class="hud-panel">
+            <h2>🚨 경찰 1인칭 순찰 모드</h2>
+            <p>체포한 범인 수: <span id="score" style="color:#00ff88; font-weight:bold;">0</span> 명</p>
+            <p>테이저건 상태: <span id="taser-status" style="color:#00e5ff;">장전됨</span></p>
+        </div>
     </div>
 
-    <!-- Three.js 라이브러리 로드 -->
+    <div id="action-msg">범인 제압 완료! 접근하여 한 번 더 클릭해 체포하세요!</div>
+
+    <div id="click-prompt">
+        <h1>화면을 클릭하여 조작을 시작하세요</h1>
+        <p>1인칭 마우스 시점 조작 | W,A,S,D: 이동 | 마우스 좌클릭: 테이저건 발사 / 체포</p>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
-        // 기본 씬 설정
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // 하늘색
-        scene.fog = new THREE.Fog(0x87ceeb, 20, 80);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    <script>
+        // --- 씬 및 기본 설정 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // 조명 설정
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // --- 조명 ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(20, 40, 20);
+        const dirLight = new THREE.DirectionalLight(0xfff5ea, 0.8);
+        dirLight.position.set(30, 50, 20);
         dirLight.castShadow = true;
         dirLight.shadow.mapSize.width = 2048;
         dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 150;
+        const d = 60;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
         scene.add(dirLight);
 
-        // 바닥 (도로 및 바닥판)
-        const floorGeometry = new THREE.PlaneGeometry(200, 200);
-        const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
-        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        // --- 도시 및 도로 바닥 ---
+        const citySize = 200;
+        const floorGeo = new THREE.PlaneGeometry(citySize, citySize);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // 도시 건물 생성
-        function createCity() {
-            const buildingGeo = new THREE.BoxGeometry(1, 1, 1);
-            for (let i = 0; i < 60; i++) {
-                const height = 10 + Math.random() * 20;
-                const buildingMat = new THREE.MeshStandardMaterial({
-                    color: Math.random() > 0.5 ? 0x888888 : 0x667788
-                });
-                const building = new THREE.Mesh(buildingGeo, buildingMat);
-                
-                let x = (Math.random() - 0.5) * 160;
-                let z = (Math.random() - 0.5) * 160;
-                // 중앙 시작 지점 비워두기
-                if (Math.abs(x) < 15 && Math.abs(z) < 15) continue;
+        // 건물 충돌체 데이터 목록
+        const buildingColliders = [];
 
-                building.scale.set(8 + Math.random() * 4, height, 8 + Math.random() * 4);
-                building.position.set(x, height / 2, z);
-                building.castShadow = true;
-                building.receiveShadow = true;
-                scene.add(building);
+        function createCity() {
+            const buildingMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 });
+            const windowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+
+            const gridSize = 6;
+            const spacing = 28;
+
+            for (let i = -gridSize; i <= gridSize; i++) {
+                for (let j = -gridSize; j <= gridSize; j++) {
+                    if (Math.abs(i) <= 1 && Math.abs(j) <= 1) continue; // 중앙 광장 비우기
+
+                    if (Math.random() > 0.3) {
+                        const width = 12 + Math.random() * 4;
+                        const depth = 12 + Math.random() * 4;
+                        const height = 15 + Math.random() * 30;
+
+                        const x = i * spacing;
+                        const z = j * spacing;
+
+                        const bGeo = new THREE.BoxGeometry(width, height, depth);
+                        const building = new THREE.Mesh(bGeo, buildingMat);
+                        building.position.set(x, height / 2, z);
+                        building.castShadow = true;
+                        building.receiveShadow = true;
+                        scene.add(building);
+
+                        // 창문 표현
+                        for (let w = 0; w < 6; w++) {
+                            const win = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2), windowMat);
+                            win.position.set(x + (Math.random() - 0.5) * (width - 2), 2 + Math.random() * (height - 4), z + depth / 2 + 0.01);
+                            scene.add(win);
+                        }
+
+                        // 충돌 영역 등록
+                        buildingColliders.push({
+                            minX: x - width / 2 - 0.6,
+                            maxX: x + width / 2 + 0.6,
+                            minZ: z - depth / 2 - 0.6,
+                            maxZ: z + depth / 2 + 0.6
+                        });
+                    }
+                }
             }
         }
         createCity();
 
-        // 경찰관 캐릭터 생성 (기하학적 도형으로 조합)
-        function createPoliceOfficer() {
-            const officerGroup = new THREE.Group();
+        // --- 플레이어 (1인칭 카메라이동) ---
+        const player = {
+            position: new THREE.Vector3(0, 1.65, 0),
+            velocity: new THREE.Vector3(),
+            radius: 0.5
+        };
 
-            // 몸통 (경찰 제복)
-            const bodyGeo = new THREE.CylinderGeometry(0.5, 0.4, 1.5, 8);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a237e }); // 다크 블루
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 1.25;
-            body.castShadow = true;
-            officerGroup.add(body);
+        camera.position.copy(player.position);
 
-            // 머리
-            const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 2.2;
-            head.castShadow = true;
-            officerGroup.add(head);
+        // 1인칭 테이저건 및 손 모델 (카메라 자식으로 추가)
+        const fpvGroup = new THREE.Group();
+        
+        // 경찰관 팔/소매
+        const armGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.4);
+        const armMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a }); // 경찰 제복 색상
+        const arm = new THREE.Mesh(armGeo, armMat);
+        arm.rotation.x = Math.PI / 3;
+        arm.position.set(0.25, -0.25, -0.4);
+        fpvGroup.add(arm);
 
-            // 경찰모
-            const hatCapGeo = new THREE.CylinderGeometry(0.45, 0.4, 0.2, 8);
-            const hatMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
-            const hatCap = new THREE.Mesh(hatCapGeo, hatMat);
-            hatCap.position.y = 2.5;
-            officerGroup.add(hatCap);
+        // 테이저건
+        const taserBody = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.12, 0.25),
+            new THREE.MeshStandardMaterial({ color: 0xfacc15 }) // 노란색 테이저건
+        );
+        taserBody.position.set(0.25, -0.18, -0.45);
+        fpvGroup.add(taserBody);
 
-            const hatVisorGeo = new THREE.BoxGeometry(0.5, 0.05, 0.3);
-            const hatVisor = new THREE.Mesh(hatVisorGeo, hatMat);
-            hatVisor.position.set(0, 2.45, 0.25);
-            officerGroup.add(hatVisor);
+        const taserBarrel = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 0.06, 0.08),
+            new THREE.MeshStandardMaterial({ color: 0x111111 })
+        );
+        taserBarrel.position.set(0.25, -0.15, -0.58);
+        fpvGroup.add(taserBarrel);
 
-            return officerGroup;
-        }
+        camera.add(fpvGroup);
+        scene.add(camera);
 
-        const player = createPoliceOfficer();
-        scene.add(player);
-
-        // 도망치는 용의자 NPC 생성
-        let suspects = [];
+        // --- 범인 NPC 생성 ---
+        const suspects = [];
         let score = 0;
 
         function createSuspect() {
-            const suspectGroup = new THREE.Group();
-            
-            const bodyGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.4, 8);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xb71c1c }); // 빨간색 옷
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 1.2;
+            const group = new THREE.Group();
+
+            // 몸통 (빨간 후드)
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.3, 0.25, 0.9),
+                new THREE.MeshStandardMaterial({ color: 0xd97706 })
+            );
+            body.position.y = 0.85;
             body.castShadow = true;
-            suspectGroup.add(body);
+            group.add(body);
 
-            const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 2.1;
+            // 머리
+            const head = new THREE.Mesh(
+                new THREE.SphereGeometry(0.22, 16, 16),
+                new THREE.MeshStandardMaterial({ color: 0xffdbac })
+            );
+            head.position.y = 1.45;
             head.castShadow = true;
-            suspectGroup.add(head);
+            group.add(head);
 
-            // 랜덤 위치에 배치
+            // 다리
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x1f2937 });
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.7), legMat);
+            legL.position.set(-0.12, 0.35, 0);
+            legL.castShadow = true;
+            group.add(legL);
+
+            const legR = legL.clone();
+            legR.position.x = 0.12;
+            group.add(legR);
+
+            // 위치 지정 (중앙 주변)
             const angle = Math.random() * Math.PI * 2;
-            const dist = 15 + Math.random() * 25;
-            suspectGroup.position.set(
-                player.position.x + Math.sin(angle) * dist,
+            const dist = 12 + Math.random() * 20;
+            group.position.set(
+                player.position.x + Math.cos(angle) * dist,
                 0,
-                player.position.z + Math.cos(angle) * dist
+                player.position.z + Math.sin(angle) * dist
             );
 
-            scene.add(suspectGroup);
-            suspects.push(suspectGroup);
+            scene.add(group);
+
+            suspects.push({
+                mesh: group,
+                legL: legL,
+                legR: legR,
+                isDown: false,
+                fleeSpeed: 0.07,
+                animTime: Math.random() * 10
+            });
         }
 
-        // 초기 용의자 3명 생성
-        for (let i = 0; i < 3; i++) createSuspect();
+        for (let i = 0; i < 4; i++) createSuspect();
 
-        // 조작 조작 상태
+        // --- 마우스 포인터 락 조작 ---
+        let isLocked = false;
+        let yaw = 0;
+        let pitch = 0;
+
+        const clickPrompt = document.getElementById('click-prompt');
+        clickPrompt.addEventListener('click', () => {
+            document.body.requestPointerLock();
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) {
+                isLocked = true;
+                clickPrompt.style.display = 'none';
+            } else {
+                isLocked = false;
+                clickPrompt.style.display = 'flex';
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isLocked) return;
+
+            const sensitivity = 0.002;
+            yaw -= e.movementX * sensitivity;
+            pitch -= e.movementY * sensitivity;
+
+            // 고개 상하 각도 제한 (-85도 ~ 85도)
+            pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+        });
+
+        // --- 키보드 이동 조작 ---
         const keys = { w: false, a: false, s: false, d: false };
         window.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-            if (key === 'w' || e.key === 'ArrowUp') keys.w = true;
-            if (key === 's' || e.key === 'ArrowDown') keys.s = true;
-            if (key === 'a' || e.key === 'ArrowLeft') keys.a = true;
-            if (key === 'd' || e.key === 'ArrowRight') keys.d = true;
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+            if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+            if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
         });
 
         window.addEventListener('keyup', (e) => {
-            const key = e.key.toLowerCase();
-            if (key === 'w' || e.key === 'ArrowUp') keys.w = false;
-            if (key === 's' || e.key === 'ArrowDown') keys.s = false;
-            if (key === 'a' || e.key === 'ArrowLeft') keys.a = false;
-            if (key === 'd' || e.key === 'ArrowRight') keys.d = false;
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+            if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+            if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
         });
 
-        // 카메라 시점 조작 (마우스 드래그)
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
-        let cameraAngleY = 0;
+        // --- 벽 충돌 판정 및 슬라이딩 이동 ---
+        function moveWithCollision(currentPos, deltaX, deltaZ) {
+            let newX = currentPos.x + deltaX;
+            let newZ = currentPos.z + deltaZ;
 
-        window.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            previousMousePosition = { x: e.clientX, y: e.clientY };
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const deltaX = e.clientX - previousMousePosition.x;
-            cameraAngleY -= deltaX * 0.005;
-            previousMousePosition = { x: e.clientX, y: e.clientY };
-        });
-
-        window.addEventListener('mouseup', () => isDragging = false);
-
-        // 메인 게임 루프
-        const speed = 0.15;
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // 이동 벡터 계산
-            let moveX = 0;
-            let moveZ = 0;
-
-            if (keys.w) moveZ -= 1;
-            if (keys.s) moveZ += 1;
-            if (keys.a) moveX -= 1;
-            if (keys.d) moveX += 1;
-
-            if (moveX !== 0 || moveZ !== 0) {
-                // 카메라 방향 기준으로 플레이어 이동
-                const moveVector = new THREE.Vector3(moveX, 0, moveZ).normalize();
-                moveVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraAngleY);
-
-                player.position.x += moveVector.x * speed;
-                player.position.z += moveVector.z * speed;
-
-                // 이동 방향으로 캐릭터 회전
-                const targetAngle = Math.atan2(moveVector.x, moveVector.z);
-                player.rotation.y = targetAngle;
+            for (const col of buildingColliders) {
+                if (newX > col.minX && newX < col.maxX && newZ > col.minZ && newZ < col.maxZ) {
+                    // X축 충돌 시 Z축만 이동 허용
+                    if (currentPos.x <= col.minX || currentPos.x >= col.maxX) newX = currentPos.x;
+                    // Z축 충돌 시 X축만 이동 허용
+                    if (currentPos.z <= col.minZ || currentPos.z >= col.maxZ) newZ = currentPos.z;
+                }
             }
 
-            // 카메라가 플레이어를 추적 (3인칭 시점)
-            const cameraDistance = 8;
-            const cameraHeight = 5;
-            camera.position.x = player.position.x + Math.sin(cameraAngleY) * cameraDistance;
-            camera.position.z = player.position.z + Math.cos(cameraAngleY) * cameraDistance;
-            camera.position.y = player.position.y + cameraHeight;
-            camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
+            // 도시 외곽 경계 제한
+            const limit = citySize / 2 - 2;
+            newX = Math.max(-limit, Math.min(limit, newX));
+            newZ = Math.max(-limit, Math.min(limit, newZ));
 
-            // 용의자 AI 및 체포 판정
-            suspects.forEach((suspect, index) => {
-                // 경찰관과의 거리 계산
-                const dist = player.position.distanceTo(suspect.position);
+            currentPos.x = newX;
+            currentPos.z = newZ;
+        }
 
-                // 경찰관과 가까워지면 반대 방향으로 도망
-                if (dist < 10) {
-                    const runDir = new THREE.Vector3()
-                        .subVectors(suspect.position, player.position)
-                        .normalize();
-                    suspect.position.x += runDir.x * 0.08;
-                    suspect.position.z += runDir.z * 0.08;
-                    suspect.rotation.y = Math.atan2(runDir.x, runDir.z);
+        // --- 사격 및 체포 시스템 (레이캐스팅) ---
+        const raycaster = new THREE.Raycaster();
+        let canShoot = true;
+
+        window.addEventListener('mousedown', (e) => {
+            if (!isLocked || e.button !== 0 || !canShoot) return;
+
+            // 화면 중앙(크로스헤어) 기준 레이 발사
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            
+            // 테이저건 반동 애니메이션
+            fpvGroup.position.z = 0.08;
+            setTimeout(() => fpvGroup.position.z = 0, 100);
+
+            // 모든 범인과의 교차 검사
+            let hitFound = false;
+
+            suspects.forEach((suspect, idx) => {
+                if (hitFound) return;
+
+                const intersects = raycaster.intersectObject(suspect.mesh, true);
+                const dist = player.position.distanceTo(suspect.mesh.position);
+
+                if (intersects.length > 0 && dist < 25) {
+                    hitFound = true;
+
+                    if (!suspect.isDown) {
+                        // 1차 클릭: 테이저건 제압
+                        fireTaserVisual(suspect.mesh.position);
+                        suspect.isDown = true;
+
+                        // 쓰러지는 라그돌 연출
+                        suspect.mesh.rotation.x = -Math.PI / 2;
+                        suspect.mesh.position.y = 0.2;
+
+                        showActionMsg("범인 제압 완료! 가까이 가서 클릭하여 체포하세요!");
+                    } else if (dist < 3.5) {
+                        // 2차 클릭: 가까이서 체포
+                        scene.remove(suspect.mesh);
+                        suspects.splice(idx, 1);
+                        score++;
+                        document.getElementById('score').innerText = score;
+
+                        showActionMsg("🚨 범인을 체포했습니다!");
+
+                        // 일정 시간 후 새 범인 생성
+                        setTimeout(createSuspect, 3000);
+                    }
                 }
+            });
 
-                // 일정 거리 이내에 접근하면 체포 처리
-                if (dist < 1.5) {
-                    scene.remove(suspect);
-                    suspects.splice(index, 1);
-                    score += 1;
-                    document.getElementById('score').innerText = score;
-                    
-                    // 새 용의자 생성
-                    setTimeout(createSuspect, 2000);
+            // 공중에 쐈을 때 테이저 이펙트
+            if (!hitFound) {
+                const targetPos = new THREE.Vector3();
+                raycaster.ray.at(15, targetPos);
+                fireTaserVisual(targetPos);
+            }
+
+            // 쿨타임 설정
+            canShoot = false;
+            document.getElementById('taser-status').innerText = '재장전 중...';
+            document.getElementById('taser-status').style.color = '#ff4444';
+            setTimeout(() => {
+                canShoot = true;
+                document.getElementById('taser-status').innerText = '장전됨';
+                document.getElementById('taser-status').style.color = '#00e5ff';
+            }, 800);
+        });
+
+        // 테이저건 번개 이펙트
+        function fireTaserVisual(targetVec) {
+            const muzzlePos = new THREE.Vector3(0.2, -0.15, -0.5);
+            muzzlePos.applyMatrix4(camera.matrixWorld);
+
+            const points = [muzzlePos];
+            const segs = 6;
+            for (let i = 1; i < segs; i++) {
+                const p = muzzlePos.clone().lerp(targetVec, i / segs);
+                p.x += (Math.random() - 0.5) * 0.3;
+                p.y += (Math.random() - 0.5) * 0.3;
+                p.z += (Math.random() - 0.5) * 0.3;
+                points.push(p);
+            }
+            points.push(targetVec.clone());
+
+            const geo = new THREE.BufferGeometry().setFromPoints(points);
+            const mat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+            const line = new THREE.Line(geo, mat);
+            scene.add(line);
+
+            setTimeout(() => scene.remove(line), 120);
+        }
+
+        function showActionMsg(text) {
+            const msg = document.getElementById('action-msg');
+            msg.innerText = text;
+            msg.style.opacity = '1';
+            setTimeout(() => msg.style.opacity = '0', 2500);
+        }
+
+        // --- 루프 애니메이션 ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            if (isLocked) {
+                // 플레이어 이동 처리
+                const moveSpeed = 8.0 * delta;
+                let dx = 0;
+                let dz = 0;
+
+                if (keys.w) dz -= 1;
+                if (keys.s) dz += 1;
+                if (keys.a) dx -= 1;
+                if (keys.d) dx += 1;
+
+                if (dx !== 0 || dz !== 0) {
+                    const moveVec = new THREE.Vector3(dx, 0, dz).normalize();
+                    moveVec.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+                    moveWithCollision(player.position, moveVec.x * moveSpeed, moveVec.z * moveSpeed);
+                    camera.position.copy(player.position);
+                }
+            }
+
+            // 범인 AI 행동
+            suspects.forEach((suspect) => {
+                if (suspect.isDown) return;
+
+                const dist = player.position.distanceTo(suspect.mesh.position);
+
+                // 플레이어가 도망거리(12m) 안으로 오면 도망침
+                if (dist < 12) {
+                    const fleeDir = new THREE.Vector3()
+                        .subVectors(suspect.mesh.position, player.position)
+                        .setY(0)
+                        .normalize();
+
+                    moveWithCollision(suspect.mesh.position, fleeDir.x * suspect.fleeSpeed, fleeDir.z * suspect.fleeSpeed);
+                    suspect.mesh.rotation.y = Math.atan2(fleeDir.x, fleeDir.z);
+
+                    // 뛰는 애니메이션
+                    suspect.animTime += delta * 12;
+                    suspect.legL.rotation.x = Math.sin(suspect.animTime) * 0.6;
+                    suspect.legR.rotation.x = -Math.sin(suspect.animTime) * 0.6;
                 }
             });
 
             renderer.render(scene, camera);
         }
 
-        // 창 크기 조절 대응
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();

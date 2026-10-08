@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미로탈출게임</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        background: #202124;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-align: center;
+    }
+
+    h1 {
+        margin: 20px 0 5px;
+    }
+
+    #info {
+        font-size: 20px;
+        margin: 8px;
+    }
+
+    #message {
+        color: #ffe600;
+        font-size: 17px;
+        margin: 10px;
+    }
+
+    canvas {
+        display: block;
+        margin: 10px auto;
+        background: white;
+        border: 5px solid #555;
+        max-width: 95vw;
+        height: auto;
+    }
+
+    .controls {
+        font-size: 16px;
+        margin: 10px;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>🟡 미로탈출게임</h1>
+
+<div id="info">
+    현재 단계: <span id="stage">1</span> / 5
+</div>
+
+<div id="message">
+    스페이스 바를 눌러 게임을 시작하세요!
+</div>
+
+<canvas id="game" width="600" height="600"></canvas>
+
+<div class="controls">
+    W = 위　 A = 왼쪽　 S = 아래　 D = 오른쪽
+</div>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const stageText = document.getElementById("stage");
+const message = document.getElementById("message");
+
+let gameStarted = false;
+let stage = 1;
+
+const player = {
+    x: 30,
+    y: 30,
+    size: 24,
+    speed: 5
+};
+
+const exit = {
+    x: 540,
+    y: 540,
+    size: 35
+};
+
+
+/* =========================
+   미로 만들기
+========================= */
+
+const baseWalls = [
+
+    // 바깥 벽
+    {x:0, y:0, w:600, h:20},
+    {x:0, y:580, w:600, h:20},
+    {x:0, y:0, w:20, h:600},
+    {x:580, y:0, w:20, h:600},
+
+    // 세로 벽
+    {x:100, y:20, w:20, h:400},
+    {x:200, y:180, w:20, h:400},
+    {x:300, y:20, w:20, h:400},
+    {x:400, y:180, w:20, h:400},
+    {x:500, y:20, w:20, h:400},
+
+    // 가로 벽
+    {x:20, y:100, w:80, h:20},
+    {x:120, y:200, w:80, h:20},
+    {x:220, y:100, w:80, h:20},
+    {x:320, y:200, w:80, h:20},
+    {x:420, y:100, w:80, h:20},
+
+    {x:20, y:400, w:80, h:20},
+    {x:120, y:300, w:80, h:20},
+    {x:220, y:500, w:80, h:20},
+    {x:320, y:400, w:80, h:20},
+    {x:420, y:300, w:80, h:20}
+];
+
+
+/* =========================
+   충돌 확인
+========================= */
+
+function isCollision(a, b) {
+
+    return (
+        a.x < b.x + b.w &&
+        a.x + a.size > b.x &&
+        a.y < b.y + b.h &&
+        a.y + a.size > b.y
+    );
+}
+
+
+/* =========================
+   미로 그리기
+========================= */
+
+function drawMaze() {
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 배경
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 600, 600);
+
+    // 출구
+    ctx.fillStyle = "#38d66b";
+    ctx.fillRect(
+        exit.x,
+        exit.y,
+        exit.size,
+        exit.size
+    );
+
+    ctx.fillStyle = "#000000";
+    ctx.font = "15px Arial";
+    ctx.fillText("EXIT", exit.x + 1, exit.y + 23);
+
+    // 벽
+    ctx.fillStyle = "#333333";
+
+    for (const wall of baseWalls) {
+        ctx.fillRect(
+            wall.x,
+            wall.y,
+            wall.w,
+            wall.h
+        );
+    }
+
+    // 플레이어
+    drawPlayer();
+
+    // 시작 화면
+    if (!gameStarted) {
+
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillRect(0, 0, 600, 600);
+
+        ctx.fillStyle = "white";
+        ctx.font = "32px Arial";
+        ctx.fillText(
+            "SPACE BAR",
+            205,
+            285
+        );
+
+        ctx.font = "20px Arial";
+        ctx.fillText(
+            "스페이스바를 눌러 시작",
+            185,
+            325
+        );
+    }
+}
+
+
+/* =========================
+   노란색 스마일 공
+========================= */
+
+function drawPlayer() {
+
+    const centerX =
+        player.x + player.size / 2;
+
+    const centerY =
+        player.y + player.size / 2;
+
+    // 얼굴
+    ctx.beginPath();
+
+    ctx.arc(
+        centerX,
+        centerY,
+        player.size / 2,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "#FFD900";
+    ctx.fill();
+
+    // 눈
+    ctx.fillStyle = "#000000";
+
+    ctx.beginPath();
+    ctx.arc(
+        player.x + 8,
+        player.y + 9,
+        2,
+        0,
+        Math.PI * 2
+    );
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(
+        player.x + 16,
+        player.y + 9,
+        2,
+        0,
+        Math.PI * 2
+    );
+    ctx.fill();
+
+    // 웃는 입
+    ctx.beginPath();
+
+    ctx.arc(
+        centerX,
+        player.y + 12,
+        6,
+        0,
+        Math.PI
+    );
+
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+
+/* =========================
+   플레이어 이동
+========================= */
+
+function move(dx, dy) {
+
+    if (!gameStarted) return;
+
+    const next = {
+        x: player.x + dx,
+        y: player.y + dy,
+        size: player.size
+    };
+
+    // 벽에 부딪히면 이동하지 않음
+    for (const wall of baseWalls) {
+
+        if (isCollision(next, wall)) {
+            return;
+        }
+    }
+
+    player.x = next.x;
+    player.y = next.y;
+
+    // 출구에 도착했는지 확인
+    if (
+        player.x < exit.x + exit.size &&
+        player.x + player.size > exit.x &&
+        player.y < exit.y + exit.size &&
+        player.y + player.size > exit.y
+    ) {
+
+        completeStage();
+    }
+
+    drawMaze();
+}
+
+
+/* =========================
+   단계 완료
+========================= */
+
+function completeStage() {
+
+    if (stage < 5) {
+
+        stage++;
+
+        stageText.textContent = stage;
+
+        player.x = 30;
+        player.y = 30;
+
+        message.textContent =
+            "🎉 탈출 성공! 다음 단계가 시작됩니다.";
+
+    } else {
+
+        gameStarted = false;
+
+        message.textContent =
+            "🏆 축하합니다! 5단계를 모두 탈출했습니다!";
+
+        player.x = 30;
+        player.y = 30;
+    }
+
+    drawMaze();
+}
+
+
+/* =========================
+   키보드 입력
+========================= */
+
+document.addEventListener("keydown", function(event) {
+
+    // 스페이스바
+    if (event.code === "Space") {
+
+        event.preventDefault();
+
+        if (!gameStarted) {
+
+            // 5단계 완료 후 다시 시작하면 1단계부터
+            if (stage >= 5 &&
+                message.textContent.includes("모두")) {
+
+                stage = 1;
+                stageText.textContent = stage;
+            }
+
+            gameStarted = true;
+
+            player.x = 30;
+            player.y = 30;
+
+            message.textContent =
+                "W A S D 키로 미로를 탈출하세요!";
+
+            drawMaze();
+        }
+
+        return;
+    }
+
+
+    if (!gameStarted) return;
+
+
+    // W = 위
+    if (
+        event.key === "w" ||
+        event.key === "W"
+    ) {
+        move(0, -player.speed);
+    }
+
+
+    // A = 왼쪽
+    if (
+        event.key === "a" ||
+        event.key === "A"
+    ) {
+        move(-player.speed, 0);
+    }
+
+
+    // S = 아래
+    if (
+        event.key === "s" ||
+        event.key === "S"
+    ) {
+        move(0, player.speed);
+    }
+
+
+    // D = 오른쪽
+    if (
+        event.key === "d" ||
+        event.key === "D"
+    ) {
+        move(player.speed, 0);
+    }
+
+});
+
+
+/* =========================
+   처음 화면
+========================= */
+
+drawMaze();
+
+</script>
+
+</body>
+</html>

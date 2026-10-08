@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>나는 몇 살에 결혼할까?</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      background: linear-gradient(135deg, #ffe4ec, #e8ddff);
+      color: #333;
+    }
+
+    .game {
+      width: min(92%, 600px);
+      background: white;
+      border-radius: 24px;
+      padding: 35px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .emoji {
+      font-size: 60px;
+      text-align: center;
+    }
+
+    h1, h2 {
+      text-align: center;
+    }
+
+    .description {
+      text-align: center;
+      color: #777;
+      line-height: 1.7;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .start-btn,
+    .next-btn,
+    .restart-btn {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 20px;
+      font-size: 17px;
+      font-weight: bold;
+      background: #ff6b9a;
+      color: white;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      filter: brightness(0.95);
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #eee;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 30px;
+    }
+
+    .progress {
+      width: 0%;
+      height: 100%;
+      background: #ff6b9a;
+      transition: width 0.3s;
+    }
+
+    .question {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .option {
+      width: 100%;
+      text-align: left;
+      padding: 15px;
+      border-radius: 12px;
+      border: 2px solid #eee;
+      background: white;
+      font-size: 15px;
+      transition: 0.2s;
+    }
+
+    .option:hover {
+      border-color: #ff9fbc;
+      background: #fff5f8;
+    }
+
+    .option.selected {
+      border-color: #ff6b9a;
+      background: #ffe8ef;
+    }
+
+    .next-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .result-age {
+      text-align: center;
+      font-size: 48px;
+      font-weight: bold;
+      color: #ff4f87;
+      margin: 20px 0;
+    }
+
+    .result-title {
+      font-size: 22px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .result-description {
+      text-align: center;
+      color: #666;
+      line-height: 1.8;
+    }
+
+    .score {
+      text-align: center;
+      margin-top: 20px;
+      padding: 15px;
+      background: #f7f7f7;
+      border-radius: 12px;
+    }
+
+    @media (max-width: 500px) {
+      .game {
+        padding: 25px 20px;
+      }
+
+      .question {
+        font-size: 19px;
+      }
+
+      .result-age {
+        font-size: 38px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="game">
+
+    <!-- 시작 화면 -->
+    <section id="startScreen" class="screen active">
+      <div class="emoji">💍</div>
+
+      <h1>나는 몇 살에 결혼할까?</h1>
+
+      <p class="description">
+        7개의 질문에 답하면<br>
+        당신의 성향을 분석해서 예상 결혼 나이를 알려드립니다.
+      </p>
+
+      <button class="start-btn" onclick="startGame()">
+        테스트 시작
+      </button>
+    </section>
+
+
+    <!-- 퀴즈 화면 -->
+    <section id="quizScreen" class="screen">
+
+      <div class="progress-info">
+        <span id="questionNumber">1 / 7</span>
+        <span id="currentScore">점수: 0</span>
+      </div>
+
+      <div class="progress-bar">
+        <div id="progress" class="progress"></div>
+      </div>
+
+      <div id="question" class="question"></div>
+
+      <div id="options" class="options"></div>
+
+      <button
+        id="nextButton"
+        class="next-btn"
+        onclick="nextQuestion()"
+        disabled
+      >
+        다음
+      </button>
+
+    </section>
+
+
+    <!-- 결과 화면 -->
+    <section id="resultScreen" class="screen">
+
+      <div class="emoji">💐</div>
+
+      <p style="text-align:center;">
+        당신의 예상 결혼 나이는
+      </p>
+
+      <div id="resultAge" class="result-age"></div>
+
+      <div id="resultTitle" class="result-title"></div>
+
+      <p id="resultDescription" class="result-description"></p>
+
+      <div class="score">
+        <strong id="finalScore"></strong> / 35점
+      </div>
+
+      <button class="restart-btn" onclick="restartGame()">
+        다시 테스트하기
+      </button>
+
+    </section>
+
+  </div>
+
+
+  <script>
+
+    const questions = [
+
+      {
+        question: "현재 결혼에 대한 생각은?",
+        options: [
+          "빨리 하고 싶다",
+          "좋은 사람을 만나면 하고 싶다",
+          "아직 잘 모르겠다",
+          "당분간 생각 없다",
+          "결혼할 생각이 거의 없다"
+        ]
+      },
+
+      {
+        question: "연애를 한다면?",
+        options: [
+          "안정적인 관계를 오래 유지하는 편",
+          "적당히 오래 만나는 편",
+          "상황에 따라 다르다",
+          "자유로운 연애가 좋다",
+          "연애 자체에 관심이 적다"
+        ]
+      },
+
+      {
+        question: "경제적으로 결혼하려면?",
+        options: [
+          "지금도 충분히 가능하다",
+          "조금만 준비하면 가능하다",
+          "몇 년은 준비해야 한다",
+          "경제적 기반부터 확실히 만들고 싶다",
+          "결혼보다 다른 목표가 우선이다"
+        ]
+      },
+
+      {
+        question: "주변 친구들이 결혼하기 시작한다면?",
+        options: [
+          "나도 빨리 하고 싶어진다",
+          "좋은 자극이 될 것 같다",
+          "별로 신경 쓰지 않는다",
+          "오히려 더 천천히 생각할 것 같다",
+          "결혼 자체에 관심이 없다"
+        ]
+      },
+
+      {
+        question: "이상적인 결혼 시기는?",
+        options: [
+          "20대 중후반",
+          "30~32세",
+          "33~35세",
+          "36~39세",
+          "40세 이후"
+        ]
+      },
+
+      {
+        question: "배우자를 고를 때 가장 중요한 것은?",
+        options: [
+          "사랑과 설렘",
+          "성격과 가치관",
+          "경제력과 안정성",
+          "서로의 독립성과 생활 방식",
+          "결혼할 만큼 특별한 사람인지"
+        ]
+      },
+
+      {
+        question: "결혼을 위해 현재 포기할 수 있는 것은?",
+        options: [
+          "꽤 많이 포기할 수 있다",
+          "어느 정도 가능하다",
+          "최소한만 포기하고 싶다",
+          "거의 포기하고 싶지 않다",
+          "결혼 때문에 포기할 생각이 없다"
+        ]
+      }
+
+    ];
+
+
+    let currentQuestion = 0;
+    let totalScore = 0;
+    let selectedScore = 0;
+
+
+    function showScreen(screenId) {
+
+      document.querySelectorAll(".screen")
+        .forEach(screen => {
+          screen.classList.remove("active");
+        });
+
+      document.getElementById(screenId)
+        .classList.add("active");
+    }
+
+
+    function startGame() {
+
+      currentQuestion = 0;
+      totalScore = 0;
+
+      showScreen("quizScreen");
+
+      showQuestion();
+    }
+
+
+    function showQuestion() {
+
+      const questionData = questions[currentQuestion];
+
+      document.getElementById("questionNumber")
+        .textContent =
+        `${currentQuestion + 1} / ${questions.length}`;
+
+      document.getElementById("currentScore")
+        .textContent =
+        `점수: ${totalScore}`;
+
+      document.getElementById("progress")
+        .style.width =
+        `${((currentQuestion + 1) / questions.length) * 100}%`;
+
+      document.getElementById("question")
+        .textContent =
+        questionData.question;
+
+
+      const optionsContainer =
+        document.getElementById("options");
+
+      optionsContainer.innerHTML = "";
+
+      selectedScore = 0;
+
+      const nextButton =
+        document.getElementById("nextButton");
+
+      nextButton.disabled = true;
+
+
+      questionData.options.forEach((option, index) => {
+
+        const button =
+          document.createElement("button");
+
+        button.className = "option";
+
+        button.textContent =
+          `${index + 1}. ${option}`;
+
+        button.onclick = function() {
+
+          document
+            .querySelectorAll(".option")
+            .forEach(btn => {
+              btn.classList.remove("selected");
+            });
+
+          button.classList.add("selected");
+
+          selectedScore = index + 1;
+
+          nextButton.disabled = false;
+        };
+
+        optionsContainer.appendChild(button);
+
+      });
+
+    }
+
+
+    function nextQuestion() {
+
+      if (selectedScore === 0) return;
+
+      totalScore += selectedScore;
+
+      currentQuestion++;
+
+      if (currentQuestion < questions.length) {
+
+        showQuestion();
+
+      } else {
+
+        showResult();
+
+      }
+
+    }
+
+
+    function showResult() {
+
+      showScreen("resultScreen");
+
+      let age;
+      let title;
+      let description;
+
+
+      if (totalScore <= 11) {
+
+        age = "27~29세";
+
+        title = "💕 결혼에 꽤 적극적인 타입";
+
+        description =
+          "좋은 인연을 만나고 현실적인 조건이 맞는다면 " +
+          "비교적 이른 시기에 결혼할 가능성이 높은 편입니다.";
+
+      }
+
+      else if (totalScore <= 17) {
+
+        age = "30~32세";
+
+        title = "💍 안정적인 결혼을 원하는 타입";
+
+        description =
+          "연애와 결혼 모두 신중하게 생각하지만, " +
+          "좋은 사람을 만나면 현실적인 준비를 거쳐 결혼할 가능성이 높습니다.";
+
+      }
+
+      else if (totalScore <= 23) {
+
+        age = "33~35세";
+
+        title = "🌿 천천히 확신을 쌓는 타입";
+
+        description =
+          "서두르기보다는 자신의 생활과 커리어, " +
+          "상대방에 대한 확신을 충분히 쌓은 뒤 결혼하려는 성향입니다.";
+
+      }
+
+      else if (totalScore <= 29) {
+
+        age = "36~39세";
+
+        title = "✨ 자기 삶을 우선하는 타입";
+
+        description =
+          "결혼 자체보다 자신의 목표와 생활을 중요하게 생각하는 편입니다. " +
+          "확실한 상대를 만났을 때 결혼을 결정할 가능성이 큽니다.";
+
+      }
+
+      else {
+
+        age = "40세 이후";
+
+        title = "🔥 결혼보다 삶의 만족도가 중요한 타입";
+
+        description =
+          "결혼을 반드시 해야 한다고 생각하기보다는 " +
+          "자신의 삶에 잘 맞는 특별한 인연이 있을 때 결혼을 선택하는 성향입니다.";
+
+      }
+
+
+      document.getElementById("resultAge")
+        .textContent = age;
+
+      document.getElementById("resultTitle")
+        .textContent = title;
+
+      document.getElementById("resultDescription")
+        .textContent = description;
+
+      document.getElementById("finalScore")
+        .textContent = `총점 ${totalScore}`;
+
+    }
+
+
+    function restartGame() {
+
+      currentQuestion = 0;
+      totalScore = 0;
+      selectedScore = 0;
+
+      showScreen("startScreen");
+
+    }
+
+  </script>
+
+</body>
+</html>
