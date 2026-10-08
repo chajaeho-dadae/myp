@@ -321,27 +321,63 @@
   /* ════════════════════════════════════════════════
      GitHub API — students/ 폴더 파일 목록
   */
+  const FILES_CACHE_KEY = "students_files_cache";
+  const FILES_CACHE_MS  = 10 * 60 * 1000;   // 10분 동안은 저장된 목록 사용
+
+  /* 파일명 → 학생 객체 */
+  function parseStudent(fileName) {
+    const base     = fileName.replace(/\.html$/i, "");
+    const dashIdx  = base.indexOf(" - ");
+    const rawName  = dashIdx !== -1 ? base.slice(0, dashIdx).trim() : "";
+    const title    = dashIdx !== -1 ? base.slice(dashIdx + 3).trim() : base;
+
+    const m    = fileName.match(/^(\d{2})(\d{2})/);    // 앞 4자리: 학반2 + 번호2
+    const cls  = m ? m[1] : null;                      // 예: "21"
+    const id   = m ? m[1] + m[2] : "";                 // 예: "2101"
+    const name = rawName.replace(/^\d{4}[\s_\-]*/, ""); // 이름 앞 학번 제거
+
+    return { file: fileName, name, title, desc: "", views: 0, avgRating: null, cls, id };
+  }
+
+  /* 파일명 목록 가져오기: ① GitHub API → ② 실패하면 jsDelivr */
+  async function fetchFileNames() {
+    try {
+      const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FOLDER}?ref=${GITHUB_BRANCH}`;
+      const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
+      if (!res.ok) throw new Error(`GitHub API 오류: ${res.status}`);
+      const items = await res.json();
+      return items.filter(i => i.type === "file").map(i => i.name);
+    } catch (e) {
+      console.warn("GitHub API 실패, jsDelivr로 대체합니다:", e.message);
+      const url = `https://data.jsdelivr.com/v1/packages/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}?structure=flat`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`목록을 불러오지 못했습니다 (jsDelivr ${res.status})`);
+      const data = await res.json();
+      const prefix = `/${FOLDER}/`;
+      return (data.files || [])
+        .map(f => f.name)
+        .filter(n => n.startsWith(prefix) && !n.slice(prefix.length).includes("/"))
+        .map(n => n.slice(prefix.length));
+    }
+  }
+
   async function fetchStudentsFromGitHub() {
-    const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FOLDER}?ref=${GITHUB_BRANCH}`;
-    const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
-    if (!res.ok) throw new Error(`GitHub API 오류: ${res.status} ${res.statusText}`);
-    const items = await res.json();
+    let names = null;
 
-    return items
-      .filter(item => item.type === "file" && item.name.endsWith(".html"))
-      .map(item => {
-        const base     = item.name.replace(/\.html$/i, "");
-        const dashIdx  = base.indexOf(" - ");
-        const rawName  = dashIdx !== -1 ? base.slice(0, dashIdx).trim() : "";
-        const title    = dashIdx !== -1 ? base.slice(dashIdx + 3).trim() : base;
+    /* 최근에 받은 목록이 있으면 재사용 (API 호출 횟수 절약) */
+    try {
+      const c = JSON.parse(localStorage.getItem(FILES_CACHE_KEY) || "null");
+      if (c && Date.now() - c.t < FILES_CACHE_MS) names = c.names;
+    } catch {}
 
-        const m    = item.name.match(/^(\d{2})(\d{2})/);   // 앞 4자리: 학반2 + 번호2
-        const cls  = m ? m[1] : null;                      // 예: "21"
-        const id   = m ? m[1] + m[2] : "";                 // 예: "2101"
-        const name = rawName.replace(/^\d{4}[\s_\-]*/, ""); // 이름 앞 학번 제거
+    if (!names) {
+      names = await fetchFileNames();
+      try { localStorage.setItem(FILES_CACHE_KEY, JSON.stringify({ t: Date.now(), names })); } catch {}
+    }
 
-        return { file: item.name, name, title, desc: "", views: 0, avgRating: null, cls, id };
-      });
+    return names
+      .filter(n => n.endsWith(".html"))
+      .map(parseStudent);
   }
 
   /* ════════════════════════════════════════════════
