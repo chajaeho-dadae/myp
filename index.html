@@ -237,6 +237,26 @@
     .rating-soon-banner strong { color: var(--text); font-weight: 600; }
     .rating-soon-banner .banner-date { color: var(--accent); font-weight: 700; margin-left: 4px; }
 
+    /* ── 학반 선택 ── */
+    .class-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+    .class-chip {
+      font-family: inherit; font-size: .9rem; font-weight: 700;
+      padding: 8px 20px; border-radius: 24px; cursor: pointer;
+      background: var(--card); color: var(--muted);
+      border: 1px solid var(--border); transition: all .2s;
+    }
+    .class-chip:hover { color: var(--text); border-color: var(--accent); }
+    .class-chip.active {
+      color: #fff; border-color: transparent;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 0 16px #4f8ef744;
+    }
+    .class-hint {
+      text-align: center; padding: 28px 20px; font-size: .85rem; color: var(--muted);
+      border: 1px dashed var(--border); border-radius: 14px; background: var(--card);
+    }
+    .id-cell { font-size: .85rem; color: var(--accent2); font-weight: 700; white-space: nowrap; }
+
     /* 로딩 / 에러 */
     .state-msg {
       text-align: center; padding: 60px 20px;
@@ -311,9 +331,15 @@
       .map(item => {
         const base     = item.name.replace(/\.html$/i, "");
         const dashIdx  = base.indexOf(" - ");
-        const name     = dashIdx !== -1 ? base.slice(0, dashIdx).trim() : "";
+        const rawName  = dashIdx !== -1 ? base.slice(0, dashIdx).trim() : "";
         const title    = dashIdx !== -1 ? base.slice(dashIdx + 3).trim() : base;
-        return { file: item.name, name, title, desc: "", views: 0, avgRating: null };
+
+        const m    = item.name.match(/^(\d{2})(\d{2})/);   // 앞 4자리: 학반2 + 번호2
+        const cls  = m ? m[1] : null;                      // 예: "21"
+        const id   = m ? m[1] + m[2] : "";                 // 예: "2101"
+        const name = rawName.replace(/^\d{4}[\s_\-]*/, ""); // 이름 앞 학번 제거
+
+        return { file: item.name, name, title, desc: "", views: 0, avgRating: null, cls, id };
       });
   }
 
@@ -453,11 +479,12 @@
 
   /* ════════════════════════════════════════════════
      별점 이벤트 — 렌더 후 일괄 등록
+     root: 이벤트를 연결할 범위 (기본값 document 전체)
   */
-  function attachStarEvents() {
+  function attachStarEvents(root = document) {
     if (!RATING_ENABLED) return;   // 비활성화 시 이벤트 미등록
 
-    document.querySelectorAll(".star-row").forEach(row => {
+    root.querySelectorAll(".star-row").forEach(row => {
       const file = row.dataset.file;
 
       const myScore = getMyRating(file);
@@ -523,9 +550,86 @@
   }
 
   /* ════════════════════════════════════════════════
+     학반별 보기
+  */
+  let ALL_STUDENTS  = [];
+  let selectedClass = null;
+
+  function classLabel(c) { return `${c[0]}-${c[1]}`; }   // "21" → "2-1"
+
+  function classSectionHTML() {
+    const classes = [...new Set(ALL_STUDENTS.map(s => s.cls).filter(Boolean))].sort();
+    if (!classes.length) return "";
+    const chips = classes.map(c =>
+      `<button class="class-chip ${c === selectedClass ? "active" : ""}" data-cls="${c}">${classLabel(c)}</button>`
+    ).join("");
+    return `
+      <div class="section-label">🏫 학반별 작품 보기</div>
+      <div class="class-chips">${chips}</div>
+      <div id="class-list"></div>`;
+  }
+
+  function renderClassList() {
+    const box = document.getElementById("class-list");
+    if (!box) return;
+
+    if (!selectedClass) {
+      box.innerHTML = `<div class="class-hint">학반을 선택하면 해당 반 학생들의 작품이 학번 순서대로 표시됩니다.</div>`;
+      return;
+    }
+
+    const list = ALL_STUDENTS
+      .filter(s => s.cls === selectedClass)
+      .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+
+    const starTh = RATING_ENABLED ? `<th>별점</th>` : "";
+
+    box.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>학번</th>
+              <th>이름</th>
+              <th>작품명</th>
+              <th>조회수</th>
+              ${starTh}
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(s => `
+              <tr>
+                <td class="id-cell">${s.id}</td>
+                <td class="name-cell">${s.name}</td>
+                <td><a href="${FOLDER}/${s.file}" target="_blank"
+                       onclick="handleClick(event,'${s.file}')">${s.title}</a></td>
+                <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
+                ${RATING_ENABLED ? `<td class="star-cell">${buildStarWidget(s.file, s.avgRating)}</td>` : ""}
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+
+    attachStarEvents(box);
+  }
+
+  function bindClassChips() {
+    document.querySelectorAll(".class-chip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const c = btn.dataset.cls;
+        selectedClass = (selectedClass === c) ? null : c;   // 같은 버튼 다시 누르면 해제
+        document.querySelectorAll(".class-chip").forEach(b =>
+          b.classList.toggle("active", b.dataset.cls === selectedClass));
+        renderClassList();
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════
      렌더링
   */
   function render(students) {
+    ALL_STUDENTS = students;
     const sorted = [...students].sort((a, b) => b.views - a.views);
     const top6   = sorted.slice(0, 6);
     const app    = document.getElementById("app");
@@ -598,10 +702,13 @@
         </table>
       </div>`;
 
-    app.innerHTML = medalHTML + tableHTML;
+    /* 명예의 전당 → 학반 선택 → 전체 작품 목록 */
+    app.innerHTML = medalHTML + classSectionHTML() + tableHTML;
 
     /* HTML 삽입 후 이벤트 연결 */
-    attachStarEvents();
+    bindClassChips();
+    renderClassList();
+    attachStarEvents(app);
   }
 
   /* ── 작품 클릭 → 조회수 증가 ── */
