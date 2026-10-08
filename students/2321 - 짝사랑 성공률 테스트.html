@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>짝사랑 성공률 테스트</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, "Noto Sans KR", sans-serif;
+  background: linear-gradient(135deg, #ffe3ee, #e9ddff);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  color: #333;
+}
+
+.app {
+  width: min(560px, 100%);
+  background: white;
+  border-radius: 28px;
+  padding: 34px 28px;
+  box-shadow: 0 15px 45px rgba(80, 40, 90, 0.18);
+  text-align: center;
+}
+
+h1 {
+  color: #e85d91;
+  margin: 0 0 12px;
+  font-size: 32px;
+}
+
+h2 {
+  font-size: 23px;
+  line-height: 1.45;
+  margin: 10px 0 25px;
+}
+
+p {
+  line-height: 1.65;
+}
+
+.hidden {
+  display: none;
+}
+
+input {
+  width: 100%;
+  padding: 15px 16px;
+  border: 2px solid #eee;
+  border-radius: 14px;
+  font-size: 16px;
+  margin: 7px 0;
+  outline: none;
+}
+
+input:focus {
+  border-color: #e85d91;
+}
+
+button {
+  border: 0;
+  border-radius: 14px;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+  margin: 6px;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+.primary {
+  background: #e85d91;
+  color: white;
+  width: 80%;
+  margin-top: 18px;
+}
+
+.progress {
+  height: 8px;
+  background: #eee;
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 10px 0 24px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #e85d91;
+  width: 0;
+  transition: 0.3s;
+}
+
+/* 성별 선택 버튼 */
+.gender-wrap {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.gender-option {
+  flex: 1;
+  background: #f7f3f8;
+  color: #555;
+  border: 3px solid #eee;
+  min-height: 58px;
+  position: relative;
+}
+
+.gender-option:hover {
+  border-color: #f3a1bd;
+  background: #fff4f8;
+}
+
+.gender-option.selected {
+  background: #e85d91;
+  color: white;
+  border-color: #d94f84;
+  box-shadow: 0 5px 14px rgba(232, 93, 145, 0.28);
+}
+
+.gender-option.selected::after {
+  content: "✓ 선택됨";
+  display: block;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.option {
+  display: block;
+  width: 100%;
+  background: white;
+  border: 2px solid #eee;
+  color: #444;
+  margin: 10px 0;
+  padding: 15px;
+  text-align: left;
+}
+
+.option:hover {
+  border-color: #e85d91;
+  background: #fff5f8;
+}
+
+.result-percent {
+  font-size: 58px;
+  font-weight: 900;
+  color: #e85d91;
+  margin: 8px;
+}
+
+.result-card {
+  background: #fff6fa;
+  border-radius: 20px;
+  padding: 18px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.result-card h3 {
+  margin: 0 0 8px;
+  color: #d94f84;
+}
+
+.luck {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.luck div {
+  background: #f7f4ff;
+  padding: 12px;
+  border-radius: 14px;
+}
+
+.small {
+  font-size: 13px;
+  color: #888;
+}
+
+.error {
+  color: #d94f84;
+  font-size: 14px;
+  min-height: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- 시작 화면 -->
+<section id="start">
+  <h1>💗 짝사랑 성공률 테스트</h1>
+
+  <p>
+    두 사람의 이름과 몇 가지 질문으로<br>
+    짝사랑 성공 가능성을 알아보세요!
+  </p>
+
+  <button class="primary" onclick="show('names')">
+    시작하기
+  </button>
+</section>
+
+
+<!-- 이름 입력 -->
+<section id="names" class="hidden">
+
+  <h2>두 사람의 이름을 알려주세요 💕</h2>
+
+  <input
+    id="myName"
+    placeholder="내 이름"
+  >
+
+  <input
+    id="crushName"
+    placeholder="상대방 이름"
+  >
+
+  <div class="error" id="nameError"></div>
+
+  <button class="primary" onclick="nextNames()">
+    다음
+  </button>
+
+</section>
+
+
+<!-- 성별 선택 -->
+<section id="gender" class="hidden">
+
+  <h2>성별을 선택해주세요</h2>
+
+  <p>나의 성별</p>
+
+  <div class="gender-wrap">
+
+    <button
+      type="button"
+      class="gender-option"
+      id="myGirl"
+      onclick="selectGender('my','여자')"
+    >
+      👧 여자
+    </button>
+
+    <button
+      type="button"
+      class="gender-option"
+      id="myBoy"
+      onclick="selectGender('my','남자')"
+    >
+      👦 남자
+    </button>
+
+  </div>
+
+
+  <p>상대방의 성별</p>
+
+  <div class="gender-wrap">
+
+    <button
+      type="button"
+      class="gender-option"
+      id="crushGirl"
+      onclick="selectGender('crush','여자')"
+    >
+      👧 여자
+    </button>
+
+    <button
+      type="button"
+      class="gender-option"
+      id="crushBoy"
+      onclick="selectGender('crush','남자')"
+    >
+      👦 남자
+    </button>
+
+  </div>
+
+  <div class="error" id="genderError"></div>
+
+  <button
+    type="button"
+    class="primary"
+    onclick="startQuestions()"
+  >
+    다음
+  </button>
+
+</section>
+
+
+<!-- 질문 화면 -->
+<section id="question" class="hidden">
+
+  <div class="progress">
+    <div
+      class="progress-bar"
+      id="bar"
+    ></div>
+  </div>
+
+  <p
+    class="small"
+    id="qNumber"
+  ></p>
+
+  <h2 id="questionText"></h2>
+
+  <div id="options"></div>
+
+</section>
+
+
+<!-- 결과 화면 -->
+<section id="result" class="hidden">
+
+  <h1>💌 테스트 결과</h1>
+
+  <p id="resultIntro"></p>
+
+  <div
+    class="result-percent"
+    id="percent"
+  ></div>
+
+  <h2 id="emoji"></h2>
+
+
+  <div class="result-card">
+
+    <h3>💬 결과 분석</h3>
+
+    <p id="analysis"></p>
+
+  </div>
+
+
+  <div class="result-card">
+
+    <h3>💡 가까워지는 방법</h3>
+
+    <p id="advice"></p>
+
+  </div>
+
+
+  <div class="result-card">
+
+    <h3>🍀 오늘의 행운</h3>
+
+    <div class="luck">
+
+      <div>
+        🎨 행운의 색<br>
+        <b id="color"></b>
+      </div>
+
+      <div>
+        🎁 행운의 물건<br>
+        <b id="item"></b>
+      </div>
+
+      <div>
+        📍 행운의 장소<br>
+        <b id="place"></b>
+      </div>
+
+      <div>
+        ✨ 행운의 행동<br>
+        <b id="action"></b>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <button
+    class="primary"
+    onclick="restart()"
+  >
+    다시하기
+  </button>
+
+</section>
+
+</div>
+
+
+<script>
+
+/* 질문 목록 */
+
+const questions = [
+
+  {
+    q: "최근 그 사람이 먼저 말을 건 적이 있나요?",
+    options: ["네", "아니요"],
+    score: [15, 0]
+  },
+
+  {
+    q: "최근 눈이 자주 마주친다고 느끼나요?",
+    options: ["네", "아니요"],
+    score: [12, 0]
+  },
+
+  {
+    q: "다른 사람보다 나에게 더 친절한가요?",
+    options: ["예", "아니요", "모르겠음"],
+    score: [13, 0, 6]
+  },
+
+  {
+    q: "주변 친구들이 둘 사이를 의심한 적이 있나요?",
+    options: ["네", "아니요"],
+    score: [10, 0]
+  },
+
+  {
+    q: "인스타그램 맞팔이 되어 있나요?",
+    options: [
+      "네",
+      "아니요",
+      "인스타그램이 없습니다"
+    ],
+    score: [8, 0, 4]
+  },
+
+  {
+    q: "그 사람이 유독 나에게만 장난을 치나요?",
+    options: [
+      "예",
+      "아니요",
+      "모르겠음"
+    ],
+    score: [12, 0, 6]
+  }
+
+];
+
+
+/* 사용자 데이터 */
+
+let data = {
+
+  myName: "",
+  crushName: "",
+
+  myGender: "",
+  crushGender: "",
+
+  answers: [],
+
+  qIndex: 0
+
+};
+
+
+/* 화면 변경 */
+
+function show(id) {
+
+  document
+    .querySelectorAll("section")
+    .forEach(section => {
+
+      section.classList.add("hidden");
+
+    });
+
+  document
+    .getElementById(id)
+    .classList.remove("hidden");
+
+}
+
+
+/* 이름 입력 */
+
+function nextNames() {
+
+  const myName =
+    document
+      .getElementById("myName")
+      .value
+      .trim();
+
+  const crushName =
+    document
+      .getElementById("crushName")
+      .value
+      .trim();
+
+
+  if (!myName || !crushName) {
+
+    document
+      .getElementById("nameError")
+      .textContent =
+      "두 사람의 이름을 모두 입력해주세요.";
+
+    return;
+
+  }
+
+
+  data.myName = myName;
+
+  data.crushName = crushName;
+
+
+  document
+    .getElementById("nameError")
+    .textContent = "";
+
+
+  show("gender");
+
+}
+
+
+/* 성별 선택 */
+
+function selectGender(who, value) {
+
+  data[who + "Gender"] = value;
+
+
+  let ids;
+
+
+  if (who === "my") {
+
+    ids = [
+      "myGirl",
+      "myBoy"
+    ];
+
+  } else {
+
+    ids = [
+      "crushGirl",
+      "crushBoy"
+    ];
+
+  }
+
+
+  ids.forEach(id => {
+
+    document
+      .getElementById(id)
+      .classList
+      .remove("selected");
+
+  });
+
+
+  const selectedId =
+    who +
+    (
+      value === "여자"
+        ? "Girl"
+        : "Boy"
+    );
+
+
+  document
+    .getElementById(selectedId)
+    .classList
+    .add("selected");
+
+
+  document
+    .getElementById("genderError")
+    .textContent = "";
+
+}
+
+
+/* 질문 시작 */
+
+function startQuestions() {
+
+  if (
+    !data.myGender ||
+    !data.crushGender
+  ) {
+
+    document
+      .getElementById("genderError")
+      .textContent =
+      "두 사람의 성별을 모두 선택해주세요.";
+
+    return;
+
+  }
+
+
+  data.answers = [];
+
+  data.qIndex = 0;
+
+
+  /* 중요:
+     성별 화면에서 질문 화면으로 이동 */
+
+  show("question");
+
+  showQuestion();
+
+}
+
+
+/* 질문 표시 */
+
+function showQuestion() {
+
+  const item =
+    questions[data.qIndex];
+
+
+  document
+    .getElementById("qNumber")
+    .textContent =
+    `${data.qIndex + 1} / ${questions.length}`;
+
+
+  document
+    .getElementById("questionText")
+    .textContent =
+    item.q;
+
+
+  document
+    .getElementById("bar")
+    .style.width =
+    (
+      data.qIndex /
+      questions.length *
+      100
+    ) + "%";
+
+
+  const box =
+    document.getElementById("options");
+
+
+  box.innerHTML = "";
+
+
+  item.options.forEach(
+    (option, index) => {
+
+      const button =
+        document.createElement("button");
+
+
+      button.className =
+        "option";
+
+
+      button.textContent =
+        option;
+
+
+      button.onclick =
+        () => answer(index);
+
+
+      box.appendChild(button);
+
+    }
+  );
+
+}
+
+
+/* 질문 답변 */
+
+function answer(index) {
+
+  data.answers.push(
+    questions[data.qIndex]
+      .score[index]
+  );
+
+
+  data.qIndex++;
+
+
+  if (
+    data.qIndex <
+    questions.length
+  ) {
+
+    showQuestion();
+
+  } else {
+
+    calculateResult();
+
+  }
+
+}
+
+
+/* 이름 궁합 */
+
+function nameScore(a, b) {
+
+  let sum = 0;
+
+
+  for (
+    let i = 0;
+    i < a.length;
+    i++
+  ) {
+
+    sum +=
+      a.charCodeAt(i) *
+      (i + 1);
+
+  }
+
+
+  for (
+    let i = 0;
+    i < b.length;
+    i++
+  ) {
+
+    sum +=
+      b.charCodeAt(i) *
+      (i + 3);
+
+  }
+
+
+  return sum % 21;
+
+}
+
+
+/* 결과 계산 */
+
+function calculateResult() {
+
+  const questionScore =
+    data.answers.reduce(
+      (a, b) => a + b,
+      0
+    );
+
+
+  const percent =
+    Math.min(
+      100,
+      Math.max(
+        1,
+        10 +
+        questionScore +
+        nameScore(
+          data.myName,
+          data.crushName
+        )
+      )
+    );
+
+
+  document
+    .getElementById("percent")
+    .textContent =
+    percent + "%";
+
+
+  document
+    .getElementById("resultIntro")
+    .textContent =
+    `${data.myName} ♥ ${data.crushName}`;
+
+
+  let emoji;
+  let analysis;
+  let advice;
+
+
+  /* 30% 이하 */
+
+  if (percent <= 30) {
+
+    emoji = "😢";
+
+
+    analysis =
+      "아직은 상대방과의 특별한 신호가 많이 보이지 않는 편이에요. 그렇다고 가능성이 없는 것은 아니니 너무 실망하지 마세요!";
+
+
+    advice =
+      "갑자기 고백하기보다는 가볍게 인사하고 공통 관심사로 대화를 시작해보세요. 부담 없이 자주 대화하는 것이 가장 좋아요.";
+
+  }
+
+
+  /* 31~60% */
+
+  else if (percent <= 60) {
+
+    emoji = "💪";
+
+
+    analysis =
+      "조금씩 좋은 신호가 보이고 있어요! 아직 확실하다고 하기는 어렵지만, 친해질 기회는 충분히 있어 보여요.";
+
+
+    advice =
+      "상대방이 좋아하는 것에 관심을 보이고 자연스럽게 대화를 늘려보세요. 함께 웃을 수 있는 이야기를 만드는 것도 좋아요.";
+
+  }
+
+
+  /* 61~100% */
+
+  else {
+
+    emoji = "🎉";
+
+
+    analysis =
+      "두 사람 사이에 긍정적인 신호가 꽤 많이 보여요! 상대방도 당신에게 관심이 있을 가능성을 기대해볼 만해요.";
+
+
+    advice =
+      "지금처럼 자연스럽게 대화를 이어가면서 둘만의 추억을 만들어보세요. 분위기가 좋다면 먼저 작은 약속을 제안해보는 것도 좋아요.";
+
+  }
+
+
+  document
+    .getElementById("emoji")
+    .textContent =
+    emoji;
+
+
+  document
+    .getElementById("analysis")
+    .textContent =
+    analysis;
+
+
+  document
+    .getElementById("advice")
+    .textContent =
+    advice;
+
+
+  const luck = [
+
+    [
+      "분홍색",
+      "작은 키링",
+      "학교 복도",
+      "먼저 밝게 인사하기"
+    ],
+
+    [
+      "하늘색",
+      "좋아하는 펜",
+      "카페",
+      "공통 관심사 이야기하기"
+    ],
+
+    [
+      "보라색",
+      "팔찌",
+      "공원",
+      "칭찬 한마디 하기"
+    ],
+
+    [
+      "노란색",
+      "메모장",
+      "도서관",
+      "상대방에게 질문하기"
+    ],
+
+    [
+      "초록색",
+      "휴대폰 케이스",
+      "산책로",
+      "함께 웃기"
+    ]
+
+  ][percent % 5];
+
+
+  document
+    .getElementById("color")
+    .textContent =
+    luck[0];
+
+
+  document
+    .getElementById("item")
+    .textContent =
+    luck[1];
+
+
+  document
+    .getElementById("place")
+    .textContent =
+    luck[2];
+
+
+  document
+    .getElementById("action")
+    .textContent =
+    luck[3];
+
+
+  show("result");
+
+}
+
+
+/* 다시하기 */
+
+function restart() {
+
+  data = {
+
+    myName: "",
+    crushName: "",
+
+    myGender: "",
+    crushGender: "",
+
+    answers: [],
+
+    qIndex: 0
+
+  };
+
+
+  document
+    .getElementById("myName")
+    .value = "";
+
+
+  document
+    .getElementById("crushName")
+    .value = "";
+
+
+  document
+    .getElementById("genderError")
+    .textContent = "";
+
+
+  document
+    .getElementById("nameError")
+    .textContent = "";
+
+
+  [
+    "myGirl",
+    "myBoy",
+    "crushGirl",
+    "crushBoy"
+  ].forEach(id => {
+
+    document
+      .getElementById(id)
+      .classList
+      .remove("selected");
+
+  });
+
+
+  show("start");
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>조커 룰렛 – 숨겨진 도박장</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#efe6d2;--felt:#cfe0cc;--panel:#fbf6ea;--ink:#2a1a14;--mut:#7a6552;--gold:#9a6b12;--red:#a3231a;--line:#cdbb9a;--card:#fffdf6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1a15;--felt:#123226;--panel:#1a1412;--ink:#f0e4cc;--mut:#a8977c;--gold:#e0b04a;--red:#e0523f;--line:#4a3a2a;--card:#f3ead3}}
+:root[data-theme="dark"]{--bg:#0e1a15;--felt:#123226;--panel:#1a1412;--ink:#f0e4cc;--mut:#a8977c;--gold:#e0b04a;--red:#e0523f;--line:#4a3a2a;--card:#f3ead3}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 "Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif}
+#app{max-width:880px;margin:0 auto;padding:12px;min-height:100%}
+h1{font-size:26px;margin:8px 0 4px;letter-spacing:-.5px}
+.story{color:var(--mut);max-width:60ch;margin:0 0 14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.b{font:inherit;color:var(--ink);background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+.b:hover:not(:disabled){border-color:var(--gold)}.b:disabled{opacity:.4;cursor:default}
+.b:focus-visible,.c.pick:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.b.sel{border-color:var(--gold);background:var(--felt)}
+.b.go{background:var(--red);color:#fff;border-color:var(--red);font-weight:700;padding:10px 20px}
+.job{flex:1 1 220px;text-align:left}.job b{display:block;font-size:17px}.job span{font-size:13px;color:var(--mut)}
+#opps{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px}
+.opp{background:var(--felt);border:2px solid var(--line);border-radius:12px;padding:8px 10px;min-height:118px}
+.opp.tg{border-color:var(--gold)}.opp.x{opacity:.45}.opp.now{box-shadow:0 0 0 3px var(--gold)}
+.nm{font-weight:700}.hp{letter-spacing:2px;font-size:14px}.it{font-size:12px;color:var(--mut)}
+.cs{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.c{width:42px;height:60px;border-radius:6px;background:var(--card);border:1.5px solid #6b5a43;color:#222;display:inline-flex;align-items:center;justify-content:center;font-size:22px;padding:0;font-family:inherit}
+.c.rd{color:#b3261e}.c.sm{width:36px;height:52px}
+.opp .c{width:54px;height:78px;font-size:28px}.opp .c.sm{width:36px;height:52px}
+.c.back{background:repeating-linear-gradient(45deg,#7a1f1a 0 5px,#561511 5px 10px);border-color:#d9b36a}
+.c.jk{background:#f6d77a;border-color:var(--red);box-shadow:0 0 0 2px var(--red)}
+.c.pick{cursor:pointer;transition:transform .12s}.c.pick:hover{transform:translateY(-5px)}
+.dead{font-size:13px;color:var(--mut)}
+#mid{margin:10px 0;background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px}
+#status{font-weight:700;color:var(--gold);min-height:24px}
+#log{height:150px;overflow-y:auto;font-size:13px;margin-top:6px;color:var(--mut)}
+#log p{margin:2px 0}#log .r{color:var(--red);font-weight:700}#log .g{color:var(--gold)}#log .h{color:var(--ink);font-weight:700;margin-top:8px}
+#me{background:var(--felt);border:2px solid var(--line);border-radius:12px;padding:10px}
+.ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,5,5,.82);color:#fff;text-align:center;padding:20px;z-index:9}
+.ov h2{font-size:30px;margin:0 0 8px}
+#fx{position:fixed;inset:0;pointer-events:none;opacity:0;z-index:8}
+#fx.red{background:#c0141a;animation:fl .7s}#fx.white{background:#fff;animation:fl .4s}
+@keyframes fl{0%{opacity:.85}100%{opacity:0}}
+.spk{position:fixed;z-index:8;pointer-events:none;animation:up 1.4s forwards}
+@keyframes up{to{transform:translateY(-120px) rotate(200deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){#fx{animation:none!important}.spk{animation-duration:.01s}}
+</style></head><body>
+<div id="app">
+ <div id="setup">
+  <h1>🃏 조커 룰렛</h1>
+  <p class="story">한때 최고의 부자였던 당신. 모든 걸 잃고 주운 전단지엔 "이기면 돈을 드립니다"라고 적혀 있었다. 찾아간 숨겨진 도박장에서 죽고 죽이는 게임이 시작된다. 목숨은 세 개.</p>
+  <b>인원</b>
+  <div class="row" id="cnt"><button class="b" data-n="2">2명</button><button class="b sel" data-n="3">3명</button><button class="b" data-n="4">4명</button></div>
+  <b>직업</b>
+  <div class="row" id="jobs"></div>
+  <div class="row"><button class="b go" data-a="start">도박장에 들어간다</button></div>
+  <p class="story">규칙: 돌아가며 다음 사람의 카드를 한 장 뽑고, 같은 문양이 두 장이면 내려놓습니다. 마지막에 조커를 든 사람이 패배해 실탄 확률 45%인 샷건을 자기 머리에 쏩니다. 라운드가 끝나면 생존자는 아이템을 한 개씩 뽑습니다. 마지막까지 살아남으면 승리.</p>
+ </div>
+ <div id="game" hidden>
+  <div id="opps"></div>
+  <div id="mid"><div id="status"></div><div id="log" aria-live="polite"></div></div>
+  <div id="me"></div>
+ </div>
+ <div class="ov" id="end" hidden><h2 id="et"></h2><p id="ed"></p><button class="b go" data-a="again">다시 하기</button></div>
+</div>
+<div id="fx"></div>
+<script>
+const $=s=>document.querySelector(s),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const SYM=['♠','♥','♦','♣','☾','✦'];
+const JOBS={police:{n:'경찰',e:'👮',d:'최후의 발악: 목숨이 1개일 때 패배하면 리볼버로 한 명을 쏩니다 (실탄 확률 1/3, 게임당 1번)'},
+gambler:{n:'겜블러',e:'🎲',d:'밑장 빼기: 라운드당 1번, 조커를 들고 있으면 뽑을 상대의 카드 한 장과 몰래 바꿉니다'},
+doctor:{n:'의사',e:'🩺',d:'해치웠나?: 게임당 1번, 내 차례나 방아쇠 직전에 목숨 1개를 치료합니다'}};
+const ITEMS={mirror:['🪞','거울'],syringe:['💉','회복 주사기'],glitter:['✨','반짝이']};
+const BOTS=['막스','레이븐','졸리'];
+let P=[],cur=0,mode='idle',tgt=-1,revealed=-1,resolver=null,N=3,myJob='police',round=0,runId=0;
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const ask=()=>new Promise(r=>resolver=r);
+const act=a=>{if(resolver){const r=resolver;resolver=null;r(a)}};
+const hasCards=i=>P[i].alive&&P[i].hand.length>0;
+const nextWith=i=>{for(let k=1;k<=P.length;k++){const j=(i+k)%P.length;if(hasCards(j))return j}return i};
+const active=()=>P.filter((p,i)=>hasCards(i)).length;
+const hearts=p=>'❤️'.repeat(Math.max(p.lives,0))+'🖤'.repeat(3-Math.max(p.lives,0));
+function log(m,c=''){const l=$('#log'),p=document.createElement('p');p.className=c;p.textContent=m;l.appendChild(p);l.scrollTop=l.scrollHeight}
+const setStatus=t=>$('#status').textContent=t;
+function fx(c){const f=$('#fx');f.className='';void f.offsetWidth;f.className=c}
+function sparkle(){for(let i=0;i<18;i++){const s=document.createElement('span');s.className='spk';s.textContent='✨';s.style.left=Math.random()*95+'vw';s.style.top=40+Math.random()*50+'vh';document.body.appendChild(s);setTimeout(()=>s.remove(),1500)}}
+function pairOff(p){const out=[];for(let a=0;a<p.hand.length;a++)for(let b=a+1;b<p.hand.length;b++)if(!p.hand[a].j&&p.hand[a].s===p.hand[b].s){out.push(p.hand[a].s);p.hand.splice(b,1);p.hand.splice(a,1);a--;break}return out}
+function deal(){const d=[];SYM.forEach(s=>{d.push({s},{s})});d.push({s:'🃏',j:1});shuffle(d);
+ P.forEach(p=>p.hand=[]);const al=P.filter(p=>p.alive);d.forEach((c,i)=>al[i%al.length].hand.push(c));
+ al.forEach(p=>{pairOff(p);p.usedG=false;delete p.peek})}
+const cardHTML=c=>`<div class="c ${c.j?'jk':''} 
+/[♥♦]/.test(c.s)?'rd':''">{c.s}</div>`;
+function render(){
+ $('#opps').innerHTML=P.slice(1).map((p,k)=>{const i=k+1,isT=mode==='pick'&&tgt===i,sh=revealed===i;let cs;
+  if(!p.alive)cs='<div class="dead">탈락 💀</div>';
+  else if(isT)cs=p.hand.map((c,x)=>`<button class="c pick sh?(c.j?'jk':'')+(/[♥♦]/.test(c.s)?'rd':''):'back'"data-a="card:{x}" aria-label="카드 x+1">{sh?c.s:''}</button>`).join('');
+  else cs=p.hand.map(()=>'<div class="c back sm"></div>').join('');
+  return `<div class="opp ${isT?'tg':''} ${p.alive?'':'x'} cur===i&&mode==='idle'?'now':''"><divclass="nm">{JOBS[p.job].e} p.name<spanclass="it">{JOBS[p.job].n}</span></div><div class="hp">hearts(p)</div><divclass="cs">{cs}</div><div class="it">p.items.length?'🎒아이템'+p.items.length+'개':'&nbsp;'</div>{mode==='police'&&p.alive?`<button class="b" data-a="tg:${i}">🔫 쏜다</button>`:''}</div>`}).join('');
+ const m=P[0];if(!m)return;
+ let btn='';
+ if(mode==='pick'||mode==='shot')btn+=m.items.map(k=>{const bad=(mode==='shot'&&k==='mirror')||(k==='syringe'&&m.lives>=3);return bad&&k==='mirror'?'':`<button class="b" data-a="item:${k}" bad?'disabled':''>{ITEMS[k][0]} ${ITEMS[k][1]}</button>`}).join('');
+ if((mode==='pick'||mode==='shot')&&m.job==='doctor'&&!m.usedD)btn+=`<button class="b" data-a="doc" ${m.lives>=3?'disabled':''}>🩺 해치웠나?</button>`;
+ if(mode==='pick'&&m.hand.length>1)btn+=`<button class="b" data-a="shuf">🔀 패 섞기</button>`;
+ if(mode==='pick'&&m.job==='gambler'&&!m.usedG&&m.hand.some(c=>c.j))btn+=`<button class="b" data-a="gam">🎲 밑장 빼기</button>`;
+ if(mode==='shot')btn+=`<button class="b go" data-a="trig">🔫 방아쇠를 당긴다</button>`;
+ if(mode==='police')btn+=`<button class="b" data-a="tg:-1">쏘지 않는다</button>`;
+ ('#me').innerHTML=`<divclass="nm">{JOBS[m.job].e} 나 <span class="it">JOBS[m.job].n</span><spanclass="hp">{hearts(m)}</span></div><div class="cs">m.alive?m.hand.map(cardHTML).join(''):'<spanclass="dead">쓰러졌다…</span>'</div><divclass="row">{btn}</div>`;
+}
+function hit(i,msg){const p=P[i];p.lives--;fx('red');log(`💥 ${msg} ${p.name} 목숨 -1 (남은 목숨 ${Math.max(p.lives,0)})`,'r');
+ if(p.lives<=0){p.alive=false;p.hand=[];log(`☠️ ${p.name} 탈락`,'r')}render()}
+function doAction(i,a,t){const p=P[i];
+ if(a==='shuf'){shuffle(p.hand);log(`${p.name}: 패를 섞는다 🔀`)}
+ else if(a==='doc'){p.usedD=true;p.lives=Math.min(3,p.lives+1);log(`${p.name}: "해치웠나?" 목숨 +1 🩺`,'g')}
+ else if(a==='gam'){const jk=p.hand.findIndex(c=>c.j),o=P[t],k=Math.floor(Math.random()*o.hand.length);
+  [p.hand[jk],o.hand[k]]=[o.hand[k],p.hand[jk]];p.usedG=true;log(`${p.name}: 밑장 빼기! 🎲 조커가 어딘가로 넘어갔다…`,'g');
+  if(p.h)log(`가져온 카드: p.hand[jk].s`);constr=pairOff(p);if(r.length)log(`{p.name}이(가) ${r.join('')} 한 쌍을 내려놓음`)}
+ else if(a.startsWith('item:')){const k=a.slice(5);p.items.splice(p.items.indexOf(k),1);
+  if(k==='syringe'){p.lives=Math.min(3,p.lives+1);log(`${p.name}: 회복 주사기 💉 목숨 +1`,'g')}
+  else if(k==='glitter'){log(`${p.name}: 반짝이 ✨ …그냥 반짝입니다.`,'g');sparkle()}
+  else{log(`${p.name}: 거울 🪞 ${P[t].name}의 패를 훔쳐봄`,'g');if(p.h)revealed=t;else p.peek=t}}
+}
+function aiPre(i,t){const p=P[i];
+ if(p.items.includes('syringe')&&p.lives<3)doAction(i,'item:syringe',t);
+ if(p.job==='doctor'&&!p.usedD&&p.lives<=1)doAction(i,'doc',t);
+ if(p.job==='gambler'&&!p.usedG&&p.hand.some(c=>c.j)&&P[t].hand.length&&Math.random()<.7)doAction(i,'gam',t);
+ if(p.hand.length&&p.items.includes('mirror')&&Math.random()<.7)doAction(i,'item:mirror',t);
+ if(p.items.includes('glitter')&&Math.random()<.3)doAction(i,'item:glitter',t)}
+function aiPick(i,t){const p=P[i],h=P[t].hand;
+ if(p.peek===t){delete p.peek;const m=h.findIndex(c=>!c.j&&p.hand.some(x=>x.s===c.s));if(m>=0)return m;
+  const ok=h.map((c,k)=>k).filter(k=>!h[k].j);if(ok.length)return rnd(ok)}
+ return Math.floor(Math.random()*h.length)}
+async function takeTurn(i,t){const p=P[i];let idx;cur=i;
+ if(p.h){mode='pick';tgt=t;revealed=-1;
+  while(p.hand.length){setStatus(`내 차례 — ${P[t].name}의 카드 중 한 장을 뽑으세요`);render();const a=await ask();
+   if(a.startsWith('card:')){idx=+a.slice(5);break}doAction(i,a,t)}
+ }else{setStatus(`${p.name}의 차례…`);render();await sleep(800);aiPre(i,t);render();
+  if(p.hand.length)idx=aiPick(i,t);await sleep(500)}
+ mode='idle';
+ if(!p.hand.length){log(`${p.name} 패 소진 — 안전!`,'g');revealed=-1;render();return}
+ const c=P[t].hand.splice(idx,1)[0];p.hand.push(c);
+ log(p.h?`${P[t].name}에게서 c.s를뽑음`:t===0?`{p.name}이(가) 내 c.s카드를가져감`:`{p.name}이(가) ${P[t].name}의 카드를 뽑음`);
+ const r=pairOff(p);if(r.length)log(`${p.name}이(가) ${r.join('')} 한 쌍을 내려놓음`);
+ if(!p.h)shuffle(p.hand);
+ if(!P[t].hand.length)log(`${P[t].name} 패 소진 — 안전!`,'g');
+ if(!p.hand.length)log(`${p.name} 패 소진 — 안전!`,'g');
+ revealed=-1;render();await sleep(700)}
+async function playRound(){round++;deal();log(`── 라운드 ${round} ──`,'h');
+ const al=P.map((p,i)=>i).filter(i=>P[i].alive);cur=rnd(al);setStatus('카드를 나눴습니다');render();await sleep(900);
+ while(active()>1){if(!hasCards(cur)){cur=nextWith(cur);continue}
+  await takeTurn(cur,nextWith(cur));if(active()<=1)break;cur=nextWith(cur)}
+ return P.findIndex((p,i)=>hasCards(i))}
+async function resolveLoser(L){const p=P[L];
+ log(`🃏 p.name이(가)조커를들고패배!`,'r');setStatus(`{p.name} 패배`);render();await sleep(1000);
+ if(p.job==='police'&&p.lives===1&&!p.usedP){const others=P.map((x,i)=>i).filter(i=>i!==L&&P[i].alive);let tg=-1;
+  if(p.h){mode='police';setStatus('최후의 발악! 리볼버로 쏠 사람을 고르세요');render();tg=+(await ask()).slice(3)}else tg=rnd(others);
+  mode='idle';
+  if(tg>=0){p.usedP=true;log(`${p.name}: 최후의 발악! 리볼버를 ${P[tg].name}에게 겨눈다…`,'r');render();await sleep(1000);
+   if(Math.random()<1/3)hit(tg,'리볼버 실탄!');else log('철컥… 공포탄이었다.')}
+  if(!P[0].alive)return}
+ const shell=Math.random()<0.45?1:0;
+ if(p.h){mode='shot';setStatus('샷건 장전: 실탄 확률 45%. 준비되면 방아쇠를 당기세요');
+  while(true){render();const a=await ask();if(a==='trig')break;doAction(L,a,L)}}
+ else{if(p.items.includes('syringe')&&p.lives<3)doAction(L,'item:syringe',L);
+  if(p.job==='doctor'&&!p.usedD&&p.lives<=1)doAction(L,'doc',L);setStatus(`${p.name}이(가) 샷건을 든다…`);render();await sleep(900)}
+ mode='idle';log(`${p.name}이(가) 샷건을 자기 머리에 겨눈다…`,'r');render();await sleep(1200);
+ if(shell)hit(L,'탕!! 실탄!');else{fx('white');log('철컥… 공포탄! 살았다.','g')}
+ await sleep(800)}
+function gameOver(){const al=P.filter(p=>p.alive);
+ if(!P[0].alive){showEnd('☠️ 당신은 쓰러졌다','도박장의 문은 끝내 열리지 않았다. 상금은 '+(al[0]?al[0].name:'아무도')+'의 몫.');return true}
+ if(al.length<=1){showEnd('💰 승리!','마지막까지 살아남았다. 가방 가득 상금을 챙겨 도박장을 나선다.');return true}return false}
+function showEnd(t,d){('#et').textContent=t;('#ed').textContent=d;$('#end').hidden=false}
+function drawItems(){P.forEach(p=>{if(!p.alive)return;if(p.items.length>=3){if(p.h)log('아이템 칸이 가득 찼습니다 (최대 3개)');return}
+ const k=rnd(Object.keys(ITEMS));p.items.push(k);log(p.h?`아이템 획득: ${ITEMS[k][0]} ITEMS[k][1]`:`{p.name}이(가) 아이템을 뽑았다`,p.h?'g':'')});render()}
+async function run(id){
+ while(id===runId){const L=await playRound();if(id!==runId)return;await resolveLoser(L);if(id!==runId)return;
+  if(gameOver())return;drawItems();await sleep(900)}}
+function start(){runId++;round=0;mode='idle';revealed=-1;resolver=null;$('#log').innerHTML='';
+ const ks=Object.keys(JOBS);P=[{name:'나',job:myJob,h:1}];
+ for(let i=1;i<N;i++)P.push({name:BOTS[i-1],job:rnd(ks)});
+ P.forEach(p=>Object.assign(p,{lives:3,items:[],alive:true,hand:[],usedD:false,usedP:false,usedG:false}));
+ ('#setup').hidden=true;('#game').hidden=false;$('#end').hidden=true;
+ log('숨겨진 도박장. 문이 잠기는 소리가 들린다…','h');
+ P.slice(1).forEach(p=>log(`${JOBS[p.job].e} p.name({JOBS[p.job].n}) 착석`));
+ run(runId)}
+$('#jobs').innerHTML=Object.keys(JOBS).map(k=>`<button class="b job k===myJob?'sel':''"data-j="{k}"><b>${JOBS[k].e} JOBS[k].n</b><span>{JOBS[k].d}</span></button>`).join('');
+document.addEventListener('click',e=>{
+ const n=e.target.closest('[data-n]');if(n){N=+n.dataset.n;document.querySelectorAll('[data-n]').forEach(b=>b.classList.toggle('sel',b===n));return}
+ const j=e.target.closest('[data-j]');if(j){myJob=j.dataset.j;document.querySelectorAll('[data-j]').forEach(b=>b.classList.toggle('sel',b===j));return}
+ const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a;
+ if(a==='start')start();else if(a==='again'){runId++;resolver=null;('#end').hidden=true;('#game').hidden=true;$('#setup').hidden=false}else act(a)});
+</script></body></html>
