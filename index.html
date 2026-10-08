@@ -239,7 +239,7 @@
 
     /* ── 학반 선택 ── */
     .class-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
-    .grade-label { font-size: .85rem; font-weight: 700; color: var(--muted); min-width: 52px; }
+    .grade-label { font-size: .85rem; font-weight: 700; color: var(--muted); min-width: 110px; }
     .class-chip {
       font-family: inherit; font-size: .9rem; font-weight: 700;
       padding: 8px 20px; border-radius: 24px; cursor: pointer;
@@ -331,12 +331,14 @@
     const rawName  = dashIdx !== -1 ? base.slice(0, dashIdx).trim() : "";
     const title    = dashIdx !== -1 ? base.slice(dashIdx + 3).trim() : base;
 
-    const m    = fileName.match(/^(\d{2})(\d{2})/);    // 앞 4자리: 학반2 + 번호2
-    const cls  = m ? m[1] : null;                      // 예: "21"
-    const id   = m ? m[1] + m[2] : "";                 // 예: "2101"
-    const name = rawName.replace(/^\d{4}[\s_\-]*/, ""); // 이름 앞 학번 제거
+    /* 앞에 n이 있으면 부산남중, 없으면 다대중 / 이어서 학반2자리 + 번호2자리 */
+    const m      = fileName.match(/^(n)?(\d{2})(\d{2})/i);
+    const school = m ? (m[1] ? "nam" : "dadae") : null;   // "nam" | "dadae"
+    const cls    = m ? m[2] : null;                       // 예: "21"
+    const id     = m ? m[2] + m[3] : "";                  // 예: "2101"
+    const name   = rawName.replace(/^n?\d{4}[\s_\-]*/i, ""); // 이름 앞 학번(n 포함) 제거
 
-    return { file: fileName, name, title, desc: "", views: 0, avgRating: null, cls, id };
+    return { file: fileName, name, title, desc: "", views: 0, avgRating: null, school, cls, id };
   }
 
   /* 파일명 목록 가져오기: ① GitHub API → ② 실패하면 jsDelivr */
@@ -590,20 +592,27 @@
      학반별 보기
   */
   let ALL_STUDENTS  = [];
-  let selectedClass = null;
+  let selectedKey   = null;   // 예: "nam-21", "dadae-21"
 
   function classLabel(c) { return `${c[0]}-${c[1]}`; }   // "21" → "2-1"
 
-  /* ★ 학반 목록 설정 — 학년: 반 개수 (필요하면 여기만 수정) */
-  const CLASS_CONFIG = { 1: 3, 2: 7 };
+  /* ★ 학반 목록 설정 (필요하면 여기만 수정)
+     school: "nam"(부산남중, 파일명 앞에 n) / "dadae"(다대중)
+     grade : 학년, count: 반 개수 */
+  const CLASS_CONFIG = [
+    { school: "nam",   label: "부산남중 1학년", grade: 1, count: 3 },
+    { school: "nam",   label: "부산남중 2학년", grade: 2, count: 7 },
+    { school: "dadae", label: "다대중 2학년",   grade: 2, count: 7 },
+  ];
 
   function classSectionHTML() {
-    const rows = Object.entries(CLASS_CONFIG).map(([grade, count]) => {
-      const chips = Array.from({ length: count }, (_, i) => {
-        const c = `${grade}${i + 1}`;   // 예: "21"
-        return `<button class="class-chip ${c === selectedClass ? "active" : ""}" data-cls="${c}">${classLabel(c)}</button>`;
+    const rows = CLASS_CONFIG.map(g => {
+      const chips = Array.from({ length: g.count }, (_, i) => {
+        const c   = `${g.grade}${i + 1}`;   // 예: "21"
+        const key = `${g.school}-${c}`;
+        return `<button class="class-chip ${key === selectedKey ? "active" : ""}" data-key="${key}">${classLabel(c)}</button>`;
       }).join("");
-      return `<div class="class-chips"><span class="grade-label">${grade}학년</span>${chips}</div>`;
+      return `<div class="class-chips"><span class="grade-label">${g.label}</span>${chips}</div>`;
     }).join("");
     return `
       <div class="section-label">🏫 학반별 작품 보기</div>
@@ -615,17 +624,18 @@
     const box = document.getElementById("class-list");
     if (!box) return;
 
-    if (!selectedClass) {
+    if (!selectedKey) {
       box.innerHTML = `<div class="class-hint">학반을 선택하면 해당 반 학생들의 작품이 학번 순서대로 표시됩니다.</div>`;
       return;
     }
 
+    const [school, cls] = selectedKey.split("-");
     const list = ALL_STUDENTS
-      .filter(s => s.cls === selectedClass)
+      .filter(s => s.school === school && s.cls === cls)
       .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 
     if (!list.length) {
-      box.innerHTML = `<div class="class-hint">${classLabel(selectedClass)} 학반의 작품이 아직 없습니다.</div>`;
+      box.innerHTML = `<div class="class-hint">${classLabel(cls)} 학반의 작품이 아직 없습니다.</div>`;
       return;
     }
 
@@ -663,10 +673,10 @@
   function bindClassChips() {
     document.querySelectorAll(".class-chip").forEach(btn => {
       btn.addEventListener("click", () => {
-        const c = btn.dataset.cls;
-        selectedClass = (selectedClass === c) ? null : c;   // 같은 버튼 다시 누르면 해제
+        const k = btn.dataset.key;
+        selectedKey = (selectedKey === k) ? null : k;   // 같은 버튼 다시 누르면 해제
         document.querySelectorAll(".class-chip").forEach(b =>
-          b.classList.toggle("active", b.dataset.cls === selectedClass));
+          b.classList.toggle("active", b.dataset.key === selectedKey));
         renderClassList();
       });
     });
