@@ -17,11 +17,6 @@
             font-family: 'Noto Sans KR', sans-serif;
             background-color: #000;
         }
-        #game-canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
         #crosshair {
             position: absolute;
             top: 50%;
@@ -61,28 +56,44 @@
             z-index: 10;
         }
         .hud-panel {
-            background: rgba(0, 20, 40, 0.65);
+            background: rgba(0, 20, 40, 0.75);
             border: 1px solid rgba(0, 200, 255, 0.4);
-            padding: 12px 20px;
+            padding: 15px 20px;
             border-radius: 8px;
             backdrop-filter: blur(4px);
+            min-width: 260px;
         }
         .hud-panel h2 {
             font-size: 18px;
             color: #00e5ff;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
         .hud-panel p {
             font-size: 15px;
-            margin: 3px 0;
+            margin: 5px 0;
         }
-        #click-prompt {
+        #hp-bar-container {
+            width: 100%;
+            height: 14px;
+            background: #333;
+            border-radius: 7px;
+            overflow: hidden;
+            margin-top: 4px;
+            border: 1px solid #555;
+        }
+        #hp-bar {
+            width: 100%;
+            height: 100%;
+            background: #22c55e;
+            transition: width 0.2s, background-color 0.2s;
+        }
+        #overlay-screen {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.85);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -91,15 +102,33 @@
             z-index: 20;
             cursor: pointer;
         }
-        #click-prompt h1 {
-            font-size: 32px;
+        #overlay-screen h1 {
+            font-size: 36px;
             color: #00e5ff;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             text-shadow: 0 0 10px rgba(0,229,255,0.5);
         }
-        #click-prompt p {
+        #overlay-screen p {
             font-size: 16px;
             color: #ccc;
+            margin-bottom: 8px;
+        }
+        #start-btn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+            background-color: #00e5ff;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        #start-btn:hover {
+            transform: scale(1.05);
+            background-color: #00b8d4;
         }
         #action-msg {
             position: absolute;
@@ -114,35 +143,175 @@
             opacity: 0;
             transition: opacity 0.3s;
             z-index: 10;
-            background: rgba(0,0,0,0.6);
-            padding: 8px 16px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 20px;
             border-radius: 20px;
             border: 1px solid #ffd700;
+        }
+        #damage-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 0, 0, 0.3);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.1s;
+            z-index: 15;
         }
     </style>
 </head>
 <body>
 
     <div id="crosshair"></div>
+    <div id="damage-flash"></div>
 
     <div id="hud">
         <div class="hud-panel">
-            <h2>🚨 경찰 1인칭 순찰 모드</h2>
-            <p>체포한 범인 수: <span id="score" style="color:#00ff88; font-weight:bold;">0</span> 명</p>
-            <p>테이저건 상태: <span id="taser-status" style="color:#00e5ff;">장전됨</span></p>
+            <h2>🚨 경찰 순찰 모드 (쉬움→어려움)</h2>
+            <p>경찰 체력 (HP): <span id="hp-text">100</span> / 100</p>
+            <div id="hp-bar-container">
+                <div id="hp-bar"></div>
+            </div>
+            <p style="margin-top:10px;">체포 현황: <span id="score" style="color:#00ff88; font-weight:bold;">0</span> / 20 명</p>
+            <p>남은 시간: <span id="timer" style="color:#ffcc00; font-weight:bold;">05:00</span></p>
+            <p>테이저건 탄약: <span id="ammo" style="color:#00e5ff; font-weight:bold;">10</span> 발</p>
+            <p>현재 난이도: <span id="difficulty" style="color:#22c55e;">LV. 1 (쉬움)</span></p>
         </div>
     </div>
 
     <div id="action-msg">범인 제압 완료! 접근하여 한 번 더 클릭해 체포하세요!</div>
 
-    <div id="click-prompt">
-        <h1>화면을 클릭하여 조작을 시작하세요</h1>
-        <p>1인칭 마우스 시점 조작 | W,A,S,D: 이동 | 마우스 좌클릭: 테이저건 발사 / 체포</p>
+    <div id="overlay-screen">
+        <h1 id="overlay-title">🚨 경찰관 순찰 시뮬레이터</h1>
+        <p id="overlay-desc1">목표: 5분 안에 범인 20명을 체포하세요.</p>
+        <p id="overlay-desc2">난이도가 '쉬움'에서 시작하여 범인을 체포할수록 점점 더 빨라집니다!</p>
+        <p style="margin-top: 10px; color: #888;">조작법: W/A/S/D (이동), 마우스 (시선 전환 및 발사)</p>
+        <button id="start-btn">지금 바로 시작하기</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
+        // --- Web Audio API 기반 오디오 합성기 ---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // 1. 테이저건 전기 발사음
+        function playTaserSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(120, now + 0.15);
+
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.15);
+        }
+
+        // 2. 수갑 채우는 철컥 효과음
+        function playCuffSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+
+            for (let i = 0; i < 2; i++) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(2200 - i * 400, now + i * 0.08);
+                osc.frequency.exponentialRampToValueAtTime(400, now + i * 0.08 + 0.05);
+
+                gain.gain.setValueAtTime(0.4, now + i * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.05);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now + i * 0.08);
+                osc.stop(now + i * 0.08 + 0.05);
+            }
+        }
+
+        // 3. 범인 도망 발소리
+        function playFootstepSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+
+            const bufferSize = audioCtx.sampleRate * 0.04;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 600;
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            noise.start(now);
+        }
+
+        // 4. 피격/공격 소리
+        function playHitSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+
+            gain.gain.setValueAtTime(0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.12);
+        }
+
+        // --- 게임 상태 변수 ---
+        let score = 0;
+        const targetScore = 20;
+        let ammo = 10;
+        let health = 100;
+        let timeRemaining = 300;
+        let gameOver = false;
+        let gameStarted = false;
+        
+        let baseSuspectSpeed = 0.035;
+
         // --- 씬 및 기본 설정 ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0f172a);
@@ -164,16 +333,9 @@
         dirLight.castShadow = true;
         dirLight.shadow.mapSize.width = 2048;
         dirLight.shadow.mapSize.height = 2048;
-        dirLight.shadow.camera.near = 0.5;
-        dirLight.shadow.camera.far = 150;
-        const d = 60;
-        dirLight.shadow.camera.left = -d;
-        dirLight.shadow.camera.right = d;
-        dirLight.shadow.camera.top = d;
-        dirLight.shadow.camera.bottom = -d;
         scene.add(dirLight);
 
-        // --- 도시 및 도로 바닥 ---
+        // --- 도시 바닥 및 건물 ---
         const citySize = 200;
         const floorGeo = new THREE.PlaneGeometry(citySize, citySize);
         const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
@@ -182,19 +344,16 @@
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // 건물 충돌체 데이터 목록
         const buildingColliders = [];
 
         function createCity() {
             const buildingMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 });
-            const windowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-
             const gridSize = 6;
             const spacing = 28;
 
             for (let i = -gridSize; i <= gridSize; i++) {
                 for (let j = -gridSize; j <= gridSize; j++) {
-                    if (Math.abs(i) <= 1 && Math.abs(j) <= 1) continue; // 중앙 광장 비우기
+                    if (Math.abs(i) <= 1 && Math.abs(j) <= 1) continue;
 
                     if (Math.random() > 0.3) {
                         const width = 12 + Math.random() * 4;
@@ -211,14 +370,6 @@
                         building.receiveShadow = true;
                         scene.add(building);
 
-                        // 창문 표현
-                        for (let w = 0; w < 6; w++) {
-                            const win = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2), windowMat);
-                            win.position.set(x + (Math.random() - 0.5) * (width - 2), 2 + Math.random() * (height - 4), z + depth / 2 + 0.01);
-                            scene.add(win);
-                        }
-
-                        // 충돌 영역 등록
                         buildingColliders.push({
                             minX: x - width / 2 - 0.6,
                             maxX: x + width / 2 + 0.6,
@@ -231,52 +382,37 @@
         }
         createCity();
 
-        // --- 플레이어 (1인칭 카메라이동) ---
+        // --- 플레이어 (경찰관) ---
         const player = {
             position: new THREE.Vector3(0, 1.65, 0),
-            velocity: new THREE.Vector3(),
             radius: 0.5
         };
 
         camera.position.copy(player.position);
 
-        // 1인칭 테이저건 및 손 모델 (카메라 자식으로 추가)
         const fpvGroup = new THREE.Group();
-        
-        // 경찰관 팔/소매
-        const armGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.4);
-        const armMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a }); // 경찰 제복 색상
-        const arm = new THREE.Mesh(armGeo, armMat);
+        const armMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a });
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.4), armMat);
         arm.rotation.x = Math.PI / 3;
         arm.position.set(0.25, -0.25, -0.4);
         fpvGroup.add(arm);
 
-        // 테이저건
         const taserBody = new THREE.Mesh(
             new THREE.BoxGeometry(0.08, 0.12, 0.25),
-            new THREE.MeshStandardMaterial({ color: 0xfacc15 }) // 노란색 테이저건
+            new THREE.MeshStandardMaterial({ color: 0xfacc15 })
         );
         taserBody.position.set(0.25, -0.18, -0.45);
         fpvGroup.add(taserBody);
 
-        const taserBarrel = new THREE.Mesh(
-            new THREE.BoxGeometry(0.06, 0.06, 0.08),
-            new THREE.MeshStandardMaterial({ color: 0x111111 })
-        );
-        taserBarrel.position.set(0.25, -0.15, -0.58);
-        fpvGroup.add(taserBarrel);
-
         camera.add(fpvGroup);
         scene.add(camera);
 
-        // --- 범인 NPC 생성 ---
+        // --- 범인 NPC ---
         const suspects = [];
-        let score = 0;
 
         function createSuspect() {
             const group = new THREE.Group();
 
-            // 몸통 (빨간 후드)
             const body = new THREE.Mesh(
                 new THREE.CylinderGeometry(0.3, 0.25, 0.9),
                 new THREE.MeshStandardMaterial({ color: 0xd97706 })
@@ -285,7 +421,6 @@
             body.castShadow = true;
             group.add(body);
 
-            // 머리
             const head = new THREE.Mesh(
                 new THREE.SphereGeometry(0.22, 16, 16),
                 new THREE.MeshStandardMaterial({ color: 0xffdbac })
@@ -294,20 +429,17 @@
             head.castShadow = true;
             group.add(head);
 
-            // 다리
             const legMat = new THREE.MeshStandardMaterial({ color: 0x1f2937 });
             const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.7), legMat);
             legL.position.set(-0.12, 0.35, 0);
-            legL.castShadow = true;
             group.add(legL);
 
             const legR = legL.clone();
             legR.position.x = 0.12;
             group.add(legR);
 
-            // 위치 지정 (중앙 주변)
             const angle = Math.random() * Math.PI * 2;
-            const dist = 12 + Math.random() * 20;
+            const dist = 14 + Math.random() * 18;
             group.position.set(
                 player.position.x + Math.cos(angle) * dist,
                 0,
@@ -321,41 +453,53 @@
                 legL: legL,
                 legR: legR,
                 isDown: false,
-                fleeSpeed: 0.07,
-                animTime: Math.random() * 10
+                animTime: Math.random() * 10,
+                lastAttackTime: 0,
+                lastFootstepTime: 0
             });
         }
 
         for (let i = 0; i < 4; i++) createSuspect();
 
-        // --- 마우스 포인터 락 조작 ---
+        // --- 포인터 락 ---
         let isLocked = false;
         let yaw = 0;
         let pitch = 0;
 
-        const clickPrompt = document.getElementById('click-prompt');
-        clickPrompt.addEventListener('click', () => {
+        const overlayScreen = document.getElementById('overlay-screen');
+        const startBtn = document.getElementById('start-btn');
+
+        function startGame() {
+            if (gameOver) {
+                location.reload();
+                return;
+            }
+            initAudio();
             document.body.requestPointerLock();
-        });
+            gameStarted = true;
+        }
+
+        overlayScreen.addEventListener('click', startGame);
 
         document.addEventListener('pointerlockchange', () => {
             if (document.pointerLockElement === document.body) {
                 isLocked = true;
-                clickPrompt.style.display = 'none';
+                overlayScreen.style.display = 'none';
             } else {
                 isLocked = false;
-                clickPrompt.style.display = 'flex';
+                if (!gameOver) {
+                    overlayScreen.style.display = 'flex';
+                }
             }
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (!isLocked) return;
+            if (!isLocked || gameOver) return;
 
             const sensitivity = 0.002;
             yaw -= e.movementX * sensitivity;
             pitch -= e.movementY * sensitivity;
 
-            // 고개 상하 각도 제한 (-85도 ~ 85도)
             pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
 
             camera.rotation.order = 'YXZ';
@@ -363,7 +507,7 @@
             camera.rotation.x = pitch;
         });
 
-        // --- 키보드 이동 조작 ---
+        // --- 키보드 이동 ---
         const keys = { w: false, a: false, s: false, d: false };
         window.addEventListener('keydown', (e) => {
             const k = e.key.toLowerCase();
@@ -381,21 +525,18 @@
             if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
         });
 
-        // --- 벽 충돌 판정 및 슬라이딩 이동 ---
+        // --- 충돌 이동 ---
         function moveWithCollision(currentPos, deltaX, deltaZ) {
             let newX = currentPos.x + deltaX;
             let newZ = currentPos.z + deltaZ;
 
             for (const col of buildingColliders) {
                 if (newX > col.minX && newX < col.maxX && newZ > col.minZ && newZ < col.maxZ) {
-                    // X축 충돌 시 Z축만 이동 허용
                     if (currentPos.x <= col.minX || currentPos.x >= col.maxX) newX = currentPos.x;
-                    // Z축 충돌 시 X축만 이동 허용
                     if (currentPos.z <= col.minZ || currentPos.z >= col.maxZ) newZ = currentPos.z;
                 }
             }
 
-            // 도시 외곽 경계 제한
             const limit = citySize / 2 - 2;
             newX = Math.max(-limit, Math.min(limit, newX));
             newZ = Math.max(-limit, Math.min(limit, newZ));
@@ -404,21 +545,28 @@
             currentPos.z = newZ;
         }
 
-        // --- 사격 및 체포 시스템 (레이캐스팅) ---
+        // --- 사격 및 체포 ---
         const raycaster = new THREE.Raycaster();
         let canShoot = true;
 
         window.addEventListener('mousedown', (e) => {
-            if (!isLocked || e.button !== 0 || !canShoot) return;
+            if (!isLocked || e.button !== 0 || !canShoot || gameOver) return;
 
-            // 화면 중앙(크로스헤어) 기준 레이 발사
+            if (ammo <= 0) {
+                showActionMsg("❌ 탄약이 부족합니다!");
+                return;
+            }
+
+            ammo--;
+            document.getElementById('ammo').innerText = ammo;
+
+            playTaserSound();
+
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
             
-            // 테이저건 반동 애니메이션
             fpvGroup.position.z = 0.08;
             setTimeout(() => fpvGroup.position.z = 0, 100);
 
-            // 모든 범인과의 교차 검사
             let hitFound = false;
 
             suspects.forEach((suspect, idx) => {
@@ -431,49 +579,54 @@
                     hitFound = true;
 
                     if (!suspect.isDown) {
-                        // 1차 클릭: 테이저건 제압
                         fireTaserVisual(suspect.mesh.position);
                         suspect.isDown = true;
 
-                        // 쓰러지는 라그돌 연출
                         suspect.mesh.rotation.x = -Math.PI / 2;
                         suspect.mesh.position.y = 0.2;
 
-                        showActionMsg("범인 제압 완료! 가까이 가서 클릭하여 체포하세요!");
+                        showActionMsg("범인 제압 완료! 접근하여 체포하세요!");
                     } else if (dist < 3.5) {
-                        // 2차 클릭: 가까이서 체포
+                        playCuffSound();
+
                         scene.remove(suspect.mesh);
                         suspects.splice(idx, 1);
                         score++;
                         document.getElementById('score').innerText = score;
 
-                        showActionMsg("🚨 범인을 체포했습니다!");
+                        baseSuspectSpeed += 0.005;
+                        
+                        let diffText = `LV. ${score + 1}`;
+                        if (score < 5) diffText += " (쉬움)";
+                        else if (score < 12) diffText += " (보통)";
+                        else diffText += " (어려움)";
+                        
+                        const diffEl = document.getElementById('difficulty');
+                        diffEl.innerText = diffText;
+                        if (score >= 12) diffEl.style.color = '#ef4444';
+                        else if (score >= 5) diffEl.style.color = '#eab308';
 
-                        // 일정 시간 후 새 범인 생성
-                        setTimeout(createSuspect, 3000);
+                        if (score >= targetScore) {
+                            endGame(true, "🎉 작전 성공! 모든 범인을 체포했습니다!");
+                            return;
+                        }
+
+                        showActionMsg("🚨 체포 완료! 난이도가 상승합니다!");
+                        setTimeout(createSuspect, 2500);
                     }
                 }
             });
 
-            // 공중에 쐈을 때 테이저 이펙트
             if (!hitFound) {
                 const targetPos = new THREE.Vector3();
                 raycaster.ray.at(15, targetPos);
                 fireTaserVisual(targetPos);
             }
 
-            // 쿨타임 설정
             canShoot = false;
-            document.getElementById('taser-status').innerText = '재장전 중...';
-            document.getElementById('taser-status').style.color = '#ff4444';
-            setTimeout(() => {
-                canShoot = true;
-                document.getElementById('taser-status').innerText = '장전됨';
-                document.getElementById('taser-status').style.color = '#00e5ff';
-            }, 800);
+            setTimeout(() => canShoot = true, 500);
         });
 
-        // 테이저건 번개 이펙트
         function fireTaserVisual(targetVec) {
             const muzzlePos = new THREE.Vector3(0.2, -0.15, -0.5);
             muzzlePos.applyMatrix4(camera.matrixWorld);
@@ -497,6 +650,29 @@
             setTimeout(() => scene.remove(line), 120);
         }
 
+        function takeDamage(amount) {
+            if (gameOver) return;
+            health -= amount;
+            if (health < 0) health = 0;
+
+            playHitSound();
+
+            document.getElementById('hp-text').innerText = health;
+            const hpBar = document.getElementById('hp-bar');
+            hpBar.style.width = health + '%';
+
+            if (health < 30) hpBar.style.backgroundColor = '#ef4444';
+            else if (health < 60) hpBar.style.backgroundColor = '#eab308';
+
+            const flash = document.getElementById('damage-flash');
+            flash.style.opacity = '1';
+            setTimeout(() => flash.style.opacity = '0', 150);
+
+            if (health <= 0) {
+                endGame(false, "☠️ 경찰관이 순직했습니다. 작전 실패!");
+            }
+        }
+
         function showActionMsg(text) {
             const msg = document.getElementById('action-msg');
             msg.innerText = text;
@@ -504,16 +680,42 @@
             setTimeout(() => msg.style.opacity = '0', 2500);
         }
 
-        // --- 루프 애니메이션 ---
+        function endGame(isWin, message) {
+            gameOver = true;
+            document.exitPointerLock();
+            overlayScreen.style.display = 'flex';
+            document.getElementById('overlay-title').innerText = isWin ? "MISSION COMPLETE" : "GAME OVER";
+            document.getElementById('overlay-title').style.color = isWin ? "#00ff88" : "#ff4444";
+            document.getElementById('overlay-desc1').innerText = message;
+            document.getElementById('overlay-desc2').innerText = "클릭하여 게임을 다시 시작하세요.";
+            startBtn.innerText = "다시 도전하기";
+        }
+
+        // --- 타이머 ---
+        setInterval(() => {
+            if (!gameStarted || gameOver) return;
+
+            timeRemaining--;
+            const mins = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+            const secs = (timeRemaining % 60).toString().padStart(2, '0');
+            document.getElementById('timer').innerText = `
+mins:{secs}`;
+
+            if (timeRemaining <= 0) {
+                endGame(false, "⏱️ 제한 시간이 초과되었습니다!");
+            }
+        }, 1000);
+
+        // --- 애니메이션 루프 ---
         const clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
+            const now = clock.getElapsedTime();
 
-            if (isLocked) {
-                // 플레이어 이동 처리
-                const moveSpeed = 8.0 * delta;
+            if (isLocked && !gameOver) {
+                const moveSpeed = 8.5 * delta;
                 let dx = 0;
                 let dz = 0;
 
@@ -531,26 +733,32 @@
                 }
             }
 
-            // 범인 AI 행동
             suspects.forEach((suspect) => {
-                if (suspect.isDown) return;
+                if (suspect.isDown || gameOver) return;
 
                 const dist = player.position.distanceTo(suspect.mesh.position);
+                const dir = new THREE.Vector3()
+                    .subVectors(player.position, suspect.mesh.position)
+                    .setY(0)
+                    .normalize();
 
-                // 플레이어가 도망거리(12m) 안으로 오면 도망침
-                if (dist < 12) {
-                    const fleeDir = new THREE.Vector3()
-                        .subVectors(suspect.mesh.position, player.position)
-                        .setY(0)
-                        .normalize();
+                if (dist < 14) {
+                    moveWithCollision(suspect.mesh.position, dir.x * baseSuspectSpeed, dir.z * baseSuspectSpeed);
+                    suspect.mesh.rotation.y = Math.atan2(dir.x, dir.z);
 
-                    moveWithCollision(suspect.mesh.position, fleeDir.x * suspect.fleeSpeed, fleeDir.z * suspect.fleeSpeed);
-                    suspect.mesh.rotation.y = Math.atan2(fleeDir.x, fleeDir.z);
-
-                    // 뛰는 애니메이션
                     suspect.animTime += delta * 12;
                     suspect.legL.rotation.x = Math.sin(suspect.animTime) * 0.6;
                     suspect.legR.rotation.x = -Math.sin(suspect.animTime) * 0.6;
+
+                    if (now - suspect.lastFootstepTime > 0.35) {
+                        playFootstepSound();
+                        suspect.lastFootstepTime = now;
+                    }
+
+                    if (dist < 1.8 && now - suspect.lastAttackTime > 1.0) {
+                        takeDamage(15);
+                        suspect.lastAttackTime = now;
+                    }
                 }
             });
 
