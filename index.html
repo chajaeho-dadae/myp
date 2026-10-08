@@ -348,7 +348,7 @@
       const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
       if (!res.ok) throw new Error(`GitHub API 오류: ${res.status}`);
       const items = await res.json();
-      return { names: items.filter(i => i.type === "file").map(i => i.name), fresh: true };
+      return { names: items.filter(i => i.type === "file").map(i => i.name), fresh: true, source: "GitHub API (최신)" };
     } catch (e) {
       console.warn("GitHub API 실패, jsDelivr로 대체합니다:", e.message);
       const url = `https://data.jsdelivr.com/v1/packages/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}?structure=flat`;
@@ -361,27 +361,37 @@
         .filter(n => n.startsWith(prefix) && !n.slice(prefix.length).includes("/"))
         .map(n => n.slice(prefix.length));
       /* jsDelivr는 branch 기준으로 오래된(최대 수 시간 전) 목록을 줄 수 있음 */
-      return { names, fresh: false };
+      return { names, fresh: false, source: "jsDelivr (오래된 목록일 수 있음)" };
     }
   }
 
+  /* 진단용: 마지막으로 불러온 목록의 출처와 파일명 */
+  let LOAD_INFO = { source: "", names: [] };
+
   async function fetchStudentsFromGitHub() {
     let names = null;
+    let source = "";
 
     /* 최근(GitHub API)에서 받은 목록이 있으면 재사용 (API 호출 횟수 절약) */
     try {
       const c = JSON.parse(localStorage.getItem(FILES_CACHE_KEY) || "null");
-      if (c && Date.now() - c.t < FILES_CACHE_MS) names = c.names;
+      if (c && Date.now() - c.t < FILES_CACHE_MS) {
+        names  = c.names;
+        source = `브라우저에 저장된 목록 (${Math.round((Date.now() - c.t) / 1000)}초 전)`;
+      }
     } catch {}
 
     if (!names) {
       const r = await fetchFileNames();
-      names = r.names;
+      names  = r.names;
+      source = r.source;
       /* 최신 목록(GitHub API)일 때만 저장 → 오래된 목록이 캐시에 남지 않도록 */
       if (r.fresh) {
         try { localStorage.setItem(FILES_CACHE_KEY, JSON.stringify({ t: Date.now(), names })); } catch {}
       }
     }
+
+    LOAD_INFO = { source, names };
 
     return names
       .filter(n => /\.html$/i.test(n))
@@ -641,7 +651,9 @@
       .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 
     if (!list.length) {
-      box.innerHTML = `<div class="class-hint">${classLabel(cls)} 학반의 작품이 아직 없습니다.</div>`;
+      box.innerHTML = `<div class="class-hint">${classLabel(cls)} 학반의 작품이 아직 없습니다.<br>
+        <small style="opacity:.7">불러온 파일 ${ALL_STUDENTS.length}개 · 목록 출처: ${LOAD_INFO.source}<br>
+        파일이 분명히 있다면 주소 끝에 <b>?debug=1</b> 을 붙여 확인해 보세요.</small></div>`;
       return;
     }
 
@@ -772,6 +784,30 @@
     bindClassChips();
     renderClassList();
     attachStarEvents(app);
+
+    /* 진단 패널: 주소 끝에 ?debug=1 을 붙이면 표시 */
+    if (new URLSearchParams(location.search).has("debug")) {
+      const schoolName = { nam: "BSN", dadae: "DADAE" };
+      const rows = students.map(s => {
+        const where = s.school ? `${schoolName[s.school]} ${s.cls[0]}-${s.cls[1]}` : "⚠ 학번 인식 안 됨";
+        return `<tr><td>${esc(s.file)}</td><td>${where}</td></tr>`;
+      }).join("");
+      app.insertAdjacentHTML("beforeend", `
+        <div class="section-label">🛠 진단 정보</div>
+        <div class="class-hint" style="text-align:left;line-height:1.8">
+          목록 출처: <b>${esc(LOAD_INFO.source)}</b><br>
+          GitHub 파일 개수: <b>${LOAD_INFO.names.length}</b> · .html 파일: <b>${students.length}</b><br>
+          <button class="class-chip" onclick="localStorage.removeItem('${FILES_CACHE_KEY}');location.reload()">저장된 목록 지우고 새로고침</button>
+        </div>
+        <div class="table-wrap" style="margin-top:12px"><table>
+          <thead><tr><th>파일명</th><th>인식 결과</th></tr></thead>
+          <tbody>${rows}</tbody></table></div>`);
+    }
+  }
+
+  /* HTML 이스케이프 (진단 패널용) */
+  function esc(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
 
   /* ── 작품 클릭 → 조회수 증가 ── */
