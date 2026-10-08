@@ -322,7 +322,7 @@
      GitHub API — students/ 폴더 파일 목록
   */
   const FILES_CACHE_KEY = "students_files_cache";
-  const FILES_CACHE_MS  = 10 * 60 * 1000;   // 10분 동안은 저장된 목록 사용
+  const FILES_CACHE_MS  = 3 * 60 * 1000;    // 3분 동안은 저장된 목록 사용
 
   /* 파일명 → 학생 객체 */
   function parseStudent(fileName) {
@@ -348,7 +348,7 @@
       const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
       if (!res.ok) throw new Error(`GitHub API 오류: ${res.status}`);
       const items = await res.json();
-      return items.filter(i => i.type === "file").map(i => i.name);
+      return { names: items.filter(i => i.type === "file").map(i => i.name), fresh: true };
     } catch (e) {
       console.warn("GitHub API 실패, jsDelivr로 대체합니다:", e.message);
       const url = `https://data.jsdelivr.com/v1/packages/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}?structure=flat`;
@@ -356,29 +356,35 @@
       if (!res.ok) throw new Error(`목록을 불러오지 못했습니다 (jsDelivr ${res.status})`);
       const data = await res.json();
       const prefix = `/${FOLDER}/`;
-      return (data.files || [])
+      const names = (data.files || [])
         .map(f => f.name)
         .filter(n => n.startsWith(prefix) && !n.slice(prefix.length).includes("/"))
         .map(n => n.slice(prefix.length));
+      /* jsDelivr는 branch 기준으로 오래된(최대 수 시간 전) 목록을 줄 수 있음 */
+      return { names, fresh: false };
     }
   }
 
   async function fetchStudentsFromGitHub() {
     let names = null;
 
-    /* 최근에 받은 목록이 있으면 재사용 (API 호출 횟수 절약) */
+    /* 최근(GitHub API)에서 받은 목록이 있으면 재사용 (API 호출 횟수 절약) */
     try {
       const c = JSON.parse(localStorage.getItem(FILES_CACHE_KEY) || "null");
       if (c && Date.now() - c.t < FILES_CACHE_MS) names = c.names;
     } catch {}
 
     if (!names) {
-      names = await fetchFileNames();
-      try { localStorage.setItem(FILES_CACHE_KEY, JSON.stringify({ t: Date.now(), names })); } catch {}
+      const r = await fetchFileNames();
+      names = r.names;
+      /* 최신 목록(GitHub API)일 때만 저장 → 오래된 목록이 캐시에 남지 않도록 */
+      if (r.fresh) {
+        try { localStorage.setItem(FILES_CACHE_KEY, JSON.stringify({ t: Date.now(), names })); } catch {}
+      }
     }
 
     return names
-      .filter(n => n.endsWith(".html"))
+      .filter(n => /\.html$/i.test(n))
       .map(parseStudent);
   }
 
@@ -600,9 +606,9 @@
      school: "nam"(부산남중, 파일명 앞에 n) / "dadae"(다대중)
      grade : 학년, count: 반 개수 */
   const CLASS_CONFIG = [
-    { school: "nam",   label: "BSN", grade: 1, count: 3 },
-    { school: "nam",   label: "BSN", grade: 2, count: 7 },
-    { school: "dadae", label: "DADAE",   grade: 2, count: 7 },
+    { school: "nam",   label: "BSN",   grade: 1, count: 3 },
+    { school: "nam",   label: "BSN",   grade: 2, count: 3 },
+    { school: "dadae", label: "DADAE", grade: 2, count: 7 },
   ];
 
   function classSectionHTML() {
