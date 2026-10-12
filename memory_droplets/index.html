@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Droplet Clash</title>
+<title>Memory Droplet</title>
 <style>
 :root{--void:#03050b;--ink:#e8eeff;--cy:#7cf}
 html,body{margin:0;height:100%;background:var(--void);overflow:hidden;font-family:"Pretendard","Noto Sans KR",system-ui,sans-serif}
@@ -27,7 +27,7 @@ canvas{display:block;width:100%;height:100%;cursor:crosshair}
 .sw.sel{border-color:#fff;transform:scale(1.18);box-shadow:0 0 0 3px rgba(255,255,255,.25),0 0 14px rgba(255,255,255,.35)}
 </style></head><body>
 <canvas id="c"></canvas>
-<div id="ov"><h1 id="ttl">Droplet Clash</h1><p id="msg"></p><input id="nick" type="text" autocomplete="off" spellcheck="false" placeholder="Name"><div id="pal"></div></div>
+<div id="ov"><h1 id="ttl">Memory Droplet</h1><p id="msg"></p><input id="nick" type="text" autocomplete="off" spellcheck="false" placeholder="Name"><div id="pal"></div></div>
 <script>
 const cv=document.getElementById('c'),ctx=cv.getContext('2d'),ov=document.getElementById('ov'),ttl=document.getElementById('ttl'),msg=document.getElementById('msg'),nick=document.getElementById('nick');
 // ===== 조정 가능한 파라미터 (밀도 = N / (W*H)) =====
@@ -151,7 +151,7 @@ function showOv(over){
   ovAt=performance.now();ov.style.display='flex';chargeSound(0);
   if(!over)nick.focus();
   if(over){state='over';ttl.textContent='Clashed';const sv=surv/1000,svt=sv<60?Math.floor(sv)+' sec':(sv/60).toFixed(1)+' min';msg.innerHTML=`<table id="res"><tr><td>Survive:</td><td>${svt}</td></tr><tr><td>Score:</td><td>${Math.round(maxScore)}</td></tr><tr><td>Max Clash:</td><td>${maxClash}</td></tr></table>`}
-  else{ttl.textContent='Droplet Clash';msg.innerHTML=''}
+  else{ttl.textContent='Memory Droplet';msg.innerHTML=''}
 }
 ov.addEventListener('click',e=>{if(e.target===nick||e.target.closest('#pal'))return;if(performance.now()-ovAt>500)reset()});
 addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
