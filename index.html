@@ -258,6 +258,22 @@
     }
     .id-cell { font-size: .85rem; color: var(--accent2); font-weight: 700; white-space: nowrap; }
 
+    /* ── 예시 작품 목록 ── */
+    .example-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+    }
+    .example-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 16px;
+      color: var(--text); text-decoration: none; font-size: .88rem; font-weight: 500;
+      transition: all .2s; word-break: break-all;
+    }
+    .example-item:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+    .example-item .ex-icon { font-size: 1.1rem; flex-shrink: 0; }
+
     /* 로딩 / 에러 */
     .state-msg {
       text-align: center; padding: 60px 20px;
@@ -701,6 +717,58 @@
   }
 
   /* ════════════════════════════════════════════════
+     예시 작품 (myp/examples/ 폴더)
+  */
+  const EXAMPLES_FOLDER = "examples";
+
+  async function fetchExampleNames() {
+    try {
+      const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${EXAMPLES_FOLDER}?ref=${GITHUB_BRANCH}`;
+      const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
+      if (!res.ok) throw new Error(`GitHub API 오류: ${res.status}`);
+      const items = await res.json();
+      return items.filter(i => i.type === "file").map(i => i.name);
+    } catch (e) {
+      console.warn("예시 목록: GitHub API 실패, jsDelivr로 대체합니다:", e.message);
+      const url = `https://data.jsdelivr.com/v1/packages/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}?structure=flat`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`예시 목록을 불러오지 못했습니다 (${res.status})`);
+      const data = await res.json();
+      const prefix = `/${EXAMPLES_FOLDER}/`;
+      return (data.files || [])
+        .map(f => f.name)
+        .filter(n => n.startsWith(prefix) && !n.slice(prefix.length).includes("/"))
+        .map(n => n.slice(prefix.length));
+    }
+  }
+
+  function exampleSectionHTML() {
+    return `
+      <div class="section-label">💡 예시 작품</div>
+      <div id="example-list"><div class="class-hint">예시 목록을 불러오는 중…</div></div>`;
+  }
+
+  async function renderExamples() {
+    const box = document.getElementById("example-list");
+    if (!box) return;
+    try {
+      const names = (await fetchExampleNames())
+        .filter(n => /\.html$/i.test(n))
+        .sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
+      if (!names.length) {
+        box.innerHTML = `<div class="class-hint">examples/ 폴더에 .html 파일이 없습니다.</div>`;
+        return;
+      }
+      box.innerHTML = `<div class="example-list">${names.map(n => `
+        <a class="example-item" href="${EXAMPLES_FOLDER}/${encodeURIComponent(n)}" target="_blank" rel="noopener">
+          <span class="ex-icon">▶</span><span>${esc(n)}</span>
+        </a>`).join("")}</div>`;
+    } catch (err) {
+      box.innerHTML = `<div class="class-hint">⚠️ ${esc(err.message)}</div>`;
+    }
+  }
+
+  /* ════════════════════════════════════════════════
      렌더링
   */
   function render(students) {
@@ -778,10 +846,11 @@
       </div>`;
 
     /* 명예의 전당 → 학반 선택 → 전체 작품 목록 */
-    app.innerHTML = medalHTML + classSectionHTML() + tableHTML;
+    app.innerHTML = medalHTML + classSectionHTML() + exampleSectionHTML() + tableHTML;
 
     /* HTML 삽입 후 이벤트 연결 */
     bindClassChips();
+    renderExamples();
     renderClassList();
     attachStarEvents(app);
 
