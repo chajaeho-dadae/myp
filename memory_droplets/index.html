@@ -38,7 +38,7 @@ const P={
   N:79,         // 맵에 유지되는 총 개체 수 (플레이어 포함). 흡수로 줄면 화면 밖에서 자동 보충됨
 
   // ---------- 배경 별빛 (글로우가 있는 작고 희미한 점들) ----------
-  STAR_DENS:1000,  // 배경 점 밀도 = 1000×1000px 면적당 점 개수. 클수록 빽빽함 (0이면 점 없음, 45면 화면에 보이는 점이 대략 수십 개)
+  STAR_DENS:45,  // 배경 점 밀도 = 1000×1000px 면적당 점 개수. 클수록 빽빽함 (0이면 점 없음, 45면 화면에 보이는 점이 대략 수십 개)
   STAR_PARALLAX:.7, // 원근감 정도 (0~1). 멀리 있는(작고 어두운) 점일수록 카메라 이동에 덜 따라 움직임. 0이면 모두 맵과 함께 고정
 
   // ---------- 개체(물방울) ----------
@@ -71,6 +71,9 @@ const P={
   CHG_KB:2,      // 최대 압력일 때 넉백 거리 추가 배율. 넉백 거리 = D1 × (1 + CHG_KB × 압력) → 최대 시 D1의 3배
 
   // ---------- 진화 단계 (점수에 따라 개체 외형이 단계별로 진화) ----------
+  FX_HOLD:12,    // 내 개체의 연쇄 효과가 유지되는 시간(초). 한 번의 발사로 연쇄 클래쉬에 성공하면 그 연쇄 횟수(1~5)에 해당하는 효과 단계가 이 시간 동안 유지됨
+  FX_FADE:3,     // 유지 시간이 끝나기 전 마지막 몇 초 동안 효과가 서서히 옅어짐
+  // (적 개체 전용) 점수 기준 진화 단계. 내 개체는 이 값이 아니라 '한 번의 발사로 일으킨 연쇄 클래쉬 횟수'로 단계가 정해짐
   TIERS:[5,14,28,48,80], // 각 진화 단계에 도달하는 점수 5개. 1단계 보조 링 → 2단계 위성 → 3단계 갈라진 꼬리 → 4단계 코로나 광선 → 5단계 이중 링+큰 후광. 값을 키우면 진화가 늦어짐
 
   // ---------- 중력 (점수가 높은 개체가 더 낮은 점수의 개체를 끌어당김) ----------
@@ -122,7 +125,7 @@ let myHue=210;   // 내가 선택한 색(색상 각도 0~360, null이면 흰색)
 let palIdx=0;
 // 다른 개체의 색: 기존 분포(황금각)를 내 색 ±COLOR_EXCL 구간을 뺀 나머지 범위로 압축해 내 색과 겹치지 않게 함
 function botHue(id){const h=(id*137.508)%360,ex=P.COLOR_EXCL;if(myHue==null)return h;return (myHue+ex+h/360*(360-2*ex))%360}
-function mk(x,y,isP){const id=uid++;return{id,x,y,a:rnd(0,TAU),hue:isP?myHue:botHue(id),score:0,cd:isP?0:rnd(0,P.CD),claimed:false,circ:false,ct:0,dead:false,isP,ta:rnd(0,TAU),tt:rnd(0,2),pulse:0,boost:false,charge:0,name:'',lvS:0,tier:0,mix:[],awk:0,ph:rnd(0,TAU)}}
+function mk(x,y,isP){const id=uid++;return{id,x,y,a:rnd(0,TAU),hue:isP?myHue:botHue(id),score:0,cd:isP?0:rnd(0,P.CD),claimed:false,circ:false,ct:0,dead:false,isP,ta:rnd(0,TAU),tt:rnd(0,2),pulse:0,boost:false,charge:0,name:'',lvS:0,tier:0,cl:0,clT:0,mix:[],awk:0,ph:rnd(0,TAU)}}
 function spawnPos(minD){
   for(let i=0;i<40;i++){
     const x=rnd(60,P.W-60),y=rnd(60,P.H-60);
@@ -264,7 +267,7 @@ function chargeSound(q,lv=0){
 
 // ===== 이펙트 헬퍼 =====
 function burst(x,y,e,n){for(let i=0;i<n;i++){const a=rnd(0,TAU),s=rnd(80,420);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:0,m:rnd(.3,.7),h:e.hue,s:rnd(2,5)})}if(parts.length>700)parts.splice(0,parts.length-700)}
-function ring(x,y,h,r,soft){parts.push({x,y,ring:1,l:0,m:soft?.6:.38,h,r,soft})}   // soft=true: 선이 느껴지지 않는 부드러운 빛 띠
+function ring(x,y,h,r,soft,delay=0){parts.push({x,y,ring:1,l:-delay,m:soft?.6:.38,h,r,soft})}   // soft=true: 선이 느껴지지 않는 부드러운 빛 띠
 
 // ===== 게임 로직 =====
 // 점수 → 연속 진화 레벨(0~5), 정수 단계
@@ -276,6 +279,24 @@ function tierUp(e,t){
   ring(e.x,e.y,e.hue,80+t*22,true);ring(e.x,e.y,null,50+t*16,true);burst(e.x,e.y,e,14+t*6);e.pulse=1;
   if(e.isP){edge=Math.max(edge,1);flash=Math.max(flash,.14+.04*t);shake=Math.min(30,shake+6+t*2);sfx.tier(t,1)}
   else sfx.tier(t,.5*vf(e.x,e.y));
+}
+// 연쇄 단계 연출: 내 개체가 한 번의 발사로 일으킨 연쇄 클래쉬 횟수(1~5)에 따라 효과가 달라짐. 단계가 오를수록 빛 띠가 겹겹이 퍼지고, 입자·섬광·진동이 커지며, 5단계에선 금빛이 더해짐
+function chainUp(e,lv){
+  const x=e.x,y=e.y;
+  for(let i=0;i<lv;i++)ring(x,y,i%2?null:e.hue,56+i*24+lv*14,true,i*.09);
+  if(lv>=5)ring(x,y,48,260,true,.1*lv);
+  burst(x,y,e,10+lv*8);if(lv>=4)burst(x,y,{hue:48},8+lv*2);
+  e.pulse=1;
+  edge=Math.max(edge,lv>=3?.35+.13*lv:0);
+  flash=Math.max(flash,.04+.035*lv);shake=Math.min(30,shake+3+lv*2.6);
+  sfx.tier(lv,1);
+}
+// 연쇄 단계 설정: 단계가 바뀌었거나 효과가 꺼진 상태였으면 연출 재생, 아니면 유지 시간만 갱신
+function setChainFx(e,lv){
+  lv=clamp(lv,1,5);
+  const ch=lv!==e.cl||e.clT<=0;
+  e.cl=lv;e.clT=P.FX_HOLD;
+  if(ch)chainUp(e,lv);
 }
 // 사망 연출: 모은 빛이 사방으로 흩어졌다가 근처 개체들에게 빨려듦 (점수가 높을수록 크고 화려함)
 function deathLight(x,y,hue,score){
@@ -321,6 +342,7 @@ function contact(c,e,m){
   if(c.o.isP)maxClash=Math.max(maxClash,c.m.length);
   if(c.o.isP)maxScore=Math.max(maxScore,c.o.score);
   const x=(e.x+m.x)/2,y=(e.y+m.y)/2,k=c.k;
+  if(c.o.isP)setChainFx(c.o,k-1);   // 연쇄 클래쉬 N번 성공 = 단계 N
   ring(x,y,null,40+k*14);burst(x,y,e,10+k*3);burst(x,y,m,8);
   pops.push({x,y,t:0,k});sfx.contact(k,x,y,c.o.lvS);
   if(c.o.isP)shake=Math.min(26,shake+5+k*2);
@@ -339,7 +361,8 @@ function endChain(c,wall){
   c.o.score+=loot;
   if(wall)c.o.score+=P.WALL_E*c.m.length;
   const pdead=player.dead;
-  const mag=clamp((c.m.length*3+loot+c.o.score*.35)/70,0,1);   // 흡수 규모(0~1): 클수록 연출이 화려해짐
+  let mag=clamp((c.m.length*3+loot+c.o.score*.35)/70,0,1);
+  if(c.o.isP){const L=clamp(c.k-1,1,5);setChainFx(c.o,L);mag=.15+.85*(L-1)/4}   // 내 흡수 연출 규모는 연쇄 단계로 결정   // 흡수 규모(0~1): 클수록 연출이 화려해짐
   sfx.absorb(c.m.length,loot,c.o.x,c.o.y);
   if(c.o.isP)maxScore=Math.max(maxScore,c.o.score);
   c.m.forEach((m,i)=>{
@@ -423,8 +446,15 @@ function visuals(dt){
   // ----- 진화 레벨 / 단계 상승 감지 / 삼킨 빛 색 감쇠 -----
   for(const e of ents){
     if(e.dead)continue;
-    e.lvS+=(clamp(lvOf(e.score)+(e.awk>0?1.5:0),0,6.5)-e.lvS)*Math.min(1,dt*4);
-    const nt=tierOf(e.score);if(nt>e.tier)tierUp(e,nt);e.tier=nt;
+    let base;
+    if(e.isP){
+      if(e.clT>0){e.clT-=dt;if(e.clT<=0){e.clT=0;e.cl=0}}
+      base=e.cl*clamp(e.clT/P.FX_FADE,0,1);   // 내 개체: 한 번의 발사로 일으킨 연쇄 횟수가 단계를 결정, 마지막 몇 초는 서서히 옅어짐
+    }else{
+      base=lvOf(e.score);
+      const nt=tierOf(e.score);if(nt>e.tier)tierUp(e,nt);e.tier=nt;
+    }
+    e.lvS+=(clamp(base+(e.awk>0?1.5:0),0,6.5)-e.lvS)*Math.min(1,dt*4);
     for(let i=e.mix.length-1;i>=0;i--){e.mix[i].t-=dt/6;if(e.mix[i].t<=0)e.mix.splice(i,1)}
   }
   if(player){
@@ -668,6 +698,7 @@ function render(){
   ctx.globalCompositeOperation='lighter';
   for(const p of parts){
     const[sx,sy]=S(p.x,p.y),k=p.l/p.m;
+    if(k<0)continue;
     if(p.ring){if(p.soft)haloStroke(sx,sy,p.r*z*(.2+k),p.h,.9*(1-k),(3*(1-k)+1)*.7);else{ctx.strokeStyle=hs(p.h,1-k);ctx.lineWidth=3*(1-k)+1;ctx.beginPath();ctx.arc(sx,sy,p.r*z*(.2+k),0,TAU);ctx.stroke()}}
     else{ctx.fillStyle=hs(p.h,1-k,65);ctx.beginPath();ctx.arc(sx,sy,p.s*z*(1-k*.7),0,TAU);ctx.fill()}
   }
