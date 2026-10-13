@@ -761,7 +761,7 @@
       }
       box.innerHTML = `<div class="example-list">${names.map(n => `
         <a class="example-item" href="${EXAMPLES_FOLDER}/${encodeURIComponent(n)}" target="_blank" rel="noopener">
-          <span class="ex-icon">▶</span><span>${esc(n)}</span>
+          <span class="ex-icon">▶</span><span>${esc(n.replace(/\.html$/i, ""))}</span>
         </a>`).join("")}</div>`;
     } catch (err) {
       box.innerHTML = `<div class="class-hint">⚠️ ${esc(err.message)}</div>`;
