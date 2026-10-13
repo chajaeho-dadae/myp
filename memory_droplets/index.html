@@ -60,11 +60,16 @@ const P={
   D1:160,        // 투사체에 맞은 개체가 밀려나는 첫 거리 (px). 연쇄 접촉이 일어나면 밀려나는 거리가 계속 늘어남
   CHAIN_SPD:.45,  // 넉백/연쇄 이동 속도 배율. 1이면 원래 속도, .5면 절반 (밀려나는 총 거리는 동일, 시간만 길어짐)
 
+  KB_REL:1,      // 크기 차이에 따른 넉백 거리 반영 정도. 넉백 거리 × (발사한 개체 크기 ÷ 맞은 개체 크기)^KB_REL.
+                 //   1이면 크기 비율에 정확히 비례(작은 개체가 큰 개체를 쏘면 짧게, 큰 개체가 작은 개체를 쏘면 길게), 0이면 크기와 무관(기존 방식), 클수록 차이가 더 극단적
+  KB_MIN:.2,     // 크기 비율 보정의 최솟값. 아주 작은 개체가 훨씬 큰 개체를 쏴도 넉백 거리가 기본값(D1)의 이 배율 아래로는 줄지 않음
+  KB_MAX:5,      // 크기 비율 보정의 최댓값. 아주 큰 개체가 훨씬 작은 개체를 쏴도 넉백 거리가 기본값의 이 배율 위로는 늘지 않음
+
   // ---------- 점수 / 가속 ----------
   E:3,           // 연쇄 접촉 1회당 획득 점수 (2번째 접촉은 2배인 E×2)
   WALL_E:3,      // 연쇄로 밀려난 개체들이 맵 외곽 경계에 부딪혀 흡수될 때, 흡수된 개체 1마리당 추가 획득 점수
   DRAIN:1,       // 스페이스 가속 중 초당 소모되는 점수
-  BOOST:3.82,       // 가속 시 이동 속도 배율 (회전 속도는 0.7배로 감소)
+  BOOST:2,       // 가속 시 이동 속도 배율 (회전 속도는 0.7배로 감소)
   CAP:30,        // 하단 가속 게이지가 가득 차는 기준 점수 (게이지 표시용, 점수 자체의 상한은 아님)
 
   // ---------- 압력 충전 발사 (마우스 왼쪽 버튼 길게 누르기, 플레이어 전용) ----------
@@ -112,7 +117,7 @@ const P={
   NAME_MAX:6,    // 별명 최대 글자 수. 순위표 칸 너비에 맞춘 값이라 너무 키우면 점수와 겹칠 수 있음
 
   // ---------- 디버그 ----------
-  START_SCORE:300, // (테스트용) 게임 시작 때 내 개체가 이미 가지고 있는 점수. 0이면 평소대로 시작.
+  START_SCORE:0, // (테스트용) 게임 시작 때 내 개체가 이미 가지고 있는 점수. 0이면 평소대로 시작.
                  //   크기·중력장·후광·순위가 이 점수에 맞춰 시작부터 반영됨 (예: 300이면 2배 크기, 600이면 3배 크기에 줌 아웃 상태로 시작)
 
   // ---------- 기타 ----------
@@ -360,7 +365,9 @@ function bot(e,dt){
   }
   steer(e,ta,P.TURN*.6,dt);
 }
-function startChain(o,e,dx,dy,pw=0,kb=1){o.mc=Math.max(o.mc,1);if(o.isP)maxClash=Math.max(maxClash,1);e.claimed=true;chains.push({o,m:[e],dx,dy,k:1,D:P.D1*(1+P.CHG_KB*pw)*kb,t:0})}
+function startChain(o,e,dx,dy,pw=0,kb=1){o.mc=Math.max(o.mc,1);if(o.isP)maxClash=Math.max(maxClash,1);e.claimed=true;chains.push({o,m:[e],dx,dy,k:1,D:P.D1*(1+P.CHG_KB*pw)*kb*kbRel(o,e),t:0})}
+// 크기 비율에 따른 넉백 보정: 발사한 개체가 맞은 개체보다 작으면 1보다 작아 짧게, 크면 1보다 커서 길게 밀려남
+function kbRel(o,e){return clamp(Math.pow(o.k/e.k,P.KB_REL),P.KB_MIN,P.KB_MAX)}
 function contact(c,e,m){
   const sumR=c.m.reduce((s,m)=>s+rad(m),0);
   c.m.push(e);e.claimed=true;e.circ=true;e.ct=0;c.k++;c.D+=sumR;c.t=0;
