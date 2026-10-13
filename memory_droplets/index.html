@@ -6,7 +6,7 @@
 :root{--void:#03050b;--ink:#e8eeff;--cy:#7cf}
 html,body{margin:0;height:100%;background:var(--void);overflow:hidden;font-family:"Pretendard","Noto Sans KR",system-ui,sans-serif}
 canvas{display:block;width:100%;height:100%;cursor:crosshair}
-#ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(3,5,11,.74);color:var(--ink);text-align:center;gap:12px;padding:24px;cursor:pointer}
+#ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(3,5,11,.74);color:var(--ink);text-align:center;gap:12px;padding:24px;cursor:default}
 #ov h1{margin:0;font-size:clamp(30px,7vw,58px);font-weight:800;letter-spacing:.02em}
 #ov p{margin:0;opacity:.85;line-height:1.7;max-width:520px}
 #ov b{color:var(--cy)}
@@ -24,17 +24,20 @@ canvas{display:block;width:100%;height:100%;cursor:crosshair}
 #pal{display:grid;grid-template-columns:repeat(6,34px);gap:10px;justify-content:center;cursor:default}
 .sw{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,.25);box-shadow:0 0 10px rgba(0,0,0,.4);transition:transform .12s,border-color .12s}
 .sw:hover{transform:scale(1.15)}
+#go{margin-top:14px;padding:12px 48px;font-size:18px;font-weight:800;letter-spacing:.14em;font-family:inherit;color:#03050b;background:#fff;border:none;border-radius:12px;cursor:pointer;box-shadow:0 0 22px rgba(255,255,255,.3);transition:transform .12s,filter .12s}
+#go:hover{transform:scale(1.06);filter:brightness(1.1)}
+#go:active{transform:scale(.97)}
 .sw.sel{border-color:#fff;transform:scale(1.18);box-shadow:0 0 0 3px rgba(255,255,255,.25),0 0 14px rgba(255,255,255,.35)}
 </style></head><body>
 <canvas id="c"></canvas>
-<div id="ov"><h1 id="ttl">Memory Droplets</h1><p id="msg"></p><input id="nick" type="text" autocomplete="off" spellcheck="false" placeholder="Name"><div id="pal"></div></div>
+<div id="ov"><h1 id="ttl">Memory Droplets</h1><p id="msg"></p><input id="nick" type="text" autocomplete="off" spellcheck="false" placeholder="Name"><div id="pal"></div><button id="go" type="button">START</button></div>
 <script>
 const cv=document.getElementById('c'),ctx=cv.getContext('2d'),ov=document.getElementById('ov'),ttl=document.getElementById('ttl'),msg=document.getElementById('msg'),nick=document.getElementById('nick');
 // ===== 조정 가능한 파라미터 (밀도 = N / (W*H)) =====
 const P={
   // ---------- 맵 ----------
-  W:2400,        // 맵 가로 크기 (px, 게임 내 좌표 기준)
-  H:2400,        // 맵 세로 크기 (px). 맵을 키우면 개체 밀도(N/(W*H))가 낮아져 만남이 줄어듦
+  W:2400,        // 맵 가로 크기 (px, 게임 내 좌표 기준). 맵은 원형이며 지름 = W와 H 중 작은 값 (반지름 = 지름/2)
+  H:2400,        // 맵 세로 크기 (px). W와 같게 두는 것을 권장. 맵을 키우면 개체 밀도가 낮아져 만남이 줄어듦
   N:79,         // 맵에 유지되는 총 개체 수 (플레이어 포함). 흡수로 줄면 화면 밖에서 자동 보충됨
 
   // ---------- 배경 별빛 (글로우가 있는 작고 희미한 점들) ----------
@@ -42,7 +45,7 @@ const P={
   STAR_PARALLAX:.7, // 원근감 정도 (0~1). 멀리 있는(작고 어두운) 점일수록 카메라 이동에 덜 따라 움직임. 0이면 모두 맵과 함께 고정
 
   // ---------- 개체(물방울) ----------
-  R:20,          // 개체 몸통(원)의 반지름 (px). 충돌 판정, 투사체 피격, 연쇄 접촉 거리(2R)의 기준
+  R:12.36,       // 개체 몸통(원)의 반지름 (px). (기존 20 × 0.618) 충돌 판정, 투사체 피격, 연쇄 접촉 거리(2R)의 기준
   TAIL:1.25,        // 꼬리 끝까지의 거리 = 반지름 × TAIL. 1.0이면 완전한 원(꼬리 없음),
                  //   값이 클수록 꼬리가 길고 뾰족해짐 (이전 값 2.1 → 현재 1.55는 돌출 길이 절반)
   V:63.10144,    // 개체 기본 이동 속도 (px/초). 플레이어와 봇 모두 동일, 항상 앞으로 전진
@@ -61,7 +64,7 @@ const P={
   E:3,           // 연쇄 접촉 1회당 획득 점수 (2번째 접촉은 2배인 E×2)
   WALL_E:3,      // 연쇄로 밀려난 개체들이 맵 외곽 경계에 부딪혀 흡수될 때, 흡수된 개체 1마리당 추가 획득 점수
   DRAIN:1,       // 스페이스 가속 중 초당 소모되는 점수
-  BOOST:2,       // 가속 시 이동 속도 배율 (회전 속도는 0.7배로 감소)
+  BOOST:3.82,       // 가속 시 이동 속도 배율 (회전 속도는 0.7배로 감소)
   CAP:30,        // 하단 가속 게이지가 가득 차는 기준 점수 (게이지 표시용, 점수 자체의 상한은 아님)
 
   // ---------- 압력 충전 발사 (마우스 왼쪽 버튼 길게 누르기, 플레이어 전용) ----------
@@ -86,6 +89,12 @@ const P={
   AWK_TIME:6,    // 각성 지속 시간 (초). 발동 순간 투사체 쿨다운도 초기화됨
   AWK_KB:1.6,    // 각성 중 발사한 투사체의 넉백 거리 배율. 각성 중 투사체는 맞은 개체를 관통해 계속 날아감
 
+  // ---------- 크기 성장 (점수가 높을수록 개체가 커짐) ----------
+  GROW_MAX:2,    // 내 개체의 화면상 최대 크기 배율. 점수에 비례해 1배 → GROW_MAX배까지 커지고, 그 이후로는 화면 속 내 크기가 고정됨
+  GROW_PTS:300,  // 내 개체가 GROW_MAX배(화면상 최대 크기)에 도달하는 점수. 이 점수를 넘으면 실제 크기는 계속 비례해 커지지만 화면이 그만큼 멀어져(줌 아웃) 내 크기는 그대로 보이고, 나머지 개체는 내 크기에 반비례해 작아 보임
+  SIZE_MAX:12,   // 개체 실제 크기 배율의 상한(안전장치). 크기 배율 = 1 + (GROW_MAX-1) × 점수 / GROW_PTS (모든 개체 공통, 봇도 점수에 따라 커짐)
+                 // 투사체의 크기·충돌 범위·사거리도 발사한 개체의 크기 배율만큼 커짐
+
   // ---------- 글로우 (점수가 높을수록 밝고 넓게) ----------
   GLOW_BASE:1.7, // 점수가 적을 때 글로우 반경 (몸통 반지름의 배수)
   GLOW_GAIN:4.5, // 점수가 매우 높을 때 추가되는 반경 (배수). 최대 반경 = GLOW_BASE + GLOW_GAIN
@@ -102,10 +111,19 @@ const P={
   // ---------- 별명 ----------
   NAME_MAX:6,    // 별명 최대 글자 수. 순위표 칸 너비에 맞춘 값이라 너무 키우면 점수와 겹칠 수 있음
 
+  // ---------- 디버그 ----------
+  START_SCORE:300, // (테스트용) 게임 시작 때 내 개체가 이미 가지고 있는 점수. 0이면 평소대로 시작.
+                 //   크기·중력장·후광·순위가 이 점수에 맞춰 시작부터 반영됨 (예: 300이면 2배 크기, 600이면 3배 크기에 줌 아웃 상태로 시작)
+
   // ---------- 기타 ----------
   FPS:60         // 목표 프레임 수 (모니터 주사율이 높으면 이 값에 맞춰 프레임을 건너뜀)
 };
 const TAU=Math.PI*2;
+// ===== 원형 맵: 중심 (MCX,MCY), 반지름 MR =====
+const MCX=P.W/2,MCY=P.H/2,MR=Math.min(P.W,P.H)/2;
+const outMap=(x,y,pad=0)=>Math.hypot(x-MCX,y-MCY)>MR-pad;                 // 경계(안쪽으로 pad만큼 여유)를 벗어났는가
+function clampMap(o,pad){const dx=o.x-MCX,dy=o.y-MCY,d=Math.hypot(dx,dy),L=MR-pad;if(d>L){o.x=MCX+dx/d*L;o.y=MCY+dy/d*L}}   // 경계 안쪽으로 되돌림
+function rndInMap(pad){const a=Math.random()*TAU,r=(MR-pad)*Math.sqrt(Math.random());return[MCX+Math.cos(a)*r,MCY+Math.sin(a)*r]}   // 원 안의 균등 무작위 점
 const sa=document.createElement('div');
 sa.style.cssText='position:fixed;left:0;top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);width:1px;visibility:hidden';
 document.body.appendChild(sa);
@@ -113,7 +131,10 @@ let cw=0,ch=0,dpr=1;const ins={t:0,b:0};
 const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const hs=(h,a,l=62)=>{if(h==null){const v=Math.round(255-Math.max(0,82-l)*1.2);return `rgba(${v},${v},${v},${a})`}return `hsla(${h},92%,${l}%,${a})`};
 function angDiff(a,b){let d=(b-a)%TAU;if(d>Math.PI)d-=TAU;if(d<-Math.PI)d+=TAU;return d}
-const zoom=()=>clamp(Math.min(cw,ch)/800,.7,1.3);
+// 화면 배율: 기본 배율 × 줌 아웃. 내 크기 배율이 GROW_MAX를 넘으면 그 비율만큼 화면을 멀리 당겨서 내 개체의 화면상 크기를 고정하고, 나머지 개체는 상대적으로 작아 보이게 함
+function zoomMul(){return player?Math.min(1,P.GROW_MAX/player.k):1}
+const zoom=()=>clamp(Math.min(cw,ch)/800,.7,1.3)*zoomMul();
+const rad=e=>P.R*e.k;   // 개체의 현재 반지름 (점수에 따라 커짐)
 const fmt=ms=>{const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 function resize(){dpr=Math.min(2,window.devicePixelRatio||1);cw=innerWidth;ch=innerHeight;cv.width=cw*dpr;cv.height=ch*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);const r=sa.getBoundingClientRect();ins.t=r.top;ins.b=Math.max(0,ch-r.bottom)}
 addEventListener('resize',resize);
@@ -125,14 +146,14 @@ let myHue=210;   // 내가 선택한 색(색상 각도 0~360, null이면 흰색)
 let palIdx=0;
 // 다른 개체의 색: 기존 분포(황금각)를 내 색 ±COLOR_EXCL 구간을 뺀 나머지 범위로 압축해 내 색과 겹치지 않게 함
 function botHue(id){const h=(id*137.508)%360,ex=P.COLOR_EXCL;if(myHue==null)return h;return (myHue+ex+h/360*(360-2*ex))%360}
-function mk(x,y,isP){const id=uid++;return{id,x,y,a:rnd(0,TAU),hue:isP?myHue:botHue(id),score:0,cd:isP?0:rnd(0,P.CD),claimed:false,circ:false,ct:0,dead:false,isP,ta:rnd(0,TAU),tt:rnd(0,2),pulse:0,boost:false,charge:0,name:'',lvS:0,tier:0,cl:0,clT:0,mix:[],awk:0,ph:rnd(0,TAU)}}
+function mk(x,y,isP){const id=uid++;return{id,x,y,a:rnd(0,TAU),hue:isP?myHue:botHue(id),score:0,cd:isP?0:rnd(0,P.CD),claimed:false,circ:false,ct:0,dead:false,isP,ta:rnd(0,TAU),tt:rnd(0,2),pulse:0,boost:false,charge:0,name:'',lvS:0,tier:0,cl:0,clT:0,mix:[],awk:0,mc:0,k:1,ph:rnd(0,TAU)}}
 function spawnPos(minD){
   for(let i=0;i<40;i++){
-    const x=rnd(60,P.W-60),y=rnd(60,P.H-60);
+    const[x,y]=rndInMap(60);
     if(player&&!player.dead&&Math.hypot(x-player.x,y-player.y)<minD)continue;
     if(ents.every(e=>e.dead||Math.hypot(e.x-x,e.y-y)>70))return[x,y];
   }
-  return[rnd(60,P.W-60),rnd(60,P.H-60)];
+  return rndInMap(60);
 }
 function refill(){
   ents=ents.filter(e=>!e.dead||e===player);
@@ -143,10 +164,12 @@ function reset(){
   uid=0;maxClash=0;pendFire=false;tailAng=[];tailLen=26;trail=[];shards=[];PL=0;topFade=0;wasTop=false;flash=0;edge=0;slowT=0;slowK=1;deadScore=0;suck=[];suckAcc=0;ents=[];projs=[];chains=[];parts=[];absorbs=[];pops=[];vort=[];shake=0;freeze=0;maxScore=0;
   keys.mouse=false;
   player=mk(P.W/2,P.H/2,true);ents.push(player);
+  player.score=P.START_SCORE;maxScore=P.START_SCORE;   // 디버그: 시작 점수와 그에 맞는 크기를 즉시 반영 (서서히 자라지 않음)
+  player.k=Math.min(P.SIZE_MAX,1+(P.GROW_MAX-1)*player.score/P.GROW_PTS);
   // 시작 화면에서 입력한 별명을 순위표에 사용 (비어 있으면 '나')
   const nm=nick.value.trim().slice(0,P.NAME_MAX);player.name=nm;
   try{localStorage.setItem('dc_nick',nm)}catch(_){}
-  nick.blur();
+  nick.blur();go.blur();
   while(ents.length<P.N){const[x,y]=spawnPos(260);ents.push(mk(x,y,false))}
   t0=performance.now();state='play';ov.style.display='none';
 }
@@ -156,7 +179,9 @@ function showOv(over){
   if(over){state='over';ttl.textContent='Clashed';const sv=surv/1000,svt=sv<60?Math.floor(sv)+' sec':(sv/60).toFixed(1)+' min';msg.innerHTML=`<table id="res"><tr><td>Survive:</td><td>${svt}</td></tr><tr><td>Score:</td><td>${Math.round(maxScore)}</td></tr><tr><td>Max Clash:</td><td>${maxClash}</td></tr></table>`}
   else{ttl.textContent='Memory Droplets';msg.innerHTML=''}
 }
-ov.addEventListener('click',e=>{if(e.target===nick||e.target.closest('#pal'))return;if(performance.now()-ovAt>500)reset()});
+// 시작 화면의 다른 영역을 클릭해도 시작하지 않음. START 버튼을 눌러야만 시작 (게임오버 직후 오클릭 방지로 0.5초 대기)
+const go=document.getElementById('go');
+go.addEventListener('click',()=>{if(performance.now()-ovAt>500)reset()});
 addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
 addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('mousedown',e=>{if(e.button===2)tryAwake()});   // 우클릭: 각성
@@ -171,8 +196,8 @@ addEventListener('mouseup',e=>{
   }
 });
 addEventListener('keydown',e=>{
-  // 별명 입력 중에는 스페이스 등 키를 게임 입력으로 가로채지 않음 (Enter로 시작)
-  if(e.target===nick){if(e.key==='Enter'&&!e.isComposing&&performance.now()-ovAt>500)reset();return}
+  // 별명 입력 중에는 스페이스 등 키를 게임 입력으로 가로채지 않음 (Enter로는 시작하지 않음, START 버튼만)
+  if(e.target===nick||e.target===go)return;
   if((e.code==='ShiftLeft'||e.code==='ShiftRight')&&!e.repeat)tryAwake();   // Shift: 각성
   if(e.code==='KeyM'&&!e.repeat)muted=!muted;   // M 키: 소리 켜기/끄기
   if(e.code==='Space'){keys.space=true;e.preventDefault()}});
@@ -318,14 +343,15 @@ function fire(e,pw=0){
   // pw = 압력(0~1). 클수록 투사체가 빠르고, 맞은 개체의 넉백 거리가 길어짐
   if(e.cd>0||e.claimed||e.dead)return;
   e.cd=P.CD;const dx=Math.cos(e.a),dy=Math.sin(e.a);
-  projs.push({x:e.x+dx*P.R*2,y:e.y+dy*P.R*2,dx,dy,o:e,d:0,pw,v:P.PSPD*(1+(P.CHG_PSPD-1)*pw),lv:e.lvS,aw:e.awk>0,kb:e.awk>0?P.AWK_KB:1});
-  burst(e.x+dx*P.R*2,e.y+dy*P.R*2,e,5+Math.round(pw*12));
+  // k = 발사한 개체의 크기 배율 → 투사체 크기·충돌 범위·사거리(rng)에 반영
+  projs.push({x:e.x+dx*rad(e)*2,y:e.y+dy*rad(e)*2,dx,dy,o:e,d:0,pw,v:P.PSPD*(1+(P.CHG_PSPD-1)*pw),lv:e.lvS,aw:e.awk>0,kb:e.awk>0?P.AWK_KB:1,k:e.k,rng:P.PRNG*e.k});
+  burst(e.x+dx*rad(e)*2,e.y+dy*rad(e)*2,e,5+Math.round(pw*12));
   sfx.fire(e.x,e.y,pw,e.lvS);
   if(pw>0&&e.isP)shake=Math.min(26,shake+pw*10);
 }
 function bot(e,dt){
   e.tt-=dt;if(e.tt<=0){e.ta=rnd(0,TAU);e.tt=rnd(1,3)}
-  const m=140;if(e.x<m||e.y<m||e.x>P.W-m||e.y>P.H-m)e.ta=Math.atan2(P.H/2-e.y,P.W/2-e.x);
+  if(outMap(e.x,e.y,140))e.ta=Math.atan2(MCY-e.y,MCX-e.x);   // 경계에 가까워지면 중심 쪽으로 방향 전환
   let ta=e.ta;
   if(e.cd<=0){
     let best=null,bd=520;
@@ -334,11 +360,12 @@ function bot(e,dt){
   }
   steer(e,ta,P.TURN*.6,dt);
 }
-function startChain(o,e,dx,dy,pw=0,kb=1){if(o.isP)maxClash=Math.max(maxClash,1);e.claimed=true;chains.push({o,m:[e],dx,dy,k:1,D:P.D1*(1+P.CHG_KB*pw)*kb,t:0})}
+function startChain(o,e,dx,dy,pw=0,kb=1){o.mc=Math.max(o.mc,1);if(o.isP)maxClash=Math.max(maxClash,1);e.claimed=true;chains.push({o,m:[e],dx,dy,k:1,D:P.D1*(1+P.CHG_KB*pw)*kb,t:0})}
 function contact(c,e,m){
-  const sumR=c.m.length*P.R;
+  const sumR=c.m.reduce((s,m)=>s+rad(m),0);
   c.m.push(e);e.claimed=true;e.circ=true;e.ct=0;c.k++;c.D+=sumR;c.t=0;
   c.o.score+=P.E*(c.k===2?2:1);
+  c.o.mc=Math.max(c.o.mc,c.m.length);   // 순위표용: 한 번의 발사로 엮은 최대 개체 수
   if(c.o.isP)maxClash=Math.max(maxClash,c.m.length);
   if(c.o.isP)maxScore=Math.max(maxScore,c.o.score);
   const x=(e.x+m.x)/2,y=(e.y+m.y)/2,k=c.k;
@@ -367,7 +394,7 @@ function endChain(c,wall){
   if(c.o.isP)maxScore=Math.max(maxScore,c.o.score);
   c.m.forEach((m,i)=>{
     m.dead=true;
-    absorbs.push({x:m.x,y:m.y,sx:m.x,sy:m.y,hue:m.hue,o:c.o,t:-i*.07,dur:.55+rnd(0,.15),sw:rnd(.6,1.2)*(Math.random()<.5?-1:1),tr:[],big:mag});
+    absorbs.push({x:m.x,y:m.y,sx:m.x,sy:m.y,r:rad(m),hue:m.hue,o:c.o,t:-i*.07,dur:.55+rnd(0,.15),sw:rnd(.6,1.2)*(Math.random()<.5?-1:1),tr:[],big:mag});
     ring(m.x,m.y,m.hue,50);
   });
   vort.push({o:c.o,t:0,n:c.m.length,big:mag});
@@ -383,6 +410,7 @@ function update(dt){
   for(const e of ents){
     if(e.dead)continue;
     e.cd=Math.max(0,e.cd-dt);e.pulse=Math.max(0,e.pulse-dt*3);if(e.circ)e.ct+=dt;if(e.awk>0)e.awk=Math.max(0,e.awk-dt);
+    e.k+=(Math.min(P.SIZE_MAX,1+(P.GROW_MAX-1)*e.score/P.GROW_PTS)-e.k)*Math.min(1,dt*4);   // 점수에 비례해 부드럽게 커지고(점수가 줄면 작아짐)
     e.boost=false;if(e.claimed&&!e.isP){e.charge=0;continue}
     let turn=P.TURN,sp=P.V;
     if(e.isP){
@@ -393,7 +421,7 @@ function update(dt){
       // 스페이스: 점수를 소모해 이동 속도 증가 (가속)
       if(keys.space&&e.score>0){
         e.boost=true;e.score=Math.max(0,e.score-P.DRAIN*dt);sp*=P.BOOST;turn*=.7;
-        parts.push({x:e.x-Math.cos(e.a)*P.R,y:e.y-Math.sin(e.a)*P.R,vx:0,vy:0,l:0,m:.4,h:e.hue,s:7});
+        parts.push({x:e.x-Math.cos(e.a)*rad(e),y:e.y-Math.sin(e.a)*rad(e),vx:0,vy:0,l:0,m:.4,h:e.hue,s:7});
       }
       sp*=1-(1-P.CHG_SLOW)*e.charge;   // 압력이 클수록 이동 속도 감소 (가속 후에 적용)
       steer(e,Math.atan2(mouse.y-ch/2,mouse.x-cw/2),turn,dt);
@@ -403,13 +431,13 @@ function update(dt){
     if(P.GRAV_V>0)for(const a of ents){
       if(a===e||a.dead||a.score<=e.score)continue;
       const w=clamp((a.score-e.score)/P.GRAV_SCORE,0,1),Rg=P.GRAV_R*(.4+.6*w),dx=a.x-e.x,dy=a.y-e.y,d=Math.hypot(dx,dy);
-      if(d>Rg||d<P.R*2.2)continue;
+      if(d>Rg||d<(rad(e)+rad(a))*1.1)continue;
       const f=P.GRAV_V*w*Math.pow(1-d/Rg,1.5)/d;gx+=dx*f;gy+=dy*f;
     }
     const gm=Math.hypot(gx,gy);if(gm>P.GRAV_V){gx*=P.GRAV_V/gm;gy*=P.GRAV_V/gm}
     const nx=e.x+Math.cos(e.a)*sp*dt+gx*dt,ny=e.y+Math.sin(e.a)*sp*dt+gy*dt;
-    e.x=clamp(nx,P.R,P.W-P.R);e.y=clamp(ny,P.R,P.H-P.R);
-    if(e.isP&&(nx<P.R||ny<P.R||nx>P.W-P.R||ny>P.H-P.R)){   // 플레이어가 경계에 닿으면 종료
+    e.x=nx;e.y=ny;const hitWall=outMap(nx,ny,rad(e));if(hitWall)clampMap(e,rad(e));
+    if(e.isP&&hitWall){   // 플레이어가 경계에 닿으면 종료
       e.dead=true;pendFire=false;deadAt=performance.now();surv=deadAt-t0;
       deadScore=e.score;deathLight(e.x,e.y,e.hue,e.score);if(e.score>20){slowT=.45;slowK=.3}sfx.over();
     }
@@ -418,13 +446,13 @@ function update(dt){
     const p=projs[i];let step=p.v*dt,hit=null;
     while(step>0&&!hit){
       const s=Math.min(step,10);p.x+=p.dx*s;p.y+=p.dy*s;p.d+=s;step-=s;
-      for(const e of ents){if(e.dead||e.claimed||e===p.o)continue;if(Math.hypot(e.x-p.x,e.y-p.y)<P.R+4){
+      for(const e of ents){if(e.dead||e.claimed||e===p.o)continue;if(Math.hypot(e.x-p.x,e.y-p.y)<rad(e)+4*p.k){   // 충돌 범위 = 대상 반지름 + 투사체 반지름(발사자 크기에 비례)
         if(p.aw){startChain(p.o,e,p.dx,p.dy,p.pw,p.kb);sfx.hit(e.x,e.y);burst(p.x,p.y,e,8);ring(p.x,p.y,e.hue,34);continue}   // 각성 투사체는 관통
         hit=e;break}}
-      if(p.d>=P.PRNG)break;
+      if(p.d>=p.rng)break;
     }
     if(hit){projs.splice(i,1);startChain(p.o,hit,p.dx,p.dy,p.pw,p.kb);sfx.hit(hit.x,hit.y);burst(p.x,p.y,hit,8);ring(p.x,p.y,hit.hue,34)}
-    else if(p.d>=P.PRNG||p.x<0||p.y<0||p.x>P.W||p.y>P.H)projs.splice(i,1);
+    else if(p.d>=p.rng||outMap(p.x,p.y))projs.splice(i,1);
   }
   for(let i=chains.length-1;i>=0;i--){
     const c=chains[i];
@@ -432,11 +460,11 @@ function update(dt){
     for(const m of c.m){m.x+=c.dx*step;m.y+=c.dy*step}
     c.t+=step;
     let wall=false;
-    for(const m of c.m)if(m.x<P.R||m.y<P.R||m.x>P.W-P.R||m.y>P.H-P.R)wall=true;
-    if(wall)for(const m of c.m){m.x=clamp(m.x,P.R,P.W-P.R);m.y=clamp(m.y,P.R,P.H-P.R)}
+    for(const m of c.m)if(outMap(m.x,m.y,rad(m)))wall=true;
+    if(wall)for(const m of c.m)clampMap(m,rad(m));
     for(const e of ents){
       if(e.dead||e.claimed||e===c.o)continue;
-      for(const m of c.m){if(Math.hypot(e.x-m.x,e.y-m.y)<2*P.R){contact(c,e,m);break}}
+      for(const m of c.m){if(Math.hypot(e.x-m.x,e.y-m.y)<rad(e)+rad(m)){contact(c,e,m);break}}
     }
     if(wall||c.t>=c.D-1e-6){endChain(c,wall);chains.splice(i,1)}
   }
@@ -472,7 +500,7 @@ function visuals(dt){
     tailLen+=((26+250*PL)*(player.boost?1.9:1)-tailLen)*Math.min(1,dt*3);
     if(alive){let prev=player.a+Math.PI;for(let i=0;i<TN;i++){tailAng[i]+=angDiff(tailAng[i],prev)*Math.min(1,dt*7/(1+i*.55));prev=tailAng[i]}}
     // 각성 중 금빛 불꽃
-    if(alive&&player.awk>0&&Math.random()<.7)parts.push({x:player.x+rnd(-1,1)*P.R*1.6,y:player.y+rnd(-1,1)*P.R*1.6,vx:rnd(-40,40),vy:rnd(-90,-30),l:0,m:rnd(.4,.8),h:48,s:rnd(2,4)});
+    if(alive&&player.awk>0&&Math.random()<.7)parts.push({x:player.x+rnd(-1,1)*rad(player)*1.6,y:player.y+rnd(-1,1)*rad(player)*1.6,vx:rnd(-40,40),vy:rnd(-90,-30),l:0,m:rnd(.4,.8),h:48,s:rnd(2,4)});
   }
   // 사망 시 흩어진 빛: 먼저 사방으로 퍼진 뒤 가장 가까운 개체에게 날아가 흡수됨
   for(let i=shards.length-1;i>=0;i--){
@@ -485,14 +513,14 @@ function visuals(dt){
       if(!bt){s.fade+=dt*1.2;s.x+=s.vx*dt;s.y+=s.vy*dt;if(s.fade>=1)shards.splice(i,1);continue}
     }
     const dx=s.tgt.x-s.x,dy=s.tgt.y-s.y,d=Math.hypot(dx,dy)||1,sp=260+(s.t-s.wait)*900;
-    if(d<P.R*.9||sp*dt>d){s.tgt.pulse=Math.max(s.tgt.pulse,.7);if(Math.random()<.35)pushMix(s.tgt,s.h);ring(s.tgt.x,s.tgt.y,s.h,36);shards.splice(i,1);continue}
+    if(d<rad(s.tgt)*.9||sp*dt>d){s.tgt.pulse=Math.max(s.tgt.pulse,.7);if(Math.random()<.35)pushMix(s.tgt,s.h);ring(s.tgt.x,s.tgt.y,s.h,36);shards.splice(i,1);continue}
     s.x+=dx/d*sp*dt;s.y+=dy/d*sp*dt;
   }
   // 압력 충전 연출: 개체 주변에 흰 점이 생겨 빠르게 빨려들어감 (압력이 클수록 많이 생성)
   if(player&&!player.dead&&player.charge>0){
     const lq=clamp(player.lvS/5,0,1);
     suckAcc+=(8+130*player.charge)*(1+.8*lq)*dt;
-    while(suckAcc>=1){suckAcc--;const rr=Math.random();suck.push({a:rnd(0,TAU),r0:P.R*rnd(1.7,3.0),l:0,m:rnd(.16,.3),s:rnd(1.2,2.6),c:rr<.5*lq?1:rr<.75*lq?2:0})}   // 단계가 높을수록 내 색/금빛 점이 섞임
+    while(suckAcc>=1){suckAcc--;const rr=Math.random();suck.push({a:rnd(0,TAU),r0:rad(player)*rnd(1.7,3.0),l:0,m:rnd(.16,.3),s:rnd(1.2,2.6),c:rr<.5*lq?1:rr<.75*lq?2:0})}   // 단계가 높을수록 내 색/금빛 점이 섞임
     if(suck.length>400)suck.splice(0,suck.length-400);
   }else suckAcc=0;
   for(let i=suck.length-1;i>=0;i--){suck[i].l+=dt;if(suck[i].l>=suck[i].m)suck.splice(i,1)}
@@ -587,10 +615,10 @@ initStars();
 // ===== 렌더링 =====
 const S=(x,y)=>[(x-V.cx)*V.z+cw/2,(y-V.cy)*V.z+ch/2];
 function drawBG(){
-  const z=V.z,[x0,y0]=S(0,0),w=P.W*z,h=P.H*z;
+  const z=V.z,[mx,my]=S(MCX,MCY),Rr=MR*z,x0=mx-Rr,y0=my-Rr,w=Rr*2,h=Rr*2;   // x0,y0,w,h = 원형 맵의 외접 사각형
   ctx.fillStyle='#03050b';ctx.fillRect(0,0,cw,ch);
-  ctx.fillStyle='#0a1226';ctx.fillRect(x0,y0,w,h);
-  ctx.save();ctx.beginPath();ctx.rect(x0,y0,w,h);ctx.clip();
+  ctx.fillStyle='#0a1226';ctx.beginPath();ctx.arc(mx,my,Rr,0,TAU);ctx.fill();
+  ctx.save();ctx.beginPath();ctx.arc(mx,my,Rr,0,TAU);ctx.clip();
   ctx.globalCompositeOperation='lighter';
   // 고득점일수록 내 주변에 내 색의 성운이 번지고, 1위일 때는 맵 전체가 은은히 물듦
   if(PL>.02){const rg=(180+420*PL)*z,gr=ctx.createRadialGradient(cw/2,ch/2,0,cw/2,ch/2,rg);gr.addColorStop(0,hs(player.hue,.06+.1*PL,60));gr.addColorStop(1,hs(player.hue,0,60));ctx.fillStyle=gr;ctx.fillRect(cw/2-rg,ch/2-rg,rg*2,rg*2)}
@@ -606,12 +634,13 @@ function drawBG(){
   }
   ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
   ctx.restore();
-  ctx.strokeStyle='rgba(120,200,255,.65)';ctx.lineWidth=3;ctx.strokeRect(x0,y0,w,h);
+  ctx.strokeStyle='rgba(120,200,255,.65)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(mx,my,Rr,0,TAU);ctx.stroke();
 }
 function drawEnt(e){
   const[sx,sy]=S(e.x,e.y),z=V.z;
-  if(sx<-90||sx>cw+90||sy<-90||sy>ch+90)return;
-  const r=P.R*z*(1+e.pulse*.25),h=e.hue;
+  const mg=90+rad(e)*z*7;
+  if(sx<-mg||sx>cw+mg||sy<-mg||sy>ch+mg)return;
+  const r=rad(e)*z*(1+e.pulse*.25),h=e.hue;
   ctx.save();ctx.translate(sx,sy);
   if(e.score>0){
     // 흡수 점수가 높을수록 더 밝고 넓은 글로우 (점수 25 → 약 63%, 60 → 약 91%)
@@ -677,8 +706,8 @@ function render(){
   drawBG();
   if(!player.dead&&player.cd<=0){
     ctx.save();ctx.setLineDash([8,10]);ctx.strokeStyle='rgba(255,255,255,'+(.14+.45*player.charge)+')';ctx.lineWidth=2+2*player.charge;ctx.beginPath();
-    ctx.moveTo(cw/2+Math.cos(player.a)*P.R*2.2*z,ch/2+Math.sin(player.a)*P.R*2.2*z);
-    ctx.lineTo(cw/2+Math.cos(player.a)*P.PRNG*z,ch/2+Math.sin(player.a)*P.PRNG*z);ctx.stroke();ctx.restore();
+    ctx.moveTo(cw/2+Math.cos(player.a)*rad(player)*2.2*z,ch/2+Math.sin(player.a)*rad(player)*2.2*z);
+    ctx.lineTo(cw/2+Math.cos(player.a)*P.PRNG*player.k*z,ch/2+Math.sin(player.a)*P.PRNG*player.k*z);ctx.stroke();ctx.restore();   // 조준선 길이 = 투사체 사거리(크기에 비례)
   }
   // 플레이어 빛 꼬리: 점수가 높을수록 길고 굵고 선명. 방향을 틀면 뒤쪽 마디가 천천히 따라와 완만하게 휨. 희미한 선 위에 글로우를 겹쳐 선이 느껴지지 않음
   if(PL>.02&&tailAng.length){
@@ -689,7 +718,7 @@ function render(){
     ctx.strokeStyle=hs(player.hue,.025+.03*PL,80);ctx.lineWidth=1*z;ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();
     for(let i=0;i<=TN;i++){
       const t=i/TN,hh=(bo&&player.hue!=null)?player.hue+t*70:player.hue;
-      const ta=Math.pow(1-t,1.3)*(bo?1.5:1),tr=P.R*z*(.5+1.1*PL)*(1-.65*t)*(bo?1.25:1);
+      const ta=Math.pow(1-t,1.3)*(bo?1.5:1),tr=rad(player)*z*(.5+1.1*PL)*(1-.65*t)*(bo?1.25:1);
       gl(pts[i][0],pts[i][1],tr,hh,(.06+.18*PL)*ta);
       gl(pts[i][0],pts[i][1],tr*2.8,hh,(.04+.1*PL)*ta);
     }
@@ -707,7 +736,7 @@ function render(){
   if(!player.dead)drawEnt(player);
   // 1위 표식: 내 개체 위에 떠오르는 별 모양 왕관
   if(!player.dead&&topFade>.01){
-    const[px,py]=S(player.x,player.y),cx=px,cy=py-P.R*z*(3.3+Math.sin(performance.now()/420)*.18),ro=P.R*z*.9*(.7+.3*topFade),ri=ro*.45,aa=topFade;
+    const[px,py]=S(player.x,player.y),cx=px,cy=py-rad(player)*z*(3.3+Math.sin(performance.now()/420)*.18),ro=rad(player)*z*.9*(.7+.3*topFade),ri=ro*.45,aa=topFade;
     ctx.save();ctx.globalCompositeOperation='lighter';
     const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,ro*2.6);cg.addColorStop(0,`hsla(48,100%,70%,${.5*aa})`);cg.addColorStop(1,'hsla(48,100%,60%,0)');
     ctx.fillStyle=cg;ctx.beginPath();ctx.arc(cx,cy,ro*2.6,0,TAU);ctx.fill();
@@ -720,7 +749,7 @@ function render(){
   if(!player.dead&&suck.length){
     ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
     for(const d of suck){
-      const p=d.l/d.m,rin=P.R*.6,dist=rin+(d.r0-rin)*(1-p*p),dist2=dist+P.R*.5*p;
+      const p=d.l/d.m,rin=rad(player)*.6,dist=rin+(d.r0-rin)*(1-p*p),dist2=dist+rad(player)*.5*p;
       const[x1,y1]=S(player.x+Math.cos(d.a)*dist,player.y+Math.sin(d.a)*dist),[x2,y2]=S(player.x+Math.cos(d.a)*dist2,player.y+Math.sin(d.a)*dist2);
       const al=Math.min(1,p*5)*(1-p*.4);
       ctx.strokeStyle=`rgba(255,255,255,${al*.5})`;ctx.lineWidth=d.s*z*.8;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
@@ -731,10 +760,10 @@ function render(){
   // 투사체
   ctx.globalCompositeOperation='lighter';
   for(const p of projs){
-    const[sx,sy]=S(p.x,p.y),h=p.aw?48:p.o.hue,lq=clamp((p.lv||0)/5,0,1),len=(34+60*p.pw)*(1+.5*lq)*(p.aw?1.3:1);
-    ctx.strokeStyle=hs(h,.7,70);ctx.lineWidth=(5+4*p.pw)*(p.aw?1.3:1)*z;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(sx-p.dx*len*z,sy-p.dy*len*z);ctx.lineTo(sx,sy);ctx.stroke();
-    if(lq>.5||p.aw)softLine(sx,sy,sx-p.dx*len*1.8*z,sy-p.dy*len*1.8*z,48,.5,2.4*z,true);
-    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(sx,sy,(4+3*p.pw)*z,0,TAU);ctx.fill();
+    const[sx,sy]=S(p.x,p.y),h=p.aw?48:p.o.hue,lq=clamp((p.lv||0)/5,0,1),len=(34+60*p.pw)*(1+.5*lq)*(p.aw?1.3:1)*p.k;
+    ctx.strokeStyle=hs(h,.7,70);ctx.lineWidth=(5+4*p.pw)*(p.aw?1.3:1)*z*p.k;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(sx-p.dx*len*z,sy-p.dy*len*z);ctx.lineTo(sx,sy);ctx.stroke();
+    if(lq>.5||p.aw)softLine(sx,sy,sx-p.dx*len*1.8*z,sy-p.dy*len*1.8*z,48,.5,2.4*z*p.k,true);
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(sx,sy,(4+3*p.pw)*z*p.k,0,TAU);ctx.fill();
   }
   // 흡수 연출: 소용돌이 링 + 빨려드는 오브와 꼬리
   for(const v of vort){
@@ -747,9 +776,9 @@ function render(){
     const p=Math.min(1,a.t/a.dur);
     for(let j=1;j<a.tr.length;j++){
       const w=j/a.tr.length,[x1,y1]=S(a.tr[j-1][0],a.tr[j-1][1]),[x2,y2]=S(a.tr[j][0],a.tr[j][1]);
-      ctx.strokeStyle=hs(a.hue,w*.85,62);ctx.lineWidth=(P.R*1.5*w+1)*z*(1-p*.5);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      ctx.strokeStyle=hs(a.hue,w*.85,62);ctx.lineWidth=(a.r*1.5*w+1)*z*(1-p*.5);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
     }
-    const[sx,sy]=S(a.x,a.y),r=P.R*z*(1-p*.55)*2.2,g=ctx.createRadialGradient(sx,sy,0,sx,sy,r);
+    const[sx,sy]=S(a.x,a.y),r=a.r*z*(1-p*.55)*2.2,g=ctx.createRadialGradient(sx,sy,0,sx,sy,r);
     g.addColorStop(0,'rgba(255,255,255,.95)');g.addColorStop(.35,hs(a.hue,.9,65));g.addColorStop(1,hs(a.hue,0,60));
     ctx.fillStyle=g;ctx.beginPath();ctx.arc(sx,sy,r,0,TAU);ctx.fill();
   }
@@ -762,7 +791,7 @@ function render(){
   ctx.globalCompositeOperation='source-over';
   // 쿨다운 링
   if(!player.dead){
-    const r=P.R*z*1.95,rdy=player.cd<=0;
+    const r=rad(player)*z*1.95,rdy=player.cd<=0;
     ctx.lineWidth=2;ctx.strokeStyle='rgba(255,255,255,.035)';ctx.beginPath();ctx.arc(cw/2,ch/2,r,0,TAU);ctx.stroke();
     ctx.strokeStyle=rdy?hs(player.hue,.2,70):'rgba(255,255,255,.2)';ctx.beginPath();ctx.arc(cw/2,ch/2,r,-Math.PI/2,-Math.PI/2+TAU*(1-player.cd/P.CD));ctx.stroke();
   }
@@ -801,7 +830,7 @@ function hud(){
   // 우측 상단 상위 10위
   const live=ents.filter(e=>!e.dead).sort((a,b)=>b.score-a.score),rank=live.indexOf(player)+1,rows=live.slice(0,10);
   if(rank>10)rows.push(player);
-  const lw=176,lx=cw-lw-14,ly=ins.t+14;
+  const lw=218,lx=cw-lw-14,ly=ins.t+14;   // 칸: 순위 · 색점 · 이름 · 점수 · (금색) ×최대 연쇄 횟수
   ctx.fillStyle='rgba(3,5,11,.55)';ctx.fillRect(lx,ly,lw,16+rows.length*22);
   rows.forEach((e,i)=>{
     const y=ly+26+i*22,me=e===player;
@@ -809,7 +838,8 @@ function hud(){
     ctx.textAlign='left';ctx.fillText(String(live.indexOf(e)+1),lx+10,y);ctx.fillText(e.name,lx+50,y);
     const rr=(me&&rank===1)?4.5+2*Math.abs(Math.sin(performance.now()/260)):4.5;
     ctx.fillStyle=hs(e.hue,1,60);ctx.beginPath();ctx.arc(lx+38,y-4,rr,0,TAU);ctx.fill();
-    ctx.fillStyle=me?'#fff':'rgba(220,230,255,.8)';ctx.textAlign='right';ctx.fillText(String(Math.round(e.score)),lx+lw-10,y);
+    ctx.fillStyle=me?'#fff':'rgba(220,230,255,.8)';ctx.textAlign='right';ctx.fillText(String(Math.round(e.score)),lx+lw-54,y);
+    ctx.fillStyle=me?'#ffd978':'rgba(255,214,120,.7)';ctx.fillText('×'+e.mc,lx+lw-10,y);   // 한 번의 발사로 일으킨 최대 연쇄 충돌 횟수
   });
 }
 
@@ -843,15 +873,16 @@ function buildPalette(){
   });
   myHue=PAL[palIdx];
   nick.style.borderColor=myHue==null?'#fff':`hsl(${myHue},92%,62%)`;   // 입력창 테두리에도 선택한 색 반영
+  go.style.background=myHue==null?'#fff':`hsl(${myHue},92%,62%)`;      // START 버튼도 선택한 색으로
 }
 palEl.addEventListener('mousedown',e=>e.preventDefault());   // 색을 눌러도 별명 입력창 포커스 유지
 palEl.addEventListener('click',e=>{
   const t=e.target.closest('.sw');if(!t)return;
-  palIdx=+t.dataset.i;try{localStorage.setItem('dc_pi',palIdx)}catch(_){}
+  palIdx=+t.dataset.i;try{localStorage.setItem('dc_pi2',palIdx)}catch(_){}
   buildPalette();   // 실제 개체 색은 게임 시작(reset) 때 반영됨
 });
-palIdx=Math.round(210/(360/(P.PAL_N-1)));
-try{const sv=parseInt(localStorage.getItem('dc_pi'));if(!isNaN(sv)&&sv>=0&&sv<PAL.length)palIdx=sv}catch(_){}
+palIdx=PAL.length-1;   // 기본 선택 = 흰색(마지막 칸). 한 번 고른 색은 브라우저에 저장되어 다음에도 유지
+try{const sv=parseInt(localStorage.getItem('dc_pi2'));if(!isNaN(sv)&&sv>=0&&sv<PAL.length)palIdx=sv}catch(_){}
 buildPalette();
 nick.maxLength=P.NAME_MAX;try{nick.value=localStorage.getItem('dc_nick')||''}catch(_){}
 resize();mouse.x=cw/2;mouse.y=ch/2;reset();state='menu';showOv(false);
