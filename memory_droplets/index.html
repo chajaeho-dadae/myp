@@ -97,6 +97,8 @@ const P={
   // ---------- 크기 성장 (점수가 높을수록 개체가 커짐) ----------
   GROW_MAX:2,    // 내 개체의 화면상 최대 크기 배율. 점수에 비례해 1배 → GROW_MAX배까지 커지고, 그 이후로는 화면 속 내 크기가 고정됨
   GROW_PTS:300,  // 내 개체가 GROW_MAX배(화면상 최대 크기)에 도달하는 점수. 이 점수를 넘으면 실제 크기는 계속 비례해 커지지만 화면이 그만큼 멀어져(줌 아웃) 내 크기는 그대로 보이고, 나머지 개체는 내 크기에 반비례해 작아 보임
+  SLOW_AT:500,   // 이 점수에 도달하면 화면 줌 아웃(스케일 축소)이 멈추고, 개체 성장 속도도 SLOW_RATE배로 둔화됨 (모든 개체 공통)
+  SLOW_RATE:.15, // SLOW_AT점 이후 크기 성장 비율의 배수. 1이면 둔화 없음, 0이면 SLOW_AT점 이후 더 이상 커지지 않음
   SIZE_MAX:12,   // 개체 실제 크기 배율의 상한(안전장치). 크기 배율 = 1 + (GROW_MAX-1) × 점수 / GROW_PTS (모든 개체 공통, 봇도 점수에 따라 커짐)
                  // 투사체의 크기·충돌 범위·사거리도 발사한 개체의 크기 배율만큼 커짐
 
@@ -115,6 +117,42 @@ const P={
 
   // ---------- 별명 ----------
   NAME_MAX:6,    // 별명 최대 글자 수. 순위표 칸 너비에 맞춘 값이라 너무 키우면 점수와 겹칠 수 있음
+
+  // ---------- 봇 성격 (0=무리, 1=겁 많은, 2=포식자. 생성될 때 정해지며, 몸 모양(꼬리)으로 구분됨: 포식자는 뾰족, 겁 많은 개체는 둥근 편) ----------
+  PERS_W:[.4,.3,.3],       // 일반 단계에서 새 개체가 각 성격을 가질 확률의 비율 [무리, 겁 많은, 포식자] (합이 1이 아니어도 비율로 계산됨)
+  PERS_ELITE_W:[.15,.25,.6],// 엘리트 단계에서 보충되는 개체의 성격 비율. 포식자 비중이 높아 소수의 지능적인 경쟁자가 됨
+  PERS_TAIL:[1,.9,1.3],    // 성격별 꼬리 길이 배율 [무리, 겁 많은, 포식자] (TAIL에 곱해짐)
+  BOT_SENSE:520, // 봇이 먹잇감/공격 대상을 찾는 거리 (px) × 자기 크기 배율. 클수록 멀리서 알아챔
+  FEAR_K:1.15,   // [겁 많은] 자기 크기의 이 배율을 넘는 개체를 '위협'으로 봄
+  FLEE_R:360,    // [겁 많은] 위협이 (이 값 × 위협의 크기 배율) px 안으로 들어오면 도망감. 큰 개체일수록 더 멀리서부터 피함
+  PRED_K:1.1,    // [포식자] 자기 크기의 이 배율 이하인 개체만 사냥함. 훨씬 큰 개체는 건드리지 않음 (1.0이면 자기보다 작은 개체만)
+  HERD_K:1.5,    // [무리] 크기 배율이 이 값 미만일 때만 서로 모여 다님. 이 이상 커지면 흩어져 포식자처럼 행동
+  HERD_R:320,    // [무리] 동료를 인식하는 거리 (px)
+  HERD_QUORUM:2, // [무리] 곁에 동료가 이만큼 이상 있을 때(연합)만 공격함. 혼자일 때는 공격하지 않음. 연합하면 자기보다 큰 개체도 공격할 수 있음
+
+  // ---------- 엘리트 단계 (내 개체가 충분히 커졌을 때 군중 대신 소수의 강한 경쟁자만 남김. 개체 수가 줄어 fps도 좋아짐) ----------
+  ELITE_AT:300,  // 내 점수가 이 값에 도달하면 엘리트 단계 시작. 한 번 시작하면 그 판이 끝날 때까지 유지됨 (점수가 다시 내려가도 되돌아가지 않음)
+  ELITE_MIN:100, // 엘리트 단계에서 이 점수 미만인 개체는 모두 삭제되고, 이후 새로 생성되지도 않음 (내 개체 제외)
+  ELITE_FRAC:1/3,// 엘리트 단계에서 항상 유지하는 ELITE_MIN 점수 이상 개체의 수 = N × 이 비율 (반올림, 내 개체 제외). 흡수되어 줄어들면 즉시 새로 보충됨
+  ELITE_SPAWN:.7,// 보충되는 개체의 점수는 ELITE_MIN ~ max(ELITE_MIN+60, 내 점수 × 이 값) 사이 무작위 → 내가 클수록 경쟁자도 강해짐
+
+  // ---------- 조준 눈금 ----------
+  AIM_HIDE_ERA:2, // 이 세계 번호부터 발사 방향 조준선(점선)과 반동 예고선을 숨김. 1세계에서는 그대로 표시됨 (쿨다운 링은 항상 표시). 99처럼 크게 두면 항상 표시
+
+  // ---------- 승천: 세계 흡수 (점수가 ASC_AT에 도달하면 현재 세계가 통째로 내 몸이 되고, 같은 크기의 '다른 세계 주인들'과 다시 경쟁하는 새 세계가 시작됨) ----------
+  ASC_AT:90000,    // 이 점수에 도달하면 승천 연출 시작. 내가 연쇄에 휘말려 있으면 끝난 뒤에 시작됨
+  ASC_A:1.9,     // 1막 길이(초): 세계의 모든 개체가 나에게 빨려들고, 카메라가 맵 전체가 보이도록 물러남
+  ASC_B:1.4,     // 2막 길이(초): 맵 전체가 내 몸으로 변함 (맵 반지름 = 내 몸 반지름)
+  ASC_C:2.6,     // 3막 길이(초): 카메라가 극단적으로 멀어지며 새 세계와 다른 세계 주인들이 드러남 → 처음 상태로 복귀
+  ASC_TXT:['THE WORLD FALLS INTO YOU','YOU ARE THE WORLD','OTHER WORLDS AWAIT'],   // 연출 자막 (1막, 2막, 3막)
+  ERA_START_SCORE:0, // 새 세계를 시작할 때의 점수 (0 = 완전히 처음 상태로 복귀)
+
+  // ---------- 반동 (승천 이후의 세계에서만 적용되는 새 규칙: 발사하면 내 개체가 뒤로 튕겨나감) ----------
+  RECOIL_ERA:2,  // 이 세계 번호부터 반동 적용 (1 = 처음 세계부터, 2 = 첫 승천 이후부터)
+  RECOIL_D:300,  // 압력을 가득 채워 발사했을 때 뒤로 밀려나는 총 거리 (px). 압력에 비례해 줄어듦
+  RECOIL_MIN:.12,// 압력 0(짧은 클릭)으로 쐈을 때의 반동 비율. 0.12면 최대 반동의 12%
+  RECOIL_DECAY:4,// 반동 속도가 줄어드는 정도 (1/초). 클수록 짧은 시간에 확 튕기고, 작을수록 길게 미끄러짐
+  RECOIL_SAFE:true, // true면 반동만으로 경계에 닿았을 땐 죽지 않고 경계에서 멈춤. false면 반동으로 경계에 부딪혀도 종료
 
   // ---------- 디버그 ----------
   START_SCORE:0, // (테스트용) 게임 시작 때 내 개체가 이미 가지고 있는 점수. 0이면 평소대로 시작.
@@ -137,21 +175,26 @@ const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const hs=(h,a,l=62)=>{if(h==null){const v=Math.round(255-Math.max(0,82-l)*1.2);return `rgba(${v},${v},${v},${a})`}return `hsla(${h},92%,${l}%,${a})`};
 function angDiff(a,b){let d=(b-a)%TAU;if(d>Math.PI)d-=TAU;if(d<-Math.PI)d+=TAU;return d}
 // 화면 배율: 기본 배율 × 줌 아웃. 내 크기 배율이 GROW_MAX를 넘으면 그 비율만큼 화면을 멀리 당겨서 내 개체의 화면상 크기를 고정하고, 나머지 개체는 상대적으로 작아 보이게 함
-function zoomMul(){return player?Math.min(1,P.GROW_MAX/player.k):1}
+// 점수 → 크기 배율. SLOW_AT점까지는 기존대로 비례 성장, 그 이후에는 성장 기울기가 SLOW_RATE배로 확 줄어듦
+function kOf(sc){const a=Math.min(sc,P.SLOW_AT),b=Math.max(0,sc-P.SLOW_AT);return Math.min(P.SIZE_MAX,1+(P.GROW_MAX-1)*(a+b*P.SLOW_RATE)/P.GROW_PTS)}
+// 줌 아웃은 SLOW_AT점에서 멈춤(그 이후로는 화면 배율 고정)
+function zoomMul(){return player?Math.min(1,P.GROW_MAX/Math.min(player.k,kOf(P.SLOW_AT))):1}
 const zoom=()=>clamp(Math.min(cw,ch)/800,.7,1.3)*zoomMul();
 const rad=e=>P.R*e.k;   // 개체의 현재 반지름 (점수에 따라 커짐)
+let eliteOn=false;      // 엘리트 단계 여부 (내 점수가 ELITE_AT에 도달하면 true, 판이 끝날 때까지 유지)
 const fmt=ms=>{const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 function resize(){dpr=Math.min(2,window.devicePixelRatio||1);cw=innerWidth;ch=innerHeight;cv.width=cw*dpr;cv.height=ch*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);const r=sa.getBoundingClientRect();ins.t=r.top;ins.b=Math.max(0,ch-r.bottom)}
 addEventListener('resize',resize);
 
 let tailAng=[],tailLen=26,trail=[],trailLife=.3,shards=[],PL=0,topFade=0,wasTop=false,flash=0,edge=0,slowT=0,slowK=1,deadScore=0,stars=[],starSpr=[],maxClash=0,pendFire=false,suck=[],suckAcc=0,ents,projs,chains,parts,absorbs,pops,vort,player,shake,freeze,uid,state='menu',t0=0,deadAt=0,surv=0,maxScore=0,ovAt=0;
 const mouse={x:0,y:0},keys={space:false,mouse:false},V={cx:0,cy:0,z:1};
+let asc=null,toast=null,era=1;   // asc = 승천 연출 상태(null이면 연출 중 아님), toast = 새 세계 시작 안내, era = 현재 세계 번호
 
 let myHue=210;   // 내가 선택한 색(색상 각도 0~360, null이면 흰색)
 let palIdx=0;
 // 다른 개체의 색: 기존 분포(황금각)를 내 색 ±COLOR_EXCL 구간을 뺀 나머지 범위로 압축해 내 색과 겹치지 않게 함
 function botHue(id){const h=(id*137.508)%360,ex=P.COLOR_EXCL;if(myHue==null)return h;return (myHue+ex+h/360*(360-2*ex))%360}
-function mk(x,y,isP){const id=uid++;return{id,x,y,a:rnd(0,TAU),hue:isP?myHue:botHue(id),score:0,cd:isP?0:rnd(0,P.CD),claimed:false,circ:false,ct:0,dead:false,isP,ta:rnd(0,TAU),tt:rnd(0,2),pulse:0,boost:false,charge:0,name:'',lvS:0,tier:0,cl:0,clT:0,mix:[],awk:0,mc:0,k:1,ph:rnd(0,TAU)}}
+function mk(x,y,isP){const id=uid++;return{id,x,y,a:rnd(0,TAU),hue:isP?myHue:botHue(id),score:0,cd:isP?0:rnd(0,P.CD),claimed:false,circ:false,ct:0,dead:false,isP,ta:rnd(0,TAU),tt:rnd(0,2),pulse:0,boost:false,charge:0,name:'',lvS:0,tier:0,cl:0,clT:0,mix:[],awk:0,mc:0,k:1,rvx:0,rvy:0,pt:isP?-1:pickPers(false),ph:rnd(0,TAU)}}
 function spawnPos(minD){
   for(let i=0;i<40;i++){
     const[x,y]=rndInMap(60);
@@ -160,28 +203,74 @@ function spawnPos(minD){
   }
   return rndInMap(60);
 }
+// ----- 엘리트 단계: 점수 ELITE_MIN 이상 개체만 유지 -----
+const eliteN=()=>Math.round(P.N*P.ELITE_FRAC);
+function mkElite(x,y){
+  const e=mk(x,y,false),pmax=Math.max(P.ELITE_MIN+60,(player?player.score:0)*P.ELITE_SPAWN);
+  e.score=Math.round(rnd(P.ELITE_MIN,pmax));
+  e.k=kOf(e.score);   // 점수에 맞는 크기로 바로 생성
+  e.pt=pickPers(true);                                           // 엘리트는 포식자 비중이 높은 성격 분포
+  e.tier=tierOf(e.score);e.lvS=lvOf(e.score);                    // 단계 상승 연출이 터지지 않도록 현재 단계로 시작
+  ring(x,y,e.hue,60);burst(x,y,e,8);                              // 나타나는 순간의 작은 빛 (화면 안에 생성될 때만 보임)
+  return e;
+}
+function eliteStep(){
+  if(!eliteOn){
+    if(state!=='play'||player.dead||player.score<P.ELITE_AT)return;
+    eliteOn=true;   // 엘리트 단계 진입: 화면 가장자리 번짐 + 섬광 + 파문 + 효과음
+    edge=Math.max(edge,.9);flash=Math.max(flash,.2);shake=Math.min(30,shake+8);
+    ring(player.x,player.y,player.hue,160,true);ring(player.x,player.y,null,240,true);sfx.crown();
+  }
+  let changed=false,cnt=0;
+  for(const e of ents){
+    if(e===player||e.dead)continue;
+    if(e.score>=P.ELITE_MIN){cnt++;continue}
+    if(e.claimed)continue;   // 연쇄 진행 중인 개체는 연쇄가 끝난 뒤 정리
+    const[sx,sy]=S(e.x,e.y);if(sx>-60&&sx<cw+60&&sy>-60&&sy<ch+60){burst(e.x,e.y,e,5);ring(e.x,e.y,e.hue,34)}   // 화면 안의 개체는 빛으로 흩어지며 사라짐
+    e.dead=true;changed=true;
+  }
+  if(changed||cnt<eliteN())refill();
+}
 function refill(){
   ents=ents.filter(e=>!e.dead||e===player);
   const far=Math.hypot(cw,ch)/2/zoom()+90;
+  if(eliteOn){   // 엘리트 단계: ELITE_MIN 이상 개체가 eliteN()마리가 되도록만 보충 (낮은 점수의 일반 개체는 생성하지 않음)
+    let n=ents.filter(e=>e!==player&&!e.dead&&e.score>=P.ELITE_MIN).length;
+    while(n<eliteN()){const[x,y]=spawnPos(far);ents.push(mkElite(x,y));n++}
+    return;
+  }
   while(ents.filter(e=>!e.dead).length<P.N){const[x,y]=spawnPos(far);ents.push(mk(x,y,false))}
 }
-function reset(){
-  uid=0;maxClash=0;pendFire=false;tailAng=[];tailLen=26;trail=[];shards=[];PL=0;topFade=0;wasTop=false;flash=0;edge=0;slowT=0;slowK=1;deadScore=0;suck=[];suckAcc=0;ents=[];projs=[];chains=[];parts=[];absorbs=[];pops=[];vort=[];shake=0;freeze=0;maxScore=0;
+// 새 세계 생성: 가운데에 내 개체, 나머지는 맵 안에 무작위 배치 (게임 시작과 승천 직후의 새 세계가 같은 방식으로 만들어짐)
+function buildWorld(sc){
+  const list=[],pl=mk(P.W/2,P.H/2,true);pl.score=sc;pl.k=kOf(sc);list.push(pl);
+  while(list.length<P.N){
+    let x,y;
+    for(let i=0;i<40;i++){[x,y]=rndInMap(60);if(Math.hypot(x-pl.x,y-pl.y)>=260&&list.every(e=>Math.hypot(e.x-x,e.y-y)>70))break}
+    list.push(mk(x,y,false));
+  }
+  return list;
+}
+function reset(pre){
+  // pre = 승천 연출 중 미리 만들어 둔 새 세계. 있으면 그 세계로 이어서 시작하고 생존 시간·최고 기록은 이어짐
+  eliteOn=false;pendFire=false;tailAng=[];tailLen=26;trail=[];shards=[];PL=0;topFade=0;wasTop=false;flash=0;edge=0;slowT=0;slowK=1;deadScore=0;suck=[];suckAcc=0;projs=[];chains=[];parts=[];absorbs=[];pops=[];vort=[];shake=0;freeze=0;asc=null;
   keys.mouse=false;
-  player=mk(P.W/2,P.H/2,true);ents.push(player);
-  player.score=P.START_SCORE;maxScore=P.START_SCORE;   // 디버그: 시작 점수와 그에 맞는 크기를 즉시 반영 (서서히 자라지 않음)
-  player.k=Math.min(P.SIZE_MAX,1+(P.GROW_MAX-1)*player.score/P.GROW_PTS);
-  // 시작 화면에서 입력한 별명을 순위표에 사용 (비어 있으면 '나')
-  const nm=nick.value.trim().slice(0,P.NAME_MAX);player.name=nm;
-  try{localStorage.setItem('dc_nick',nm)}catch(_){}
+  if(pre){ents=pre;player=pre[0];era++;toast={t:0}}
+  else{
+    uid=0;maxClash=0;era=1;toast=null;
+    ents=buildWorld(P.START_SCORE);player=ents[0];maxScore=P.START_SCORE;   // 디버그: 시작 점수와 그에 맞는 크기를 즉시 반영 (서서히 자라지 않음)
+    // 시작 화면에서 입력한 별명을 순위표에 사용 (비어 있으면 '나')
+    const nm=nick.value.trim().slice(0,P.NAME_MAX);player.name=nm;
+    try{localStorage.setItem('dc_nick',nm)}catch(_){}
+    t0=performance.now();
+  }
   nick.blur();go.blur();
-  while(ents.length<P.N){const[x,y]=spawnPos(260);ents.push(mk(x,y,false))}
-  t0=performance.now();state='play';ov.style.display='none';
+  state='play';ov.style.display='none';
 }
 function showOv(over){
   ovAt=performance.now();ov.style.display='flex';chargeSound(0);
   if(!over)nick.focus();
-  if(over){state='over';ttl.textContent='Clashed';const sv=surv/1000,svt=sv<60?Math.floor(sv)+' sec':(sv/60).toFixed(1)+' min';msg.innerHTML=`<table id="res"><tr><td>Survive:</td><td>${svt}</td></tr><tr><td>Score:</td><td>${Math.round(maxScore)}</td></tr><tr><td>Max Clash:</td><td>${maxClash}</td></tr></table>`}
+  if(over){state='over';ttl.textContent='Clashed';const sv=surv/1000,svt=sv<60?Math.floor(sv)+' sec':(sv/60).toFixed(1)+' min';msg.innerHTML=`<table id="res"><tr><td>Survive:</td><td>${svt}</td></tr>${era>1?`<tr><td>World:</td><td>${era}</td></tr>`:''}<tr><td>Score:</td><td>${Math.round(maxScore)}</td></tr><tr><td>Max Clash:</td><td>${maxClash}</td></tr></table>`}
   else{ttl.textContent='Memory Droplets';msg.innerHTML=''}
 }
 // 시작 화면의 다른 영역을 클릭해도 시작하지 않음. START 버튼을 눌러야만 시작 (게임오버 직후 오클릭 방지로 0.5초 대기)
@@ -274,6 +363,12 @@ const sfx={
   tier(t,v=1){const sc=[0,4,7,12,16,19];for(let i=0;i<=Math.min(t,5);i++)tone(523.25*Math.pow(2,sc[i]/12),.5+.1*t,{vol:.15*v,delay:i*.06});tone(130.8,.9,{vol:.2*v,to:65})},
   // 1위 탈환
   crown(){[784,988,1175,1568].forEach((f,i)=>tone(f,.45,{type:'triangle',vol:.14,delay:i*.07}))},
+  // 반동: 압력이 클수록 낮고 묵직한 쿵 소리
+  recoil(pw){tone(150-80*pw,.28+.2*pw,{vol:.22+.12*pw,to:38});noise(.16+.14*pw,{vol:.16+.1*pw,f0:900,f1:90,q:.9})},
+  // 승천 연출: 1막(빨려듦) / 2막(세계가 몸이 됨) / 3막(줌 아웃)
+  ascA(){tone(70,P.ASC_A,{type:'sawtooth',vol:.1,to:460});noise(P.ASC_A,{vol:.14,f0:300,f1:4200,q:1.2})},
+  ascB(){tone(55,1.4,{vol:.3,to:28});noise(.9,{vol:.3,f0:4000,f1:120,q:.8});[0,7,12,16,19].forEach((s,i)=>tone(261.63*Math.pow(2,s/12),1.7,{type:'triangle',vol:.12,delay:.15+i*.08}))},
+  ascC(){noise(P.ASC_C,{vol:.1,f0:200,f1:5000,q:2});[0,12,19,24].forEach((s,i)=>tone(130.8*Math.pow(2,s/12),P.ASC_C*.8,{vol:.07,delay:i*.25}))},
   // 각성 발동
   awake(){tone(180,.7,{type:'sawtooth',vol:.16,to:1400});noise(.6,{vol:.22,f0:500,f1:5000,q:1.5});[0,4,7,12].forEach((s,i)=>tone(523.25*Math.pow(2,s/12),.7,{type:'triangle',vol:.14,delay:.5+i*.05}))},
 };
@@ -353,17 +448,59 @@ function fire(e,pw=0){
   burst(e.x+dx*rad(e)*2,e.y+dy*rad(e)*2,e,5+Math.round(pw*12));
   sfx.fire(e.x,e.y,pw,e.lvS);
   if(pw>0&&e.isP)shake=Math.min(26,shake+pw*10);
+  // 반동(승천 이후의 세계): 압력을 채운 만큼 발사 반대 방향으로 튕겨나감. 총 이동 거리 = RECOIL_D × (RECOIL_MIN ~ 1)
+  if(e.isP&&era>=P.RECOIL_ERA){
+    const D=P.RECOIL_D*(P.RECOIL_MIN+(1-P.RECOIL_MIN)*pw),v=D*P.RECOIL_DECAY,bx=e.x-dx*rad(e),by=e.y-dy*rad(e),ba=Math.atan2(dy,dx)+Math.PI;
+    e.rvx=-dx*v;e.rvy=-dy*v;
+    for(let i=0,n=6+Math.round(pw*20);i<n;i++){const an=ba+rnd(-.55,.55),sp=rnd(120,460)*(.5+pw);parts.push({x:bx,y:by,vx:Math.cos(an)*sp,vy:Math.sin(an)*sp,l:0,m:rnd(.25,.55),h:e.hue,s:rnd(2,5)})}   // 뒤쪽으로 뿜어지는 입자
+    ring(bx,by,null,36+70*pw,true);if(pw>.5)ring(bx,by,e.hue,60+110*pw,true,.05);
+    shake=Math.min(30,shake+4+14*pw);sfx.recoil(pw);
+  }
 }
+// ===== 봇 성격 =====
+// 0=무리  : 작을 때(크기 < HERD_K) 서로 모여 다니다가, 곁에 동료가 HERD_QUORUM명 이상일 때만(연합) 가장 가까운 개체를 공격. 커지면 포식자처럼 행동
+// 1=겁 많은: 자기보다 큰 개체가 다가오면 도망. 위협이 없을 때만 작거나 비슷한 개체를 느긋하게 노림
+// 2=포식자: 자기보다 크지 않은 개체만 사냥. 점수가 높고 가까운 먹잇감을 골라 쫓아가 쏘고, 훨씬 큰 개체는 건드리지 않음
+function pickPers(elite){const w=elite?P.PERS_ELITE_W:P.PERS_W;let r=Math.random()*(w[0]+w[1]+w[2]);for(let i=0;i<3;i++){r-=w[i];if(r<=0)return i}return 0}
+const persOf=e=>(e.pt===0&&e.k>=P.HERD_K)?2:e.pt;   // 무리 개체는 커지면 포식자로 전환
 function bot(e,dt){
   e.tt-=dt;if(e.tt<=0){e.ta=rnd(0,TAU);e.tt=rnd(1,3)}
-  if(outMap(e.x,e.y,140))e.ta=Math.atan2(MCY-e.y,MCX-e.x);   // 경계에 가까워지면 중심 쪽으로 방향 전환
-  let ta=e.ta;
-  if(e.cd<=0){
-    let best=null,bd=520;
-    for(const o of ents){if(o===e||o.dead||o.claimed)continue;const d=Math.hypot(o.x-e.x,o.y-e.y);if(d<bd){bd=d;best=o}}
-    if(best){ta=Math.atan2(best.y-e.y,best.x-e.x);if(Math.abs(angDiff(e.a,ta))<.1){fire(e);e.cd+=rnd(0,4)}}
+  const pt=persOf(e),sense=P.BOT_SENSE*e.k,rng=P.PRNG*e.k*.95,edge=outMap(e.x,e.y,140+rad(e)*2);
+  if(edge)e.ta=Math.atan2(MCY-e.y,MCX-e.x);   // 경계에 가까워지면 중심 쪽으로 방향 전환
+  // 주변 스캔: 위협(나보다 큰 개체), 먹잇감(나보다 크지 않은 개체), 가장 가까운 개체, 무리 동료
+  let threat=null,td=1e9,prey=null,pv=-1,near=null,nd=1e9,mates=0,cx=0,cy=0,ax=0,ay=0,sx=0,sy=0;
+  for(const o of ents){
+    if(o===e||o.dead||o.claimed)continue;
+    const dx=o.x-e.x,dy=o.y-e.y,d=Math.hypot(dx,dy)||1;
+    if(o.k>e.k*P.FEAR_K&&d<P.FLEE_R*o.k&&d<td){td=d;threat=o}
+    if(d>sense)continue;
+    if(d<nd){nd=d;near=o}
+    if(o.k<=e.k*P.PRED_K){const v=(o.score+10)/(d+150);if(v>pv){pv=v;prey=o}}   // 점수가 높고 가까울수록 매력적인 먹잇감
+    if(o.pt===0&&o.k<P.HERD_K&&d<P.HERD_R){
+      mates++;cx+=dx;cy+=dy;ax+=Math.cos(o.a);ay+=Math.sin(o.a);
+      const m=(rad(e)+rad(o))*3;if(d<m){sx-=dx/d*(m-d);sy-=dy/d*(m-d)}      // 너무 붙으면 서로 밀어냄
+    }
   }
-  steer(e,ta,P.TURN*.6,dt);
+  let ta=e.ta,rate=P.TURN*.6,tgt=null;   // tgt = 이번에 겨냥할 대상
+  if(pt===1){                              // 겁 많은
+    if(threat){ta=Math.atan2(e.y-threat.y,e.x-threat.x);rate=P.TURN*1.2}   // 위협의 반대쪽으로 빠르게 방향 전환
+    else if(prey&&e.cd<=0)tgt=prey;
+  }else if(pt===2){                        // 포식자: 쿨다운 중에도 먹잇감을 쫓아감
+    if(prey){tgt=prey;ta=Math.atan2(prey.y-e.y,prey.x-e.x)}
+  }else if(pt===0){                        // 무리
+    if(mates>=P.HERD_QUORUM&&near&&e.cd<=0)tgt=near;                         // 연합: 가장 가까운 개체 공격
+    else if(mates>0){                                                         // 군집: 응집 + 방향 맞춤 + 분리
+      const vx=cx/mates*.5+ax/mates*60+sx*1.5,vy=cy/mates*.5+ay/mates*60+sy*1.5;
+      if(Math.hypot(vx,vy)>1)ta=Math.atan2(vy,vx);
+    }
+  }
+  if(tgt){
+    const ang=Math.atan2(tgt.y-e.y,tgt.x-e.x),d=Math.hypot(tgt.x-e.x,tgt.y-e.y);
+    ta=ang;
+    if(e.cd<=0&&d<rng&&Math.abs(angDiff(e.a,ang))<.1){fire(e);e.cd+=pt===2?rnd(0,2):pt===1?rnd(2,6):rnd(0,4)}   // 포식자는 연사, 겁 많은 개체는 느긋하게
+  }
+  if(edge)ta=e.ta;   // 경계 회피가 최우선
+  steer(e,ta,rate,dt);
 }
 function startChain(o,e,dx,dy,pw=0,kb=1){o.mc=Math.max(o.mc,1);if(o.isP)maxClash=Math.max(maxClash,1);e.claimed=true;chains.push({o,m:[e],dx,dy,k:1,D:P.D1*(1+P.CHG_KB*pw)*kb*kbRel(o,e),t:0})}
 // 크기 비율에 따른 넉백 보정: 발사한 개체가 맞은 개체보다 작으면 1보다 작아 짧게, 크면 1보다 커서 길게 밀려남
@@ -414,10 +551,11 @@ function endChain(c,wall){
   refill();
 }
 function update(dt){
+  eliteStep();   // 내 점수가 ELITE_AT에 도달하면 군중을 정리하고 소수의 강한 개체만 유지
   for(const e of ents){
     if(e.dead)continue;
     e.cd=Math.max(0,e.cd-dt);e.pulse=Math.max(0,e.pulse-dt*3);if(e.circ)e.ct+=dt;if(e.awk>0)e.awk=Math.max(0,e.awk-dt);
-    e.k+=(Math.min(P.SIZE_MAX,1+(P.GROW_MAX-1)*e.score/P.GROW_PTS)-e.k)*Math.min(1,dt*4);   // 점수에 비례해 부드럽게 커지고(점수가 줄면 작아짐)
+    e.k+=(kOf(e.score)-e.k)*Math.min(1,dt*4);   // 점수에 비례해 부드럽게 커지고(점수가 줄면 작아짐)
     e.boost=false;if(e.claimed&&!e.isP){e.charge=0;continue}
     let turn=P.TURN,sp=P.V;
     if(e.isP){
@@ -442,8 +580,20 @@ function update(dt){
       const f=P.GRAV_V*w*Math.pow(1-d/Rg,1.5)/d;gx+=dx*f;gy+=dy*f;
     }
     const gm=Math.hypot(gx,gy);if(gm>P.GRAV_V){gx*=P.GRAV_V/gm;gy*=P.GRAV_V/gm}
-    const nx=e.x+Math.cos(e.a)*sp*dt+gx*dt,ny=e.y+Math.sin(e.a)*sp*dt+gy*dt;
-    e.x=nx;e.y=ny;const hitWall=outMap(nx,ny,rad(e));if(hitWall)clampMap(e,rad(e));
+    // 반동: 발사 직후 뒤로 밀리는 속도 (지수적으로 감소). 일반 이동·중력과 별개로 더해짐
+    let rx=0,ry=0;
+    if(e.rvx||e.rvy){
+      const f=Math.exp(-P.RECOIL_DECAY*dt),ig=P.RECOIL_DECAY>0?(1-f)/P.RECOIL_DECAY:dt;rx=e.rvx*ig;ry=e.rvy*ig;e.rvx*=f;e.rvy*=f;   // 한 프레임 동안의 정확한 적분 → 총 이동 거리가 RECOIL_D와 일치
+      if(Math.hypot(e.rvx,e.rvy)<5)e.rvx=e.rvy=0;
+      parts.push({x:e.x,y:e.y,vx:0,vy:0,l:0,m:.3,h:e.hue,s:rad(e)*.8});   // 반동 잔상
+    }
+    const nx0=e.x+Math.cos(e.a)*sp*dt+gx*dt,ny0=e.y+Math.sin(e.a)*sp*dt+gy*dt,nx=nx0+rx,ny=ny0+ry;
+    e.x=nx;e.y=ny;let hitWall=outMap(nx,ny,rad(e));
+    if(hitWall){
+      const rcOnly=(rx||ry)&&P.RECOIL_SAFE&&!outMap(nx0,ny0,rad(e));   // 반동 때문에만 경계에 닿았는가
+      clampMap(e,rad(e)+(rcOnly?3:0));
+      if(rcOnly){hitWall=false;e.rvx=e.rvy=0;ring(e.x,e.y,e.hue,50);shake=Math.min(26,shake+6)}   // 경계에서 멈추고 쿵 하는 연출
+    }
     if(e.isP&&hitWall){   // 플레이어가 경계에 닿으면 종료
       e.dead=true;pendFire=false;deadAt=performance.now();surv=deadAt-t0;
       deadScore=e.score;deathLight(e.x,e.y,e.hue,e.score);if(e.score>20){slowT=.45;slowK=.3}sfx.over();
@@ -533,6 +683,7 @@ function visuals(dt){
   for(let i=suck.length-1;i>=0;i--){suck[i].l+=dt;if(suck[i].l>=suck[i].m)suck.splice(i,1)}
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.l+=dt;if(p.l>=p.m){parts.splice(i,1);continue}if(!p.ring){p.x+=p.vx*dt;p.y+=p.vy*dt;const f=1-4*dt;p.vx*=f;p.vy*=f}}
   for(let i=pops.length-1;i>=0;i--){pops[i].t+=dt;if(pops[i].t>.9)pops.splice(i,1)}
+  if(toast){toast.t+=dt;if(toast.t>4)toast=null}
   for(let i=vort.length-1;i>=0;i--){vort[i].t+=dt;if(vort[i].t>.7)vort.splice(i,1)}
   for(let i=absorbs.length-1;i>=0;i--){
     const a=absorbs[i];a.t+=dt;if(a.t<0)continue;
@@ -547,6 +698,112 @@ function visuals(dt){
       if(o.isP)shake=Math.min(30,shake+3);
       absorbs.splice(i,1);
     }
+  }
+}
+
+// ===== 승천: 세계 흡수 연출 =====
+// 개념: 새 세계는 지금 세계를 F배 확대한 '같은 모양의 세계'. 새 세계의 내 개체 반지름(12.36 새 단위) = 지금 세계의 맵 반지름(MR 옛 단위) → F = MR / R.
+//  1막: 모든 개체가 나에게 빨려들고 카메라가 맵 전체가 보이게 물러남 → 2막: 맵 전체가 내 몸으로 변함(원형 파문이 번지며 몸으로 덮음)
+//  → 3막: 카메라가 F배 가까이 극단적으로 멀어져 몸이 처음 크기로 줄고, 그 둘레에 같은 크기의 다른 세계 주인들이 나타남 → 새 세계 시작
+const lerp=(a,b,t)=>a+(b-a)*t,eio=t=>.5-.5*Math.cos(Math.PI*clamp(t,0,1)),eout=t=>1-Math.pow(1-clamp(t,0,1),3);
+const baseZoom=()=>clamp(Math.min(cw,ch)/800,.7,1.3);
+function startAscend(){
+  const p=player;
+  keys.mouse=false;keys.space=false;pendFire=false;p.charge=0;p.boost=false;chargeSound(0);
+  projs=[];chains=[];slowT=0;freeze=0;wasTop=true;
+  for(const e of ents){e.claimed=false;e.circ=false}
+  const nw=buildWorld(P.ERA_START_SCORE);nw[0].name=p.name;   // 새 세계를 미리 만들어 둠 (연출 3막에서 보여주고, 끝나면 그대로 게임이 이어짐)
+  asc={t:0,ph:0,nw,cx:p.x,cy:p.y,z:V.z,z0:V.z,blip:0,bn:0,
+    its:ents.filter(e=>e!==p&&!e.dead).map(e=>({e,sx:e.x,sy:e.y,k0:e.k,d:rnd(0,.55),sw:rnd(.5,1.2)*(Math.random()<.5?-1:1),done:false}))};
+  setChainFx(p,5);   // 내 개체를 최고 단계 효과로
+  state='ascend';sfx.ascA();
+}
+function ascUpdate(dt){
+  const a=asc,TA=P.ASC_A,TB=P.ASC_B,TC=P.ASC_C,p=player,F=MR/P.R,zfit=Math.min(cw,ch)*.4/MR,zend=baseZoom()/F;
+  a.t+=dt;const t=a.t;
+  if(t<TA){
+    a.ph=0;const q=t/TA;
+    a.z=a.z0*Math.pow(zfit/a.z0,eio(q/.85));   // 맵 전체가 보이는 배율까지 부드럽게 물러남
+    a.cx=lerp(p.x,MCX,eio(q));a.cy=lerp(p.y,MCY,eio(q));
+    PL+=(1-PL)*Math.min(1,dt*2);
+    a.blip-=dt;
+    for(const it of a.its){
+      if(it.done)continue;
+      const u=clamp((t-it.d)/.85,0,1),e=it.e;if(u<=0)continue;
+      const w=u*u*u,dx=p.x-it.sx,dy=p.y-it.sy,L=Math.hypot(dx,dy)||1,sw=Math.sin(u*Math.PI)*L*.35*it.sw;   // 소용돌이치며 빨려듦
+      e.x=it.sx+dx*w-dy/L*sw;e.y=it.sy+dy*w+dx/L*sw;e.a=Math.atan2(dy,dx);e.k=it.k0*(1-.7*w);
+      if(u>=1){
+        it.done=true;e.dead=true;p.pulse=1;pushMix(p,e.hue);burst(p.x,p.y,e,3);if(Math.random()<.5)ring(p.x,p.y,e.hue,46+rnd(0,40));
+        shake=Math.min(16,shake+1.2);
+        if(a.blip<=0){tone(note(a.bn++%15)/2,.14,{type:'triangle',vol:.05});a.blip=.03}
+      }
+    }
+  }else if(t<TA+TB){
+    if(a.ph<1){
+      a.ph=1;a.cx=MCX;a.cy=MCY;
+      for(const it of a.its)if(!it.done){it.done=true;it.e.dead=true}
+      sfx.ascB();flash=.55;edge=1;shake=Math.min(30,shake+16);
+      ring(MCX,MCY,p.hue,MR*1.1,true);ring(MCX,MCY,null,MR*1.5,true,.12);ring(MCX,MCY,p.hue,MR*2,true,.26);
+    }
+    a.z=zfit;
+  }else if(t<TA+TB+TC){
+    if(a.ph<2){a.ph=2;sfx.ascC()}
+    const q=(t-TA-TB)/TC;
+    a.z=zfit*Math.pow(zend/zfit,eio(q));a.cx=MCX;a.cy=MCY;
+  }else{
+    reset(a.nw);sfx.crown();   // 새 세계로 전환 (이후 일반 게임, 반동 규칙 적용)
+  }
+}
+// 몸 주변의 큰 후광 (승천 연출 중에만 보이고, 새 세계가 시작될 땐 완전히 사라짐)
+function giantGlow(np,ga){
+  if(ga<=.01)return;
+  const[sx,sy]=S(np.x,np.y),R=rad(np)*V.z;
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  const g=ctx.createRadialGradient(sx,sy,R*.7,sx,sy,R*3.2);g.addColorStop(0,hs(np.hue,.55*ga,70));g.addColorStop(.35,hs(np.hue,.18*ga,62));g.addColorStop(1,hs(np.hue,0,60));
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(sx,sy,R*3.2,0,TAU);ctx.fill();ctx.restore();
+}
+// 2막: 새 세계 배율(×F)로 본 '내 몸'이 맵 중심에서 원형으로 번지며 맵을 덮음 (맵 반지름 = 몸 반지름이므로 정확히 겹침)
+function drawBodyWave(){
+  const a=asc,qb=clamp((a.t-P.ASC_A)/P.ASC_B,0,1),F=MR/P.R,np=a.nw[0],o={cx:V.cx,cy:V.cy,z:V.z};
+  V.z=o.z*F;V.cx=MCX+(o.cx-a.cx)/F;V.cy=MCY+(o.cy-a.cy)/F;
+  const[sx,sy]=S(np.x,np.y),R=rad(np)*V.z,wr=R*1.5*eout(qb);
+  np.pulse=0;giantGlow(np,eout(qb));
+  ctx.save();ctx.beginPath();ctx.arc(sx,sy,wr,0,TAU);ctx.clip();drawEnt(np);ctx.restore();
+  ctx.save();ctx.globalCompositeOperation='lighter';haloStroke(sx,sy,wr,null,.9*(1-qb),3);ctx.restore();   // 파문의 가장자리
+  V.z=o.z;V.cx=o.cx;V.cy=o.cy;
+}
+// 3막: 새 세계(옛 세계의 F배) 기준 화면. 몸은 이 안에서 처음 크기까지 줄어들고, 다른 세계 주인들이 가장자리부터 들어옴
+function renderNewWorld(){
+  const a=asc,F=MR/P.R,q=clamp((a.t-P.ASC_A-P.ASC_B)/P.ASC_C,0,1),nw=a.nw,np=nw[0];
+  V.z=a.z*F;V.cx=MCX+rnd(-1,1)*shake/V.z;V.cy=MCY+rnd(-1,1)*shake/V.z;
+  drawBG(true);
+  const nA=clamp((q-.12)/.4,0,1);
+  if(nA<1){ctx.fillStyle=`rgba(3,5,11,${1-nA})`;ctx.fillRect(0,0,cw,ch)}   // 새 세계의 배경은 서서히 드러남 (처음엔 몸만 보임)
+  const ha=.5*Math.pow(1-q,1.3);
+  for(let i=1;i<nw.length;i++){
+    const e=nw[i],[sx,sy]=S(e.x,e.y),r=rad(e)*V.z;
+    if(ha>.01&&sx>-r*4&&sx<cw+r*4&&sy>-r*4&&sy<ch+r*4){   // 다른 세계 주인들의 후광 (연출 끝에서 사라짐)
+      ctx.save();ctx.globalCompositeOperation='lighter';
+      const g=ctx.createRadialGradient(sx,sy,r*.8,sx,sy,r*4);g.addColorStop(0,hs(e.hue,.9*ha,66));g.addColorStop(1,hs(e.hue,0,60));
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(sx,sy,r*4,0,TAU);ctx.fill();ctx.restore();
+    }
+    drawEnt(e);
+  }
+  np.pulse=Math.sin(Math.PI*q)*.3*(.5+.5*Math.sin(a.t*5));
+  giantGlow(np,Math.pow(1-q,1.4));
+  drawEnt(np);
+}
+// 레터박스 + 자막 (연출 중에만)
+function drawCine(){
+  const a=asc;if(!a)return;
+  const TA=P.ASC_A,TB=P.ASC_B,T=TA+TB+P.ASC_C,t=a.t,bar=ch*.1*Math.min(eio(t/.6),eio((T-t)/.6));
+  ctx.globalCompositeOperation='source-over';ctx.fillStyle='#000';ctx.fillRect(0,0,cw,bar);ctx.fillRect(0,ch-bar,cw,bar);
+  const cap=[[.15,TA-.15,P.ASC_TXT[0]],[TA+.1,TA+TB-.1,P.ASC_TXT[1]],[TA+TB+.35,T-.35,P.ASC_TXT[2]]];
+  for(const[s,e,tx]of cap){
+    if(t<s||t>e)continue;
+    ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,(t-s)/.4,(e-t)/.4));ctx.font=`700 ${clamp(cw*.026,15,30)}px system-ui`;ctx.textAlign='center';
+    try{ctx.letterSpacing='0.32em'}catch(_){}
+    ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=12;ctx.fillStyle='#fff';ctx.fillText(tx,cw/2,ch-bar-Math.max(26,ch*.05));ctx.restore();
   }
 }
 
@@ -621,20 +878,21 @@ initStars();
 
 // ===== 렌더링 =====
 const S=(x,y)=>[(x-V.cx)*V.z+cw/2,(y-V.cy)*V.z+ch/2];
-function drawBG(){
+function drawBG(plain){   // plain=true: 내 상태(성운·1위 물듦·별 끌림)를 반영하지 않는 순수 배경 (승천 3막의 새 세계용)
   const z=V.z,[mx,my]=S(MCX,MCY),Rr=MR*z,x0=mx-Rr,y0=my-Rr,w=Rr*2,h=Rr*2;   // x0,y0,w,h = 원형 맵의 외접 사각형
   ctx.fillStyle='#03050b';ctx.fillRect(0,0,cw,ch);
   ctx.fillStyle='#0a1226';ctx.beginPath();ctx.arc(mx,my,Rr,0,TAU);ctx.fill();
   ctx.save();ctx.beginPath();ctx.arc(mx,my,Rr,0,TAU);ctx.clip();
   ctx.globalCompositeOperation='lighter';
   // 고득점일수록 내 주변에 내 색의 성운이 번지고, 1위일 때는 맵 전체가 은은히 물듦
-  if(PL>.02){const rg=(180+420*PL)*z,gr=ctx.createRadialGradient(cw/2,ch/2,0,cw/2,ch/2,rg);gr.addColorStop(0,hs(player.hue,.06+.1*PL,60));gr.addColorStop(1,hs(player.hue,0,60));ctx.fillStyle=gr;ctx.fillRect(cw/2-rg,ch/2-rg,rg*2,rg*2)}
-  if(topFade>.01){ctx.fillStyle=hs(player.hue,.05*topFade,60);ctx.fillRect(x0,y0,w,h)}
+  if(!plain&&PL>.02){const rg=(180+420*PL)*z,gr=ctx.createRadialGradient(cw/2,ch/2,0,cw/2,ch/2,rg);gr.addColorStop(0,hs(player.hue,.06+.1*PL,60));gr.addColorStop(1,hs(player.hue,0,60));ctx.fillStyle=gr;ctx.fillRect(cw/2-rg,ch/2-rg,rg*2,rg*2)}
+  if(!plain&&topFade>.01){ctx.fillStyle=hs(player.hue,.05*topFade,60);ctx.fillRect(x0,y0,w,h)}
   // 배경 별빛: 깊이별 시차(parallax)로 이동, 아주 미세하게 깜빡임. 고득점이면 내 주변 별이 밝아지며 살짝 끌려옴
   const tm=performance.now()/1000;
   for(const st of stars){
     let sx=(st.x-(V.cx*st.f+(1-st.f)*P.W/2))*z+cw/2,sy=(st.y-(V.cy*st.f+(1-st.f)*P.H/2))*z+ch/2,rr=st.r*(.6+.4*z)*4.6,al=st.a*(.82+.18*Math.sin(tm*st.sp+st.ph));
-    if(PL>.01){const dx=cw/2-sx,dy=ch/2-sy,d=Math.hypot(dx,dy),Rr=(160+300*PL)*z;if(d<Rr){const u=1-d/Rr;sx+=dx*.2*PL*u;sy+=dy*.2*PL*u;al*=1+2.4*PL*u;rr*=1+.5*PL*u}}
+    if(!plain&&PL>.01){const dx=cw/2-sx,dy=ch/2-sy,d=Math.hypot(dx,dy),Rr=(160+300*PL)*z;if(d<Rr){const u=1-d/Rr;sx+=dx*.2*PL*u;sy+=dy*.2*PL*u;al*=1+2.4*PL*u;rr*=1+.5*PL*u}}
+    rr=Math.min(rr,16);   // 승천 3막처럼 배율이 아주 클 때 별이 커지지 않도록 상한
     if(sx<-rr||sx>cw+rr||sy<-rr||sy>ch+rr)continue;
     ctx.globalAlpha=Math.min(1,al);
     ctx.drawImage(st.spr,sx-rr,sy-rr,rr*2,rr*2);
@@ -693,7 +951,7 @@ function drawEnt(e){
   ctx.fillStyle=g;ctx.strokeStyle=e.claimed?'#fff':hs(h,1,86);ctx.lineWidth=2*z;
   ctx.beginPath();
   if(e.circ)ctx.arc(0,0,r,0,TAU);
-  else{const d=r*P.TAIL,f=Math.acos(r/d);ctx.moveTo(d,0);ctx.lineTo(r*Math.cos(f),r*Math.sin(f));ctx.arc(0,0,r,f,TAU-f);ctx.closePath()}
+  else{const d=r*Math.max(1.02,P.TAIL*(e.isP?1:P.PERS_TAIL[persOf(e)])),f=Math.acos(r/d);ctx.moveTo(d,0);ctx.lineTo(r*Math.cos(f),r*Math.sin(f));ctx.arc(0,0,r,f,TAU-f);ctx.closePath()}
   ctx.fill();ctx.stroke();
   // 삼킨 빛의 색: 몸 안쪽에서 맴도는 불꽃과 테두리 호 (약 6초에 걸쳐 사라짐)
   if(e.mix.length){
@@ -708,13 +966,23 @@ function drawEnt(e){
 }
 function render(){
   ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.setLineDash([]);
-  V.z=zoom();V.cx=player.x+rnd(-1,1)*shake/V.z;V.cy=player.y+rnd(-1,1)*shake/V.z;
+  if(asc&&asc.ph===2){renderNewWorld();drawCine();return}   // 승천 3막은 새 세계 화면을 따로 그림
+  V.z=asc?asc.z:zoom();V.cx=(asc?asc.cx:player.x)+rnd(-1,1)*shake/V.z;V.cy=(asc?asc.cy:player.y)+rnd(-1,1)*shake/V.z;
   const z=V.z;
   drawBG();
-  if(!player.dead&&player.cd<=0){
+  if(asc){   // 승천 1~2막: 맵 가장자리가 점점 밝게 맥동함
+    const[mx,my]=S(MCX,MCY);ctx.save();ctx.globalCompositeOperation='lighter';
+    haloStroke(mx,my,MR*z,player.hue,.5*Math.min(1,asc.t/(P.ASC_A*.5))*(1+.3*Math.sin(asc.t*14)),3*z+2);ctx.restore();
+  }
+  if(era<P.AIM_HIDE_ERA&&!asc&&!player.dead&&player.cd<=0){   // 조준선 + 반동 예고선 (세계 번호가 AIM_HIDE_ERA 이상이면 둘 다 표시 안 함)
     ctx.save();ctx.setLineDash([8,10]);ctx.strokeStyle='rgba(255,255,255,'+(.14+.45*player.charge)+')';ctx.lineWidth=2+2*player.charge;ctx.beginPath();
     ctx.moveTo(cw/2+Math.cos(player.a)*rad(player)*2.2*z,ch/2+Math.sin(player.a)*rad(player)*2.2*z);
     ctx.lineTo(cw/2+Math.cos(player.a)*P.PRNG*player.k*z,ch/2+Math.sin(player.a)*P.PRNG*player.k*z);ctx.stroke();ctx.restore();   // 조준선 길이 = 투사체 사거리(크기에 비례)
+    if(era>=P.RECOIL_ERA){   // 반동 예고선: 몸 뒤쪽으로 뻗는 주황 점선. 압력이 찰수록 길고 진해짐 (길이 = 발사 시 밀려날 거리)
+      const D=P.RECOIL_D*(P.RECOIL_MIN+(1-P.RECOIL_MIN)*player.charge),r0=rad(player)*1.6;
+      ctx.save();ctx.setLineDash([3,7]);ctx.strokeStyle='rgba(255,170,90,'+(.2+.55*player.charge)+')';ctx.lineWidth=2+2*player.charge;ctx.lineCap='round';ctx.beginPath();
+      ctx.moveTo(cw/2-Math.cos(player.a)*r0*z,ch/2-Math.sin(player.a)*r0*z);ctx.lineTo(cw/2-Math.cos(player.a)*(r0+D)*z,ch/2-Math.sin(player.a)*(r0+D)*z);ctx.stroke();ctx.restore();
+    }
   }
   // 플레이어 빛 꼬리: 점수가 높을수록 길고 굵고 선명. 방향을 틀면 뒤쪽 마디가 천천히 따라와 완만하게 휨. 희미한 선 위에 글로우를 겹쳐 선이 느껴지지 않음
   if(PL>.02&&tailAng.length){
@@ -741,6 +1009,7 @@ function render(){
   ctx.globalCompositeOperation='source-over';
   for(const e of ents)if(!e.dead&&e!==player)drawEnt(e);
   if(!player.dead)drawEnt(player);
+  if(asc&&asc.ph===1)drawBodyWave();   // 승천 2막: 맵이 내 몸으로 변함
   // 1위 표식: 내 개체 위에 떠오르는 별 모양 왕관
   if(!player.dead&&topFade>.01){
     const[px,py]=S(player.x,player.y),cx=px,cy=py-rad(player)*z*(3.3+Math.sin(performance.now()/420)*.18),ro=rad(player)*z*.9*(.7+.3*topFade),ri=ro*.45,aa=topFade;
@@ -797,7 +1066,7 @@ function render(){
   }
   ctx.globalCompositeOperation='source-over';
   // 쿨다운 링
-  if(!player.dead){
+  if(!asc&&!player.dead){
     const r=rad(player)*z*1.95,rdy=player.cd<=0;
     ctx.lineWidth=2;ctx.strokeStyle='rgba(255,255,255,.035)';ctx.beginPath();ctx.arc(cw/2,ch/2,r,0,TAU);ctx.stroke();
     ctx.strokeStyle=rdy?hs(player.hue,.2,70):'rgba(255,255,255,.2)';ctx.beginPath();ctx.arc(cw/2,ch/2,r,-Math.PI/2,-Math.PI/2+TAU*(1-player.cd/P.CD));ctx.stroke();
@@ -817,7 +1086,7 @@ function render(){
     ctx.fillStyle=gr;ctx.fillRect(0,0,cw,ch);ctx.restore();
   }
   if(flash>.01){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle=`rgba(255,255,255,${Math.min(.45,flash)})`;ctx.fillRect(0,0,cw,ch);ctx.restore()}
-  hud();
+  if(asc)drawCine();else hud();
 }
 function hud(){
   // 하단 게이지: 가속 에너지(점수, 스페이스로 소모)
@@ -848,6 +1117,17 @@ function hud(){
     ctx.fillStyle=me?'#fff':'rgba(220,230,255,.8)';ctx.textAlign='right';ctx.fillText(String(Math.round(e.score)),lx+lw-54,y);
     ctx.fillStyle=me?'#ffd978':'rgba(255,214,120,.7)';ctx.fillText('×'+e.mc,lx+lw-10,y);   // 한 번의 발사로 일으킨 최대 연쇄 충돌 횟수
   });
+  if(era>1){   // 좌측 상단: 현재 세계 번호와 반동 규칙 표시
+    ctx.textAlign='left';ctx.fillStyle='rgba(255,214,120,.9)';ctx.font='700 14px system-ui';ctx.fillText('WORLD '+era,16,ins.t+28);
+    if(era>=P.RECOIL_ERA){ctx.fillStyle='rgba(255,170,90,.75)';ctx.font='600 11px system-ui';ctx.fillText('RECOIL ON',16,ins.t+45)}
+  }
+  if(toast){   // 새 세계 시작 안내 (약 4초)
+    const k=toast.t,al=Math.max(0,Math.min(1,k/.4,(4-k)/.8));
+    ctx.save();ctx.globalAlpha=al;ctx.textAlign='center';ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=14;
+    ctx.fillStyle='#fff';ctx.font=`800 ${clamp(cw*.05,26,56)}px system-ui`;ctx.fillText('WORLD '+era,cw/2,ch*.28);
+    if(era>=P.RECOIL_ERA){ctx.fillStyle='rgba(255,190,110,.95)';ctx.font='600 15px system-ui';ctx.fillText('RECOIL — the harder the pressure, the harder you are kicked back',cw/2,ch*.28+30)}
+    ctx.restore();
+  }
 }
 
 // ===== 메인 루프 =====
@@ -864,7 +1144,8 @@ function frame(now){
     else{let t=sdt;while(t>1e-4){const s=Math.min(t,1/60);update(s);t-=s}}
     chargeSound(player.dead?0:player.charge,player.lvS);
     if(player.dead&&now-deadAt>1300+900*clamp(deadScore/60,0,1))showOv(true);
-  }
+    else if(!player.dead&&player.score>=P.ASC_AT&&!player.claimed&&!chains.some(c=>c.o===player))startAscend();   // 900점 도달 → 승천 연출 (조작 잠금)
+  }else if(state==='ascend')ascUpdate(rdt);
   visuals(sdt);
   render();
 }
