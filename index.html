@@ -721,25 +721,45 @@
   */
   const EXAMPLES_FOLDER = "examples";
 
+  const EX_CACHE_KEY = "examples_files_cache";
+  const EX_FRESH_MS  = 5 * 60 * 1000;   // 5분 동안은 API를 다시 호출하지 않음
+
+  function readExCache() {
+    try { return JSON.parse(localStorage.getItem(EX_CACHE_KEY) || "null"); } catch { return null; }
+  }
+
   async function fetchExampleNames() {
+    const cache = readExCache();
+
+    /* ① 최근 목록이 있으면 그대로 사용 (API 호출 절약) */
+    if (cache && cache.names.length && Date.now() - cache.t < EX_FRESH_MS) return cache.names;
+
+    /* ② GitHub API (최신) */
     try {
       const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${EXAMPLES_FOLDER}?ref=${GITHUB_BRANCH}`;
       const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
       if (!res.ok) throw new Error(`GitHub API 오류: ${res.status}`);
       const items = await res.json();
-      return items.filter(i => i.type === "file").map(i => i.name);
+      const names = items.filter(i => i.type === "file").map(i => i.name);
+      try { localStorage.setItem(EX_CACHE_KEY, JSON.stringify({ t: Date.now(), names })); } catch {}
+      return names;
     } catch (e) {
-      console.warn("예시 목록: GitHub API 실패, jsDelivr로 대체합니다:", e.message);
-      const url = `https://data.jsdelivr.com/v1/packages/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}?structure=flat`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`예시 목록을 불러오지 못했습니다 (${res.status})`);
-      const data = await res.json();
-      const prefix = `/${EXAMPLES_FOLDER}/`;
-      return (data.files || [])
-        .map(f => f.name)
-        .filter(n => n.startsWith(prefix) && !n.slice(prefix.length).includes("/"))
-        .map(n => n.slice(prefix.length));
+      console.warn("예시 목록: GitHub API 실패:", e.message);
     }
+
+    /* ③ API 실패 → 예전에 성공했던 목록이 있으면 그것을 우선 사용 */
+    if (cache && cache.names.length) return cache.names;
+
+    /* ④ 저장된 목록도 없을 때만 jsDelivr (오래된 목록일 수 있음) */
+    const url = `https://data.jsdelivr.com/v1/packages/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}?structure=flat`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`예시 목록을 불러오지 못했습니다 (${res.status})`);
+    const data = await res.json();
+    const prefix = `/${EXAMPLES_FOLDER}/`;
+    return (data.files || [])
+      .map(f => f.name)
+      .filter(n => n.startsWith(prefix) && !n.slice(prefix.length).includes("/"))
+      .map(n => n.slice(prefix.length));
   }
 
   function exampleSectionHTML() {
@@ -761,7 +781,7 @@
       }
       box.innerHTML = `<div class="example-list">${names.map(n => `
         <a class="example-item" href="${EXAMPLES_FOLDER}/${encodeURIComponent(n)}" target="_blank" rel="noopener">
-          <span class="ex-icon">▶</span><span>${esc(n.replace(/\.html$/i, ""))}</span>
+          <span class="ex-icon">▶</span><span>${esc(n)}</span>
         </a>`).join("")}</div>`;
     } catch (err) {
       box.innerHTML = `<div class="class-hint">⚠️ ${esc(err.message)}</div>`;
