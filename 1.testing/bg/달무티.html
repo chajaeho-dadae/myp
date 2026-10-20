@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>달무티 (The Great Dalmuti) - 미니 웹 게임</title>
+    <style>
+        :root {
+            --bg-color: #2c3e50;
+            --board-color: #1a252f;
+            --card-bg: #ecf0f1;
+            --card-text: #2c3e50;
+            --accent-color: #e74c3c;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: var(--bg-color);
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 900px;
+            background-color: var(--board-color);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        #status-board {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            line-height: 1.5;
+            border-left: 5px solid var(--accent-color);
+        }
+
+        #table-center {
+            height: 180px;
+            background: rgba(255,255,255,0.05);
+            border: 2px dashed #555;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .current-play-info {
+            font-size: 0.9rem;
+            color: #bbb;
+            margin-bottom: 10px;
+        }
+
+        #players-info {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .player-card {
+            background: #34495e;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+
+        .player-card.active {
+            border-color: #f1c40f;
+            box-shadow: 0 0 10px #f1c40f;
+        }
+
+        .player-card.passed {
+            opacity: 0.6;
+            background: #22313f;
+        }
+
+        #human-hand-container {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .hand-title {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            color: #f1c40f;
+        }
+
+        .cards-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 90px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            color: var(--card-text);
+            width: 50px;
+            height: 75px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.3rem;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid #ccc;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .card.selected {
+            background-color: #a3cb38;
+            color: white;
+            border-color: #5758bb;
+            transform: translateY(-15px);
+        }
+
+        .card.joker {
+            background-color: #9b59b6;
+            color: white;
+        }
+
+        #controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-play { background-color: #2ecc71; color: white; }
+        .btn-play:hover { background-color: #27ae60; }
+        .btn-pass { background-color: #e74c3c; color: white; }
+        .btn-pass:hover { background-color: #c0392b; }
+        .btn-restart { background-color: #3498db; color: white; margin-top: 15px;}
+        .btn-restart:hover { background-color: #2980b9; }
+
+        button:disabled {
+            background-color: #7f8c8d !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>왕과 노예: 달무티 (Dalmuti)</h1>
+    
+    <div id="game-container">
+        <div id="status-board">
+            <span id="game-log">게임이 시작되었습니다! 카드를 내려놓으세요.</span>
+        </div>
+
+        <div id="players-info">
+            <div class="player-card" id="p0-box"><strong>Player (나)</strong><br><span id="p0-count">0</span>장</div>
+            <div class="player-card" id="p1-box"><strong>AI 1</strong><br><span id="p1-count">0</span>장</div>
+            <div class="player-card" id="p2-box"><strong>AI 2</strong><br><span id="p2-count">0</span>장</div>
+            <div class="player-card" id="p3-box"><strong>AI 3</strong><br><span id="p3-count">0</span>장</div>
+        </div>
+
+        <div id="table-center">
+            <div class="current-play-info" id="pool-info">현재 바닥에 깔린 카드가 없습니다.</div>
+            <div class="cards-display" id="pool-cards">
+                </div>
+        </div>
+
+        <div id="human-hand-container">
+            <div class="hand-title">내 카드 목록 (클릭하여 선택, 동일 숫자 여러 장 가능)</div>
+            <div class="cards-display" id="human-hand">
+                </div>
+            
+            <div id="controls">
+                <button class="btn-play" id="btn-play" onclick="humanPlay()">카드 내기</button>
+                <button class="btn-pass" id="btn-pass" onclick="humanPass()">패스</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-restart" onclick="initGame()">게임 재시작 / 카드 다시 섞기</button>
+
+    <script>
+        // --- 게임 데이터 및 규칙 설정 ---
+        // 달무티 카드 구성: 1번 1장, 2번 2장 ... 12번 12장, 어광(조커) 13번 2장
+        // 본 프로토타입은 구현 단순화를 위해 조커를 일반 카드(13) 혹은 생략하고 1~12번 카드로만 4인 플레이에 맞게 커스텀 분배합니다.
+        // 총 1~12번까지 더하면 78장이나, 빠른 4인 플레이를 위해 1~8번 카드(총 36장)로 축소 구성했습니다.
+        
+        let deck = [];
+        const MAX_CARD_NUM = 8; // 원본은 12지만 빠른 테스트를 위해 8로 세팅 (원하면 12로 확장 가능)
+        
+        let players = [
+            { id: 0, name: "Player (나)", hand: [], passed: false },
+            { id: 1, name: "AI 1", hand: [], passed: false },
+            { id: 2, name: "AI 2", hand: [], passed: false },
+            { id: 3, name: "AI 3", hand: [], passed: false }
+        ];
+
+        let turn = 0;             // 현재 차례인 플레이어 번호
+        let lastPlay = null;      // 마지막으로 낸 카드의 정보 { rank: 숫자, count: 장수, totalValue: 계산값, owner: 플레이어ID }
+        let passCount = 0;        // 연속 패스 횟수
+        let selectedCards = [];   // 플레이어가 현재 선택한 카드 인덱스 목록
+        let rankHistory = [];     // 탈출(라운드 종료) 순서 기록
+
+        // 게임 초기화
+        function initGame() {
+            deck = [];
+            // 1부터 MAX_CARD_NUM까지 해당 숫자만큼 카드 생성 (예: 5는 5장)
+            for (let i = 1; i <= MAX_CARD_NUM; i++) {
+                for (let j = 0; j < i; j++) {
+                    deck.push(i);
+                }
+            }
+
+            // 카드 셔플
+            deck.sort(() => Math.random() - 0.5);
+
+            // 4명에게 카드 균등하게 분배
+            players.forEach(p => {
+                p.hand = [];
+                p.passed = false;
+            });
+            
+            let pIdx = 0;
+            while (deck.length > 0) {
+                players[pIdx % 4].hand.push(deck.pop());
+                pIdx++;
+            }
+
+            // 각자 패 정렬 (오름차순)
+            players.forEach(p => p.hand.sort((a, b) => a - b));
+
+            lastPlay = null;
+            passCount = 0;
+            selectedCards = [];
+            rankHistory = [];
+            turn = Math.floor(Math.random() * 4); // 무작위 선 
+
+            logMessage(`${players[turn].name}의 선공으로 게임을 시작합니다!`);
+            updateUI();
+            
+            if (turn !== 0) {
+                setTimeout(aiTurn, 1000);
+            }
+        }
+
+        // 로그 메시지 출력
+        function logMessage(msg) {
+            document.getElementById('game-log').innerText = msg;
+        }
+
+        // 화면 UI 업데이트
+        function updateUI() {
+            // 플레이어 카드 수 현황판 업데이트
+            for (let i = 0; i < 4; i++) {
+                const box = document.getElementById(`p${i}-box`);
+                const countSpan = document.getElementById(`p${i}-count`);
+                
+                countSpan.innerText = players[i].hand.length;
+                
+                // 턴 및 패스 표시 스타일링
+                box.className = "player-card";
+                if (i === turn) box.classList.add("active");
+                if (players[i].passed) box.classList.add("passed");
+                if (players[i].hand.length === 0) {
+                    box.style.background = "#27ae60";
+                    countSpan.innerText = "탈출 완료";
+                }
+            }
+
+            // 바닥에 깔린 카드 렌더링
+            const poolCardsDiv = document.getElementById('pool-cards');
+            const poolInfo = document.getElementById('pool-info');
+            poolCardsDiv.innerHTML = '';
+            
+            if (lastPlay) {
+                poolInfo.innerText = `현재 밟아야 할 카드: [숫자 ${lastPlay.rank}] 카드 총 ${lastPlay.count}장 (낸 사람: ${players[lastPlay.owner].name})`;
+                for (let i = 0; i < lastPlay.count; i++) {
+                    const cDiv = document.createElement('div');
+                    cDiv.className = 'card';
+                    cDiv.innerText = lastPlay.rank;
+                    poolCardsDiv.appendChild(cDiv);
+                }
+            } else {
+                poolInfo.innerText = "현재 바닥이 비어있습니다. 아무 조합이나 선으로 낼 수 있습니다!";
+            }
+
+            // 인간 플레이어 패 렌더링
+            const humanHandDiv = document.getElementById('human-hand');
+            humanHandDiv.innerHTML = '';
+            
+            players[0].hand.forEach((cardVal, idx) => {
+                const cDiv = document.createElement('div');
+                cDiv.className = 'card';
+                if (selectedCards.includes(idx)) cDiv.classList.add('selected');
+                cDiv.innerText = cardVal;
+                
+                // 카드 클릭 이벤트
+                cDiv.onclick = () => toggleSelectCard(idx);
+                humanHandDiv.appendChild(cDiv);
+            });
+
+            // 버튼 활성화 여부 조절
+            document.getElementById('btn-play').disabled = (turn !== 0);
+            document.getElementById('btn-pass').disabled = (turn !== 0 || lastPlay === null);
+        }
+
+        // 플레이어 카드 선택 토글
+        function toggleSelectCard(idx) {
+            if (turn !== 0) return; // 내 턴이 아니면 선택 불가
+            
+            const pos = selectedCards.indexOf(idx);
+            if (pos > -1) {
+                selectedCards.splice(pos, 1);
+            } else {
+                // 다른 숫자가 이미 선택되어 있다면 초기화하고 새로 선택 (달무티는 같은 숫자의 카드만 동시에 낼 수 있음)
+                if (selectedCards.length > 0) {
+                    const currentSelectedValue = players[0].hand[selectedCards[0]];
+                    if (players[0].hand[idx] !== currentSelectedValue) {
+                        selectedCards = [];
+                    }
+                }
+                selectedCards.push(idx);
+            }
+            updateUI();
+        }
+
+        // 턴 넘기기 로직
+        function nextTurn() {
+            // 게임 종료 조건 체크
+            const activePlayers = players.filter(p => p.hand.length > 0 && !p.passed);
+            
+            // 모든 사람이 패스하거나 한 명 빼고 다 패스한 경우 바닥 청소
+            if (activePlayers.length <= 1) {
+                logMessage("모두 패스했습니다. 바닥이 초기화되며 마지막으로 카드를 낸 사람이 선이 됩니다.");
+                lastPlay = null;
+                players.forEach(p => { if (p.hand.length > 0) p.passed = false; });
+                passCount = 0;
+                
+                // 마지막으로 카드를 낸 사람에게 턴 주기 (그 사람이 이미 탈출했다면 다음 사람)
+                if (lastPlay && players[lastPlay.owner].hand.length > 0) {
+                    turn = lastPlay.owner;
+                }
+                updateUI();
+                
+                // 만약 선이 된 사람이 컴퓨터라면 AI 구동
+                if (turn !== 0) setTimeout(aiTurn, 1200);
+                return;
+            }
+
+            // 다음 차례 계산
+            do {
+                turn = (turn + 1) % 4;
+            } while (players[turn].hand.length === 0 || players[turn].passed);
+
+            updateUI();
+
+            // AI의 차례인 경우
+            if (turn !== 0) {
+                setTimeout(aiTurn, 1200);
+            }
+        }
+
+        // 인간 플레이어가 카드 제출 버튼을 누를 때
+        function humanPlay() {
+            if (selectedCards.length === 0) {
+                alert("낼 카드를 먼저 선택해주세요!");
+                return;
+            }
+
+            const selectedRank = players[0].hand[selectedCards[0]];
+            const selectedCount = selectedCards.length;
+
+            // 달무티 규칙 검증
+            if (lastPlay) {
+                // 1. 기존 장수와 동일해야 함
+                if (selectedCount !== lastPlay.count) {
+                    alert(`현재 바닥에 깔린 카드의 장수(${lastPlay.count}장)와 똑같은 장수를 내야 합니다!`);
+                    return;
+                }
+                // 2. 숫자가 더 작아야(강해야) 함
+                if (selectedRank >= lastPlay.rank) {
+                    alert(`현재 깔린 카드(${lastPlay.rank})보다 더 낮은(강한) 숫자의 카드를 내야 합니다!`);
+                    return;
+                }
+            }
+
+            // 검증 통과: 플레이어 카드 버리기 진행
+            // 인덱스 역순 정렬 후 제거해야 배열 꼬임이 안 생김
+            selectedCards.sort((a, b) => b - a);
+            selectedCards.forEach(idx => {
+                players[0].hand.splice(idx, 1);
+            });
+
+            lastPlay = {
+                rank: selectedRank,
+                count: selectedCount,
+                owner: 0
+            };
+            
+            selectedCards = []; // 선택 초기화
+            logMessage(`당신이 [숫자 ${selectedRank}] 카드 ${selectedCount}장을 냈습니다.`);
+            
+            checkWin(0);
+            nextTurn();
+        }
+
+        // 인간 플레이어 패스
+        function humanPass() {
+            players[0].passed = true;
+            logMessage("당신은 패스했습니다.");
+            nextTurn();
+        }
+
+        // 간단한 AI 행동 알고리즘
+        function aiTurn() {
+            const ai = players[turn];
+            
+            // 패를 숫자별로 그룹화 카운팅
+            // 예: { '5': 3, '8': 1 }
+            const counts = {};
+            ai.hand.forEach(x => { counts[x] = (counts[x] || 0) + 1; });
+
+            let choice = null; // { rank, count } 형태로 저장 예정
+
+            if (!lastPlay) {
+                // AI가 선(리드)을 잡은 경우: 가지고 있는 카드 중 가장 많은 장수의 카드 조합을 내거나 제일 낮은 숫자부터 털어냄
+                let bestRank = null;
+                let maxCount = 0;
+                
+                // 가장 장수가 많은 카드 무더기 찾기
+                for (let rank in counts) {
+                    if (counts[rank] > maxCount) {
+                        maxCount = counts[rank];
+                        bestRank = parseInt(rank);
+                    }
+                }
+                choice = { rank: bestRank, count: maxCount };
+            } else {
+                // 바닥에 카드가 깔려있을 때: 규칙을 충족하는(장수는 같고 숫자는 더 작은) 카드 뭉치가 있는지 검색
+                let validRanks = [];
+                for (let rank in counts) {
+                    let r = parseInt(rank);
+                    if (counts[r] >= lastPlay.count && r < lastPlay.rank) {
+                        validRanks.push(r);
+                    }
+                }
+
+                if (validRanks.length > 0) {
+                    // 낼 수 있는 것 중 가장 안전하게 큰 숫자(그나마 약한 패)를 내서 간보기
+                    validRanks.sort((a, b) => b - a); 
+                    choice = { rank: validRanks[0], count: lastPlay.count };
+                }
+            }
+
+            // 카드 내기 혹은 패스 수행
+            if (choice && choice.rank !== null) {
+                // AI 패에서 실제 카드 제거
+                let removed = 0;
+                for (let i = ai.hand.length - 1; i >= 0; i--) {
+                    if (ai.hand[i] === choice.rank && removed < choice.count) {
+                        ai.hand.splice(i, 1);
+                        removed++;
+                    }
+                }
+
+                lastPlay = {
+                    rank: choice.rank,
+                    count: choice.count,
+                    owner: turn
+                };
+                
+                logMessage(`${ai.name}이(가) [숫자 ${choice.rank}] 카드 ${choice.count}장을 냈습니다.`);
+                checkWin(turn);
+            } else {
+                ai.passed = true;
+                logMessage(`${ai.name}이(가) 패스했습니다.`);
+            }
+
+            nextTurn();
+        }
+
+        // 승리(탈출) 체크
+        function checkWin(playerIdx) {
+            if (players[playerIdx].hand.length === 0 && !rankHistory.includes(playerIdx)) {
+                rankHistory.push(playerIdx);
+                alert(`🎉 ${players[playerIdx].name} 탈출 성공! (현재 등수: ${rankHistory.length}등)`);
+                
+                // 모든 플레이어가 1명 남고 다 탈출했으면 게임 완전히 종료
+                const remaining = players.filter(p => p.hand.length > 0);
+                if (remaining.length <= 1) {
+                    logMessage("게임 종료! 모든 플레이어의 순위가 결정되었습니다. 재시작해보세요.");
+                    turn = -1; // 더 이상 턴이 돌지 않게 차단
+                }
+            }
+        }
+
+        // 첫 실행
+        window.onload = initGame;
+    </script>
+</body>
+</html>

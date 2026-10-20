@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>Mist Chase - 학생 화면</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="mc-header">
+    <h1>MIST CHASE</h1>
+    <span id="turnBadge" class="mc-badge">대기 중</span>
+  </div>
+
+  <div id="joinView" class="mc-panel">
+    <p>선생님이 알려준 참가 코드를 입력하세요.</p>
+    <input id="joinCodeInput" placeholder="참가 코드 (예: 7QX3)" style="width:100%; margin-bottom:8px; padding:8px;" />
+    <input id="pseudonymInput" placeholder="별명" style="width:100%; margin-bottom:8px; padding:8px;" />
+    <button id="joinBtn" class="mc-btn mc-btn-primary">입장</button>
+  </div>
+
+  <div id="waitingView" class="mc-panel" style="display:none;">
+    <p id="waitingText">판이 시작되기를 기다리는 중...</p>
+  </div>
+
+  <div id="gameView" style="display:none;">
+    <div class="mc-panel">
+      <span id="roleBadge" class="mc-badge"></span>
+    </div>
+    <div class="mc-board-wrap">
+      <svg id="boardSvg" width="100%"></svg>
+    </div>
+    <div id="moveControls" class="mc-panel" style="display:none;">
+      <p style="color:var(--mc-muted); font-size:13px;">내 위치: <span id="myNode">-</span></p>
+      <div id="moveButtons" style="display:flex; gap:8px; flex-wrap:wrap; margin:8px 0;"></div>
+      <button id="confirmMoveBtn" class="mc-btn mc-btn-primary" disabled>이동 확정</button>
+    </div>
+    <div class="mc-panel">
+      <p style="font-size:13px; color:var(--mc-muted); margin:0 0 8px;">공개된 클루</p>
+      <ul id="clueList" class="mc-clue-list"></ul>
+    </div>
+  </div>
+
+  <script type="module" src="student.js"></script>
+</body>
+</html>

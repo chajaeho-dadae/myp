@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>정착민 단말 · 화성 공유지의 비극</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="eyebrow">SETTLER TERMINAL</div>
+  <h1 style="font-size:20px; margin-bottom:18px;">정착민 단말</h1>
+  <div id="screen"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="scanner.js"></script>
+<script>
+const SESSION_KEY = 'mars_session_token';
+const screenEl = document.getElementById('screen');
+let polling = null;
+let submitting = false;
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+function startPolling() {
+  if (polling) return;
+  polling = setInterval(refresh, 2500);
+}
+function stopPolling() {
+  clearInterval(polling);
+  polling = null;
+}
+
+// ---------------------------------------------------------------------------
+// 화면 렌더러
+// ---------------------------------------------------------------------------
+function renderJoinForm(prefillCode='') {
+  stopPolling();
+  screenEl.innerHTML = `
+    <div class="panel stack">
+      <div>
+        <div class="muted" style="margin-bottom:6px;">참가 코드</div>
+        <input type="text" id="codeInput" placeholder="예: A3F9K" maxlength="6" value="${prefillCode}" style="text-transform:uppercase;">
+      </div>
+      <div>
+        <div class="muted" style="margin-bottom:6px;">이름</div>
+        <input type="text" id="nameInput" placeholder="이름을 입력하세요" maxlength="20">
+      </div>
+      <button class="btn btn-primary" id="joinBtn">정착지 입장 확정</button>
+      <div class="muted" id="joinError" style="color:var(--alert);"></div>
+    </div>
+  `;
+  document.getElementById('joinBtn').onclick = async () => {
+    const code = document.getElementById('codeInput').value.trim();
+    const name = document.getElementById('nameInput').value.trim();
+    const errEl = document.getElementById('joinError');
+    errEl.textContent = '';
+    if (!code || !name) { errEl.textContent = '참가 코드와 이름을 모두 입력하세요.'; return; }
+    try {
+      const res = await rpc('tragedy_join_room', { p_code: code, p_name: name });
+      if (res.error === 'ROOM_NOT_FOUND') { errEl.textContent = '참가 코드를 찾을 수 없습니다.'; return; }
+      if (res.error === 'ROOM_ALREADY_STARTED') { errEl.textContent = '이미 시작된 게임입니다. 관제센터에 문의하세요.'; return; }
+      if (res.error) { errEl.textContent = '입장에 실패했습니다.'; return; }
+      localStorage.setItem(SESSION_KEY, res.session_token);
+      refresh();
+      startPolling();
+    } catch (e) { errEl.textContent = '서버 연결에 실패했습니다.'; }
+  };
+}
+
+function renderLobbyWait(name) {
+  screenEl.innerHTML = `
+    <div class="panel center">
+      <div class="badge" style="margin-bottom:14px;"><span class="dot on"></span>입장 완료</div>
+      <h2 style="font-size:22px; margin-bottom:8px;">${name} 정착민님</h2>
+      <p class="muted">관제센터의 임무 개시 신호를 기다리는 중입니다…</p>
+    </div>
+  `;
+}
+
+function renderInput(s) {
+  screenEl.innerHTML = `
+    <div class="panel">
+      <div class="badge" style="margin-bottom:10px;"><span class="dot on"></span>라운드 ${s.round_number}</div>
+      <div id="gauge"></div>
+      <p class="muted center" style="margin-top:0;">탐사 드론의 계측치는 부정확할 수 있습니다.</p>
+    </div>
+    <div class="panel">
+      <div class="row" style="margin-bottom:16px;">
+        <div>
+          <div class="muted">생존 물자 비축량</div>
+          <div class="mono" style="font-size:22px; color:${s.buffer <= s.survival_ration ? 'var(--alert)' : 'var(--stable)'}">${s.buffer}</div>
+        </div>
+        <div>
+          <div class="muted">라운드당 생존 배급량</div>
+          <div class="mono" style="font-size:22px;">${s.survival_ration}</div>
+        </div>
+        <div>
+          <div class="muted">누적 채굴 점수</div>
+          <div class="mono" style="font-size:22px;">${s.cumulative_score}</div>
+        </div>
+      </div>
+      <div class="muted" style="margin-bottom:6px;">이번 라운드 채굴량 (0 ~ ${s.max_harvest})</div>
+      <input type="number" id="harvestInput" min="0" max="${s.max_harvest}" step="1" value="${s.survival_ration}">
+      <button class="btn btn-primary" id="submitBtn" style="margin-top:14px;">채굴 확정 · 제출 후 수정 불가</button>
+      <div class="muted" id="submitError" style="color:var(--alert); margin-top:8px;"></div>
+    </div>
+  `;
+  renderScanner(document.getElementById('gauge'), {
+    estimate: s.estimate, low: s.low, high: s.high, margin: (s.high - s.low) / (2 * Math.max(s.estimate,1)),
+    capacity: null
+  });
+  document.getElementById('submitBtn').onclick = async () => {
+    if (submitting) return;
+    submitting = true;
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    const errEl = document.getElementById('submitError');
+    const val = Number(document.getElementById('harvestInput').value);
+    try {
+      const token = localStorage.getItem(SESSION_KEY);
+      const res = await rpc('tragedy_submit_harvest', { p_session_token: token, p_requested: val });
+      if (res.error === 'ALREADY_SUBMITTED') { toast('이미 제출된 라운드입니다.'); }
+      else if (res.error) { errEl.textContent = '제출에 실패했습니다. 다시 시도하세요.'; btn.disabled = false; submitting = false; return; }
+      refresh();
+    } catch (e) {
+      errEl.textContent = '서버 연결에 실패했습니다.';
+      btn.disabled = false;
+    }
+    submitting = false;
+  };
+}
+
+function renderWaiting(s) {
+  screenEl.innerHTML = `
+    <div class="panel center">
+      <div class="badge" style="margin-bottom:14px;"><span class="dot on"></span>라운드 ${s.round_number} · 제출 완료</div>
+      <p class="muted">관제센터가 이번 라운드를 집계하는 중입니다…</p>
+      <div class="row" style="margin-top:20px; text-align:left;">
+        <div>
+          <div class="muted">생존 비축량</div>
+          <div class="mono" style="font-size:20px;">${s.buffer}</div>
+        </div>
+        <div>
+          <div class="muted">누적 점수</div>
+          <div class="mono" style="font-size:20px;">${s.cumulative_score}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderResult(s) {
+  screenEl.innerHTML = `
+    <div class="panel">
+      <div class="badge" style="margin-bottom:10px;"><span class="dot on"></span>라운드 ${s.round_number} 결과</div>
+      <div id="gauge"></div>
+    </div>
+    <div class="panel">
+      <div class="list-row"><span class="muted">이번 라운드 전체 정착민 채굴 총량</span><span class="mono">${s.total_requested}</span></div>
+      <div class="list-row"><span class="muted">내 생존 비축량</span><span class="mono">${s.buffer}</span></div>
+      <div class="list-row"><span class="muted">내 누적 채굴 점수</span><span class="mono">${s.cumulative_score}</span></div>
+    </div>
+    <p class="muted center">다음 라운드 개시를 기다리는 중…</p>
+  `;
+  renderScanner(document.getElementById('gauge'), {
+    estimate: s.pool_estimate, low: s.pool_low, high: s.pool_high,
+    margin: (s.pool_high - s.pool_low) / (2 * Math.max(s.pool_estimate,1)), capacity: null
+  });
+}
+
+function renderBankrupt(s) {
+  stopPolling();
+  screenEl.innerHTML = `
+    <div class="panel center" style="border-color:var(--alert);">
+      <div class="eyebrow" style="color:var(--alert);">MISSION FAILED</div>
+      <h2 style="font-size:24px; margin:10px 0;">물자 고갈 · 철수</h2>
+      <p class="muted">${s.name} 정착민은 생존 배급량을 확보하지 못해 ${s.bankrupt_round}라운드에 정착지를 떠났습니다.</p>
+      <div class="mono" style="font-size:28px; margin-top:14px;">최종 누적 채굴 점수 ${s.cumulative_score}</div>
+    </div>
+  `;
+}
+
+function renderEnded(s) {
+  stopPolling();
+  screenEl.innerHTML = `
+    <div class="panel center">
+      <div class="eyebrow" style="color:${s.collapsed ? 'var(--alert)' : 'var(--stable)'};">MISSION COMPLETE</div>
+      <h2 style="font-size:24px; margin:10px 0;">${s.collapsed ? '공동 매장지 붕괴' : '정착지 지속가능성 달성'}</h2>
+      <p class="muted">${s.name} 정착민, 임무가 종료되었습니다.</p>
+      <div class="mono" style="font-size:28px; margin-top:14px;">최종 누적 채굴 점수 ${s.cumulative_score}</div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// 상태 조회 & 라우팅 (재접속/새로고침 복구는 전부 여기서 처리됨)
+// ---------------------------------------------------------------------------
+async function refresh() {
+  const token = localStorage.getItem(SESSION_KEY);
+  if (!token) { renderJoinForm(); return; }
+  try {
+    const s = await rpc('tragedy_resume', { p_session_token: token });
+    if (s.error === 'SESSION_NOT_FOUND') { localStorage.removeItem(SESSION_KEY); renderJoinForm(); return; }
+    startPolling();
+    if (s.screen === 'lobby') renderLobbyWait(s.name);
+    else if (s.screen === 'input') renderInput(s);
+    else if (s.screen === 'waiting') renderWaiting(s);
+    else if (s.screen === 'result') renderResult(s);
+    else if (s.screen === 'bankrupt') renderBankrupt(s);
+    else if (s.screen === 'ended') renderEnded(s);
+  } catch (e) {
+    // 네트워크 순간 장애는 조용히 무시하고 다음 폴링에서 재시도 (튕김 체감 방지)
+    console.warn('resume 실패, 재시도 예정', e);
+  }
+}
+
+refresh();
+</script>
+</body>
+</html>

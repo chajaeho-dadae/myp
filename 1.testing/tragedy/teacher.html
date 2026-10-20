@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>관제센터 · 화성 공유지의 비극</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div class="wrap" id="app" style="max-width:860px;">
+  <div class="eyebrow">MISSION CONTROL</div>
+  <h1 style="font-size:20px; margin-bottom:18px;">관제센터</h1>
+  <div id="screen"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="scanner.js"></script>
+<script>
+const HOST_KEY = 'mars_host_session';
+const screenEl = document.getElementById('screen');
+let polling = null;
+let busy = false;
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+function startPolling() { if (!polling) polling = setInterval(refresh, 2500); }
+function stopPolling() { clearInterval(polling); polling = null; }
+function getSession() {
+  try { return JSON.parse(localStorage.getItem(HOST_KEY)); } catch { return null; }
+}
+
+// ---------------------------------------------------------------------------
+// 화면: 새 게임 생성
+// ---------------------------------------------------------------------------
+function renderSetup() {
+  stopPolling();
+  screenEl.innerHTML = `
+    <div class="panel stack">
+      <p class="muted">새 정착지 임무를 생성합니다. 기본값은 26~30명 학급, 30분 수업에 맞춰 조정되어 있습니다.</p>
+      <details>
+        <summary class="muted" style="cursor:pointer;">고급 설정 (선택)</summary>
+        <div class="stack" style="margin-top:12px;">
+          <label class="muted">최대 매장 용량 (K)<input type="number" id="cfg_k" value="1000"></label>
+          <label class="muted">재생률 (r)<input type="number" id="cfg_r" value="0.4" step="0.01"></label>
+          <label class="muted">라운드당 생존 배급량 (S)<input type="number" id="cfg_s" value="3"></label>
+          <label class="muted">1인당 라운드 최대 채취량<input type="number" id="cfg_max" value="18"></label>
+          <label class="muted">초기 생존 비축량<input type="number" id="cfg_buf" value="6"></label>
+        </div>
+      </details>
+      <button class="btn btn-primary" id="createBtn">새 임무 생성</button>
+    </div>
+  `;
+  document.getElementById('createBtn').onclick = async () => {
+    const settings = {
+      max_capacity: Number(document.getElementById('cfg_k').value),
+      regrowth_rate: Number(document.getElementById('cfg_r').value),
+      survival_ration: Number(document.getElementById('cfg_s').value),
+      max_harvest: Number(document.getElementById('cfg_max').value),
+      initial_buffer: Number(document.getElementById('cfg_buf').value),
+    };
+    const res = await rpc('tragedy_create_room', { p_settings: settings });
+    localStorage.setItem(HOST_KEY, JSON.stringify({ room_id: res.room_id, host_token: res.host_token }));
+    refresh();
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 화면: 대기실 (LOBBY)
+// ---------------------------------------------------------------------------
+function renderLobby(d) {
+  const names = d.joined_names || [];
+  screenEl.innerHTML = `
+    <div class="panel center">
+      <div class="eyebrow">참가 코드</div>
+      <div class="mono" style="font-size:52px; letter-spacing:0.12em; color:var(--rust-bright);">${d.room_code}</div>
+      <p class="muted">student.html 에서 이 코드로 입장합니다.</p>
+    </div>
+    <div class="panel">
+      <div class="list-row"><span class="muted">입장한 정착민</span><span class="mono">${names.length}명</span></div>
+      <div style="max-height:220px; overflow-y:auto; margin-top:8px;">
+        ${names.map(n => `<div class="list-row"><span>${n}</span><span class="badge"><span class="dot on"></span>대기중</span></div>`).join('') || '<p class="muted">아직 입장한 정착민이 없습니다.</p>'}
+      </div>
+    </div>
+    <button class="btn btn-primary" id="startBtn" ${names.length === 0 ? 'disabled' : ''}>임무 개시 (게임 시작)</button>
+    <button class="btn btn-ghost" id="resetBtn" style="margin-top:10px;">새 게임으로 초기화</button>
+  `;
+  document.getElementById('startBtn').onclick = async () => {
+    const s = getSession();
+    await rpc('tragedy_teacher_start_game', { p_room_id: s.room_id, p_host_token: s.host_token });
+    refresh();
+  };
+  document.getElementById('resetBtn').onclick = () => { localStorage.removeItem(HOST_KEY); renderSetup(); };
+}
+
+// ---------------------------------------------------------------------------
+// 화면: 라운드 진행 중 (OPEN) — 긴장감 강조: 매장량 추정치 + 직전 라운드 채취 총합
+// ---------------------------------------------------------------------------
+function renderOpen(d) {
+  const notSubmitted = d.not_submitted_names || [];
+  screenEl.innerHTML = `
+    <div class="panel">
+      <div class="row" style="align-items:center;">
+        <div class="badge"><span class="dot on"></span>라운드 ${d.round_number} 진행 중</div>
+        ${d.collapsed ? '<div class="badge" style="border-color:var(--alert); color:var(--alert);">공유지 붕괴</div>' : ''}
+      </div>
+      <div id="gauge"></div>
+      <div class="panel" style="background:var(--panel-raised); border-color:var(--rust);">
+        <div class="eyebrow" style="color:var(--rust-bright);">직전 라운드 전체 채취 총합</div>
+        <div class="mono" style="font-size:32px;">${d.prev_total_requested ?? '—'}</div>
+        ${d.prev_scarce ? '<div class="muted" style="color:var(--alert); margin-top:4px;">⚠ 요청량이 매장량을 초과했던 라운드입니다</div>' : ''}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="list-row"><span class="muted">제출 완료</span><span class="mono">${d.submitted_count} / ${d.active_players}</span></div>
+      <div class="list-row"><span class="muted">파산(철수)한 정착민</span><span class="mono">${d.bankrupt_players}명</span></div>
+      <div style="margin-top:8px;">
+        <div class="muted" style="margin-bottom:6px;">미제출 ${notSubmitted.length}명</div>
+        <div class="muted">${notSubmitted.join(', ') || '없음'}</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="closeBtn">라운드 마감</button>
+  `;
+  renderScanner(document.getElementById('gauge'), {
+    estimate: d.pool_estimate, low: d.pool_low, high: d.pool_high,
+    margin: (d.pool_high - d.pool_low) / (2 * Math.max(d.pool_estimate,1)), capacity: null
+  });
+  document.getElementById('closeBtn').onclick = async () => {
+    if (busy) return; busy = true;
+    const s = getSession();
+    await rpc('tragedy_teacher_close_round', { p_room_id: s.room_id, p_host_token: s.host_token });
+    busy = false; refresh();
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 화면: 라운드 결과 (RESULT)
+// ---------------------------------------------------------------------------
+function renderResult(d) {
+  screenEl.innerHTML = `
+    <div class="panel">
+      <div class="badge" style="margin-bottom:12px;"><span class="dot on"></span>라운드 ${d.round_number} 결과</div>
+      <div class="list-row"><span class="muted">총 요청량</span><span class="mono">${d.prev_total_requested}</span></div>
+      <div class="list-row"><span class="muted">실제 배분량</span><span class="mono">${d.prev_total_allocated}</span></div>
+      <div class="list-row"><span class="muted">부족 상황 여부</span><span class="mono" style="color:${d.prev_scarce ? 'var(--alert)' : 'var(--stable)'}">${d.prev_scarce ? '예 — 매장량 초과' : '아니오'}</span></div>
+      <div id="gauge" style="margin-top:8px;"></div>
+    </div>
+    <div class="row">
+      <button class="btn btn-primary" id="nextBtn">다음 라운드</button>
+      <button class="btn btn-danger" id="endBtn">게임 종료</button>
+    </div>
+  `;
+  renderScanner(document.getElementById('gauge'), {
+    estimate: d.pool_estimate, low: d.pool_low, high: d.pool_high,
+    margin: (d.pool_high - d.pool_low) / (2 * Math.max(d.pool_estimate,1)), capacity: null
+  });
+  document.getElementById('nextBtn').onclick = async () => {
+    if (busy) return; busy = true;
+    const s = getSession();
+    await rpc('tragedy_teacher_next_round', { p_room_id: s.room_id, p_host_token: s.host_token });
+    busy = false; refresh();
+  };
+  document.getElementById('endBtn').onclick = async () => {
+    if (!confirm('게임을 종료하고 최종 결과를 공개할까요?')) return;
+    const s = getSession();
+    const res = await rpc('tragedy_teacher_end_game', { p_room_id: s.room_id, p_host_token: s.host_token });
+    renderEnded(res);
+    stopPolling();
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 화면: 게임 종료 — 라운드 × 학생 매트릭스 (진행자 전용 공개)
+// ---------------------------------------------------------------------------
+function renderEnded(res) {
+  const rounds = res.rounds;
+  const players = res.players;
+  const map = {};
+  res.matrix.forEach(m => { map[`${m.player_name}__${m.round_number}`] = m.allocated; });
+
+  const header = `<tr><th>정착민</th>${rounds.map(r => `<th>R${r.round_number}</th>`).join('')}<th>누적</th></tr>`;
+  const body = players.map(p => {
+    const cells = rounds.map(r => {
+      const key = `${p.name}__${r.round_number}`;
+      const v = map[key];
+      if (v === undefined) return `<td class="bankrupt">—</td>`;
+      const isBankruptRound = p.is_bankrupt && p.bankrupt_round === r.round_number;
+      return `<td class="${isBankruptRound ? 'bankrupt' : ''}">${Math.round(v * 10) / 10}</td>`;
+    }).join('');
+    return `<tr><td>${p.name}${p.is_bankrupt ? ' ☠' : ''}</td>${cells}<td class="mono">${Math.round(p.cumulative_score*10)/10}</td></tr>`;
+  }).join('');
+  const poolRow = `<tr class="pool-row"><td>매장량(라운드 후)</td>${rounds.map(r => `<td>${Math.round(r.pool_after)}</td>`).join('')}<td></td></tr>`;
+
+  screenEl.innerHTML = `
+    <div class="panel center" style="border-color:${res.collective_success ? 'var(--stable)' : 'var(--alert)'};">
+      <div class="eyebrow" style="color:${res.collective_success ? 'var(--stable)' : 'var(--alert)'};">MISSION COMPLETE</div>
+      <h2 style="font-size:24px; margin:10px 0;">${res.collective_success ? '정착지 지속가능성 달성' : '공동 매장지 붕괴'}</h2>
+    </div>
+    <div class="panel" style="overflow-x:auto;">
+      <table class="matrix">${header}${body}${poolRow}</table>
+    </div>
+    <button class="btn btn-ghost" id="resetBtn">새 게임 시작</button>
+  `;
+  document.getElementById('resetBtn').onclick = () => { localStorage.removeItem(HOST_KEY); renderSetup(); };
+}
+
+// ---------------------------------------------------------------------------
+// 라우팅 (새로고침 시 host_token 기준으로 동일 화면 복구)
+// ---------------------------------------------------------------------------
+async function refresh() {
+  const s = getSession();
+  if (!s) { renderSetup(); return; }
+  try {
+    const d = await rpc('tragedy_teacher_dashboard', { p_room_id: s.room_id, p_host_token: s.host_token });
+    if (d.error) { localStorage.removeItem(HOST_KEY); renderSetup(); return; }
+    startPolling();
+    if (d.room_status === 'LOBBY') renderLobby(d);
+    else if (d.room_status === 'PLAYING' && d.round_status === 'OPEN') renderOpen(d);
+    else if (d.room_status === 'PLAYING' && d.round_status === 'RESULT') renderResult(d);
+    else if (d.room_status === 'ENDED') {
+      // 새로고침으로 돌아왔는데 이미 종료된 경우: 매트릭스는 재계산해서 다시 보여줌
+      const res = await rpc('tragedy_teacher_end_game', { p_room_id: s.room_id, p_host_token: s.host_token });
+      renderEnded(res);
+      stopPolling();
+    }
+  } catch (e) {
+    console.warn('대시보드 조회 실패, 재시도 예정', e);
+  }
+}
+
+refresh();
+</script>
+</body>
+</html>

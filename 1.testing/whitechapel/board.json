@@ -1,0 +1,93 @@
+{
+  "canvas": { "width": 1000, "height": 700 },
+  "districts": [
+    { "id": "ST", "name": "역 앞", "color": "#6b7f95" },
+    { "id": "MK", "name": "시장", "color": "#a3823c" },
+    { "id": "MS", "name": "안개거리", "color": "#7a7f8c" },
+    { "id": "BA", "name": "뒷골목", "color": "#4f5350" },
+    { "id": "DK", "name": "부두", "color": "#3d6b73" }
+  ],
+  "nodes": [
+    { "id": "ST1", "district": "ST", "x": 130, "y": 90 },
+    { "id": "ST2", "district": "ST", "x": 240, "y": 80 },
+    { "id": "ST3", "district": "ST", "x": 150, "y": 190 },
+    { "id": "ST4", "district": "ST", "x": 260, "y": 190 },
+    { "id": "ST5", "district": "ST", "x": 190, "y": 260 },
+    { "id": "ST6", "district": "ST", "x": 320, "y": 150 },
+
+    { "id": "MK1", "district": "MK", "x": 700, "y": 90 },
+    { "id": "MK2", "district": "MK", "x": 820, "y": 80 },
+    { "id": "MK3", "district": "MK", "x": 760, "y": 180 },
+    { "id": "MK4", "district": "MK", "x": 870, "y": 190 },
+    { "id": "MK5", "district": "MK", "x": 700, "y": 260 },
+    { "id": "MK6", "district": "MK", "x": 660, "y": 150 },
+
+    { "id": "MS1", "district": "MS", "x": 420, "y": 300 },
+    { "id": "MS2", "district": "MS", "x": 530, "y": 290 },
+    { "id": "MS3", "district": "MS", "x": 470, "y": 380 },
+    { "id": "MS4", "district": "MS", "x": 580, "y": 370 },
+    { "id": "MS5", "district": "MS", "x": 400, "y": 420 },
+    { "id": "MS6", "district": "MS", "x": 610, "y": 430 },
+
+    { "id": "BA1", "district": "BA", "x": 130, "y": 480 },
+    { "id": "BA2", "district": "BA", "x": 240, "y": 470 },
+    { "id": "BA3", "district": "BA", "x": 150, "y": 580 },
+    { "id": "BA4", "district": "BA", "x": 260, "y": 590 },
+    { "id": "BA5", "district": "BA", "x": 190, "y": 630 },
+    { "id": "BA6", "district": "BA", "x": 320, "y": 530 },
+
+    { "id": "DK1", "district": "DK", "x": 700, "y": 480 },
+    { "id": "DK2", "district": "DK", "x": 820, "y": 470 },
+    { "id": "DK3", "district": "DK", "x": 760, "y": 580 },
+    { "id": "DK4", "district": "DK", "x": 870, "y": 590 },
+    { "id": "DK5", "district": "DK", "x": 700, "y": 630 },
+    { "id": "DK6", "district": "DK", "x": 660, "y": 530 }
+  ],
+  "edges": [
+    { "from": "ST1", "to": "ST2", "type": "normal" },
+    { "from": "ST1", "to": "ST3", "type": "normal" },
+    { "from": "ST2", "to": "ST4", "type": "normal" },
+    { "from": "ST3", "to": "ST4", "type": "normal" },
+    { "from": "ST3", "to": "ST5", "type": "normal" },
+    { "from": "ST4", "to": "ST6", "type": "normal" },
+    { "from": "ST5", "to": "ST6", "type": "normal" },
+    { "from": "ST6", "to": "MS1", "type": "normal" },
+
+    { "from": "MK1", "to": "MK2", "type": "normal" },
+    { "from": "MK1", "to": "MK3", "type": "normal" },
+    { "from": "MK2", "to": "MK4", "type": "normal" },
+    { "from": "MK3", "to": "MK4", "type": "normal" },
+    { "from": "MK3", "to": "MK6", "type": "normal" },
+    { "from": "MK5", "to": "MK6", "type": "normal" },
+    { "from": "MK4", "to": "MK5", "type": "normal" },
+    { "from": "MK6", "to": "MS2", "type": "normal" },
+
+    { "from": "MS1", "to": "MS2", "type": "normal" },
+    { "from": "MS1", "to": "MS3", "type": "normal" },
+    { "from": "MS2", "to": "MS4", "type": "normal" },
+    { "from": "MS3", "to": "MS4", "type": "normal" },
+    { "from": "MS3", "to": "MS5", "type": "normal" },
+    { "from": "MS4", "to": "MS6", "type": "normal" },
+    { "from": "MS5", "to": "BA6", "type": "normal" },
+    { "from": "MS6", "to": "DK6", "type": "normal" },
+
+    { "from": "BA1", "to": "BA2", "type": "normal" },
+    { "from": "BA1", "to": "BA3", "type": "normal" },
+    { "from": "BA2", "to": "BA4", "type": "normal" },
+    { "from": "BA3", "to": "BA4", "type": "normal" },
+    { "from": "BA3", "to": "BA5", "type": "normal" },
+    { "from": "BA4", "to": "BA6", "type": "normal" },
+    { "from": "BA2", "to": "MS5", "type": "normal" },
+
+    { "from": "DK1", "to": "DK2", "type": "normal" },
+    { "from": "DK1", "to": "DK3", "type": "normal" },
+    { "from": "DK2", "to": "DK4", "type": "normal" },
+    { "from": "DK3", "to": "DK4", "type": "normal" },
+    { "from": "DK3", "to": "DK5", "type": "normal" },
+    { "from": "DK1", "to": "DK6", "type": "normal" },
+    { "from": "DK2", "to": "MK5", "type": "normal" },
+
+    { "from": "ST1", "to": "DK5", "type": "shortcut", "label": "지하도" },
+    { "from": "MK2", "to": "BA5", "type": "shortcut", "label": "지하도" }
+  ]
+}
