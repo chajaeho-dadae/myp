@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>헥스 턴제 RPG 프로토타입</title>
+<style>
+:root{--bg:#121420;--p:#191c2b;--l:#2a2f45;--t:#dfe3f0;--m:#8790ad;--a:#7f9cff;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t);font:14px/1.5 system-ui,"Malgun Gothic",sans-serif;display:flex;flex-wrap:wrap;gap:12px;padding:12px}
+canvas{background:var(--p);border:1px solid var(--l);border-radius:8px;max-width:100%}
+#hud{flex:1;min-width:260px;display:flex;flex-direction:column;gap:8px}
+button{background:#212539;color:var(--t);border:1px solid var(--l);border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit}
+button:hover{border-color:var(--a)}button:focus-visible{outline:2px solid var(--a)}
+.box{background:var(--p);border:1px solid var(--l);border-radius:8px;padding:8px 10px;color:var(--m)}
+#log{height:200px;overflow:auto;color:var(--t)}
+</style></head><body>
+<canvas id="c" width="960" height="640"></canvas>
+<div id="hud">
+ <div class="box" id="info"></div>
+ <div style="display:flex;gap:8px"><button id="go">실행 (Enter)</button><button id="flee">도망</button></div>
+ <div class="box" id="codex"></div>
+ <div class="box" id="log"></div>
+</div>
+<script>
+(async()=>{
+let DATA;
+try{DATA=await (await fetch('data/game.json')).json()}catch(e){document.body.textContent='HTTP 서버로 열어 주세요. data/game.json을 불러오지 못했습니다.';return}
+const B=DATA.balance,SK=DATA.skills,RC=DATA.recipes;
+try{const o=JSON.parse(localStorage.getItem('hexrpg.balance')||'{}');for(const s in o)Object.assign(B[s]=B[s]||{},o[s])}catch(e){}
+
+// ---------- 육각 좌표 (축 좌표, 포인티 탑) ----------
+const H3=Math.sqrt(3),DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+const rot=([q,r],f)=>{for(let i=0;i<f;i++)[q,r]=[-r,q+r];return[q,r]};
+const dist=(a,b)=>(Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[0]+a[1]-b[0]-b[1]))/2;
+const inMap=(q,r)=>r>=0&&r<B.map.rows&&q>=-Math.floor(r/2)&&q<B.map.cols-Math.floor(r/2);
+const cube=(q,r)=>{let x=q,z=r,y=-x-z,rx=Math.round(x),ry=Math.round(y),rz=Math.round(z);
+ const dx=Math.abs(rx-x),dy=Math.abs(ry-y),dz=Math.abs(rz-z);
+ if(dx>dy&&dx>dz)rx=-ry-rz;else if(dy>dz)ry=-rx-rz;else rz=-rx-ry;return[rx,rz]};
+
+// ---------- 유닛 ----------
+const units=DATA.units.map(d=>({...d,hp:B[d.id].hp,f:0,tags:{},st:B[d.id]}));
+const alive=t=>units.filter(u=>u.hp>0&&(!t||u.team===t));
+const cells=(u,q=u.q,r=u.r,f=u.f)=>u.fp.map(o=>{const[a,b]=rot(o,f);return[q+a,r+b]});
+const occupied=(ex,q,r)=>units.some(u=>u!==ex&&u.hp>0&&cells(u).some(c=>c[0]===q&&c[1]===r));
+const ud=(a,b,qa,ra,fa)=>Math.min(...cells(a,qa,ra,fa).flatMap(x=>cells(b).map(y=>dist(x,y))));
+
+// ---------- 이동: 규칙을 주입받는 탐색 (비용이 달라져도 동작하는 다익스트라) ----------
+const RULES={
+ cost:(type)=>type==='rot'?B.turn.rot:B.turn.mv,
+ canEnter:(u,q,r,f)=>cells(u,q,r,f).every(([a,b])=>inMap(a,b)&&!occupied(u,a,b))
+};
+function reach(u,ap){
+ const best=new Map(),k=(q,r,f)=>q+','+r+','+f,open=[{q:u.q,r:u.r,f:u.f,c:0,p:null}];
+ best.set(k(u.q,u.r,u.f),open[0]);
+ while(open.length){
+  open.sort((a,b)=>a.c-b.c);const n=open.shift();if(n.done)continue;n.done=true;
+  const nx=[];
+  DIRS.forEach(d=>nx.push([n.q+d[0],n.r+d[1],n.f,RULES.cost('mv')]));
+  [1,5].forEach(s=>nx.push([n.q,n.r,(n.f+s)%6,RULES.cost('rot')]));
+  for(const[q,r,f,w]of nx){
+   const c=n.c+w;if(c>ap||!RULES.canEnter(u,q,r,f))continue;
+   const o=best.get(k(q,r,f));if(!o||c<o.c){const m={q,r,f,c,p:n};best.set(k(q,r,f),m);open.push(m)}
+  }
+ }
+ const cell=new Map();
+ best.forEach(n=>{const o=cell.get(n.q+','+n.r);if(!o||n.c<o.c)cell.set(n.q+','+n.r,n)});
+ return cell;
+}
+const pathOf=n=>{const a=[];for(;n;n=n.p)a.unshift(n);return a};
+
+// ---------- 상태 ----------
+let phase='plan',sel=null,round=0,slotNo=0,chain=0,lastReact=-9,used={},timeline=[],busy=false;
+const plans=new Map(),codex=new Set(JSON.parse(localStorage.getItem('hexrpg.codex')||'[]'));
+const fx={parts:[],texts:[],shake:0,flash:0,banner:null};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const log=t=>{const l=document.getElementById('log');l.innerHTML+=t+'<br>';l.scrollTop=1e9};
+const apLeft=u=>{const p=plans.get(u);return u.st.ap-(p?(p.cost||0)+(p.skill?SK[p.skill].ap:0):0)};
+const iniOf=u=>{const p=plans.get(u);return u.st.ini+(p&&p.skill?B.turn.trade*SK[p.skill].power*10:0)};
+
+// ---------- 적 AI: 유닛별 가중치 점수표 ----------
+function planEnemy(u){
+ let best=null;const rc=reach(u,u.st.ap);
+ for(const s of u.skills){const sk=SK[s];
+  for(const t of alive('a')){
+   const dmg=sk.dmg+u.st.atk*0.3-t.st.def*0.3;
+   let spot=null;
+   rc.forEach(n=>{if(n.c+sk.ap>u.st.ap)return;const d=ud(u,t,n.q,n.r,n.f);
+    const sc=(d<=sk.range?100:0)-d-n.c*0.01;if(!spot||sc>spot.sc)spot={n,d,sc}});
+   if(!spot)continue;
+   const combo=RC.some(r=>t.tags[r.need]!==undefined&&r.elem===sk.elem)?1:0;
+   const near=alive('a').filter(a=>a!==t&&ud(u,a,spot.n.q,spot.n.r,spot.n.f)<=2).length;
+   const score=B.ai.wDmg*dmg+B.ai.wKill*(dmg>=t.hp?10:0)-B.ai.wDist*spot.d+B.ai.wCombo*combo*5-B.ai.wRisk*near+(spot.d<=sk.range?20:0);
+   if(!best||score>best.score)best={score,dest:spot.n,skill:s,target:t,cost:spot.n.c};
+  }}
+ if(best)plans.set(u,best);
+}
+function newRound(){
+ round++;phase='plan';sel=null;plans.clear();chain=0;lastReact=-9;used={};slotNo=0;
+ alive('e').forEach(planEnemy);log(`<b>라운드 ${round}</b> 적의 의도가 공개되었습니다.`);refresh();
+}
+
+// ---------- 행동 실행 ----------
+async function walk(u,dest){
+ const rc=reach(u,99),n=rc.get(dest.q+','+dest.r);if(!n)return;
+ for(const s of pathOf(n).slice(1)){u.q=s.q;u.r=s.r;u.f=s.f;await sleep(110)}
+}
+function burst(u,tier,color){
+ const[x,y]=scr(u.q,u.r);const n=Math.round(10*tier*B.fx.pt);
+ for(let i=0;i<n;i++){const a=Math.random()*6.28,s=1+Math.random()*3*tier;fx.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:40+Math.random()*30,c:color})}
+}
+async function act(u,p){
+ const sk=SK[p.skill];let t=p.target;
+ if(t.hp<=0){log(`${u.name}: 대상이 쓰러져 행동이 취소되었습니다.`);return false}
+ if(p.dest&&(p.dest.q!==u.q||p.dest.r!==u.r))await walk(u,p.dest);
+ if(ud(u,t,u.q,u.r,u.f)>sk.range&&u.team==='e'){ // 대상을 따라가서 공격
+  const rc=reach(u,u.st.ap-(p.cost||0));let b=null;
+  rc.forEach(n=>{const d=ud(u,t,n.q,n.r,n.f);if(!b||d<b.d)b={n,d}});
+  if(b)await walk(u,b.n);
+ }
+ if(ud(u,t,u.q,u.r,u.f)>sk.range){log(`${u.name}의 ${sk.name}이(가) 닿지 않았습니다.`);return true}
+ slotNo++;
+ let dmg=sk.dmg+u.st.atk*0.3-t.st.def*0.3,react=null;
+ for(const r of RC)if(t.tags[r.need]!==undefined&&sk.elem===r.elem&&slotNo-t.tags[r.need]<=B.combo.life){react=r;break}
+ if(react){
+  chain=(lastReact===slotNo-1?chain:0)+1;lastReact=slotNo;
+  used[react.id]=(used[react.id]||0)+1;
+  dmg+=react.bonus*Math.pow(B.combo.decay,used[react.id]-1)*(1+B.combo.step/100*(chain-1));
+  delete t.tags[react.need];t.tags[react.add]=slotNo;
+  const tier=chain>=B.fx.t4?4:chain>=B.fx.t3?3:chain>=B.fx.t2?2:1;
+  const fresh=!codex.has(react.id);
+  if(fresh){codex.add(react.id);try{localStorage.setItem('hexrpg.codex',JSON.stringify([...codex]))}catch(e){}}
+  fx.banner={t:`COMBO ×${chain}  ${react.name}${fresh?'  (새 콤보 발견!)':''}`,tier,l:90};
+  fx.shake=B.fx.shake*(tier-1)/3;if(tier>=3)fx.flash=B.fx.flash;
+  burst(t,tier,['#7f9cff','#f0b35a','#ff7fa8','#fff'][tier-1]);
+  log(`<b style="color:#f0b35a">콤보 ×${chain}: ${react.name}</b>`);
+  if(tier===4)await sleep(500*(1/B.fx.slow)*0.4);
+ }
+ if(sk.tag)t.tags[sk.tag]=slotNo;
+ dmg=Math.max(1,Math.round(dmg));t.hp-=dmg;
+ fx.texts.push({...(()=>{const[x,y]=scr(t.q,t.r);return{x,y}})(),t:'-'+dmg,l:50});
+ log(`${u.name}의 ${sk.name} → ${t.name} ${dmg}`);
+ if(t.hp<=0)log(`${t.name} 쓰러짐`);
+ await sleep(react?450:300);return true;
+}
+async function execute(){
+ if(busy||phase!=='plan')return;busy=true;phase='run';sel=null;
+ const order=alive().sort((a,b)=>iniOf(a)-iniOf(b)||(a.team==='e'?-1:1)-(b.team==='e'?-1:1));
+ timeline=order.map(u=>({u,i:iniOf(u)}));
+ for(const u of order){
+  if(u.hp<=0)continue;const p=plans.get(u);if(!p||!p.skill)continue;
+  await act(u,p);
+  if(!alive('e').length||!alive('a').length)break;
+ }
+ busy=false;timeline=[];
+ if(!alive('e').length){end('승리! 적을 모두 쓰러뜨렸습니다.')}
+ else if(!alive('a').length){end('패배… 아군이 모두 쓰러졌습니다.')}
+ else newRound();
+}
+function end(m){phase='end';fx.banner={t:m,tier:4,l:9999};log(m);refresh()}
+document.getElementById('go').onclick=execute;
+document.getElementById('flee').onclick=async()=>{
+ if(phase!=='plan')return;
+ if(!confirm('도망치면 자원이나 병력을 잃을 수 있습니다. 정말 도망칠까요?'))return;
+ const r=Math.random()*100;
+ if(r>=B.flee.ok)return alert('도망에 실패했습니다! 적에게 따라잡혔습니다.'),log('도망 실패');
+ const lu=Math.random()*100<B.flee.loseU,lr=Math.random()*100<B.flee.loseR;
+ const m='도망에 성공했습니다.'+(lu?' 대원 한 명을 잃었습니다.':'')+(lr?' 자원 일부를 잃었습니다.':'');
+ alert(m);end(m);
+};
+
+// ---------- 렌더링 (쿼터뷰) ----------
+const cv=document.getElementById('c'),g=cv.getContext('2d');
+const S=()=>B.map.tile;
+const scr=(q,r)=>[cv.width/2+S()*H3*(q+r/2-(B.map.cols-1)/2-B.map.rows/4)+0,110+S()*1.5*r*B.map.tilt];
+function hex(x,y,s,fill,stroke){
+ g.beginPath();for(let i=0;i<6;i++){const a=Math.PI/180*(60*i+30);g.lineTo(x+s*Math.cos(a),y+s*Math.sin(a)*B.map.tilt)}
+ g.closePath();if(fill){g.fillStyle=fill;g.fill()}if(stroke){g.strokeStyle=stroke;g.stroke()}
+}
+let hover=null,reachMap=null;
+function refresh(){
+ const u=sel,i=document.getElementById('info');
+ i.innerHTML=phase==='plan'?(u?`<b>${u.name}</b> 행동 자원 ${apLeft(u)}/${u.st.ap} · 스킬: ${u.skills.map((s,n)=>`[${n+1}] ${SK[s].name}(${SK[s].ap})`).join(' ')}<br>이동할 칸 클릭 → 숫자키로 스킬 → 적 클릭`:'아군을 클릭해 계획을 세우세요. 계획 후 Enter로 실행합니다.'):'';
+ document.getElementById('codex').innerHTML='<b>콤보 도감</b> '+RC.map(r=>codex.has(r.id)?`${r.name}(${r.need}+${r.elem})`:'???').join(' / ');
+ reachMap=u&&u.team==='a'?reach(u,apLeft(u)):null;
+}
+function draw(){
+ g.save();g.clearRect(0,0,cv.width,cv.height);
+ if(fx.shake>0.2){g.translate((Math.random()-.5)*fx.shake,(Math.random()-.5)*fx.shake);fx.shake*=.9}
+ for(let r=0;r<B.map.rows;r++)for(let q=-Math.floor(r/2);q<B.map.cols-Math.floor(r/2);q++){
+  const[x,y]=scr(q,r),rc=reachMap&&reachMap.get(q+','+r);
+  hex(x,y,S()-1,rc?'#2b3a66':'#222740','#323858');
+ }
+ // 적 의도 선
+ plans.forEach((p,u)=>{if(u.team==='e'&&u.hp>0&&p.target&&phase==='plan'){const a=scr(u.q,u.r),b=scr(p.target.q,p.target.r);
+  g.strokeStyle='#ff7fa8';g.setLineDash([6,5]);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();g.setLineDash([])}});
+ for(const u of units.filter(u=>u.hp>0).sort((a,b)=>a.r-b.r)){
+  const col=u.team==='a'?'#6aa8ff':'#e26a8a';
+  for(const[q,r]of cells(u)){const[x,y]=scr(q,r);hex(x,y,S()*.75,col+(u===sel?'':'cc'),u===sel?'#fff':'#000')}
+  const[x,y]=scr(u.q,u.r);
+  g.fillStyle='#fff';g.font='12px system-ui';g.textAlign='center';g.fillText(u.name,x,y+4);
+  g.fillStyle='#000';g.fillRect(x-18,y-S()*.9,36,4);g.fillStyle='#7bd88f';g.fillRect(x-18,y-S()*.9,36*u.hp/u.st.hp,4);
+  const tg=Object.keys(u.tags).join(' ');if(tg){g.fillStyle='#f0b35a';g.fillText(tg,x,y-S()*.9-4)}
+  const p=plans.get(u);if(p&&p.skill&&u.team==='a'){g.fillStyle='#fff';g.fillText('▶'+SK[p.skill].name,x,y+S()*1.1)}
+ }
+ // 타임라인 (순서 막대)
+ const list=(timeline.length?timeline:alive().map(u=>({u,i:iniOf(u)})).sort((a,b)=>a.i-b.i||(a.u.team==='e'?-1:1))).slice();
+ list.forEach((e,n)=>{const x=10+n*84;g.fillStyle=e.u.team==='a'?'#2b4a8a':'#7a2a44';g.fillRect(x,8,78,34);
+  g.fillStyle='#fff';g.textAlign='left';g.font='12px system-ui';g.fillText(e.u.name+' '+e.i,x+6,22);
+  const p=plans.get(e.u);g.fillStyle='#ccd';g.fillText(p&&p.skill?SK[p.skill].name:'—',x+6,36)});
+ // 연출
+ fx.parts=fx.parts.filter(p=>p.l-->0);fx.parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;g.fillStyle=p.c;g.fillRect(p.x,p.y,3,3)});
+ fx.texts=fx.texts.filter(t=>t.l-->0);fx.texts.forEach(t=>{g.fillStyle='#fff';g.font='bold 16px system-ui';g.textAlign='center';g.fillText(t.t,t.x,t.y-S()-(50-t.l))});
+ if(fx.banner&&fx.banner.l-->0){const b=fx.banner;g.fillStyle='#f0b35a';g.font=`bold ${22+b.tier*8}px system-ui`;g.textAlign='center';g.fillText(b.t,cv.width/2,cv.height-40)}
+ if(fx.flash>0){g.fillStyle=`rgba(255,255,255,${Math.min(.6,fx.flash/B.fx.flash)})`;g.fillRect(0,0,cv.width,cv.height);fx.flash-=16}
+ g.restore();requestAnimationFrame(draw);
+}
+
+// ---------- 입력: 마우스 + 키보드 ----------
+cv.onclick=e=>{
+ if(phase!=='plan'||busy)return;
+ const rc=cv.getBoundingClientRect(),px=(e.clientX-rc.left)*cv.width/rc.width,py=(e.clientY-rc.top)*cv.height/rc.height;
+ const r0=(py-110)/(S()*1.5*B.map.tilt),q0=(px-cv.width/2)/(S()*H3)-r0/2+(B.map.cols-1)/2+B.map.rows/4;
+ const[q,r]=cube(q0,r0);
+ const hit=units.find(u=>u.hp>0&&cells(u).some(c=>c[0]===q&&c[1]===r));
+ if(hit&&hit.team==='a'){sel=hit;refresh();return}
+ if(!sel)return;
+ const p=plans.get(sel)||{};
+ if(hit&&hit.team==='e'){ // 대상 선택
+  if(!p.skill)return log('먼저 숫자키로 스킬을 고르세요.');
+  const sk=SK[p.skill],at=p.dest||sel;
+  if(ud(sel,hit,at.q,at.r,at.f)>sk.range)return log('사거리 밖입니다.');
+  p.target=hit;plans.set(sel,p);refresh();return;
+ }
+ const n=reachMap&&reachMap.get(q+','+r);
+ if(n){ // 이동 목적지 (비용 갱신 시 스킬 비용 포함 검사)
+  const sk=p.skill?SK[p.skill].ap:0;
+  if(n.c+sk>sel.st.ap)return log('행동 자원이 부족합니다.');
+  p.dest=n;p.cost=n.c;plans.set(sel,p);refresh();
+ }
+};
+addEventListener('keydown',e=>{
+ if(e.key==='Enter')return execute();
+ if(e.key==='Escape'){if(sel)plans.delete(sel);refresh();return}
+ const n=+e.key-1;
+ if(phase==='plan'&&sel&&sel.team==='a'&&sel.skills[n]){
+  const p=plans.get(sel)||{};if((p.cost||0)+SK[sel.skills[n]].ap>sel.st.ap)return log('행동 자원이 부족합니다.');
+  p.skill=sel.skills[n];p.target=null;plans.set(sel,p);refresh();
+ }
+});
+newRound();draw();
+})();
+</script></body></html>

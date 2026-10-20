@@ -1,0 +1,42 @@
+{
+"balance":{
+ "map":{"tile":40,"tilt":0.5,"cols":11,"rows":9},
+ "turn":{"trade":1,"ap":6,"mv":1,"rot":1},
+ "combo":{"step":25,"decay":0.6,"life":1},
+ "fx":{"t2":3,"t3":5,"t4":7,"shake":8,"flash":200,"slow":0.4,"pt":1},
+ "ai":{"wDmg":1,"wKill":3,"wRisk":1,"wDist":0.5,"wCombo":2},
+ "flee":{"ok":50,"loseU":20,"loseR":30},
+ "a1":{"hp":80,"atk":12,"def":6,"ap":5,"ini":50},
+ "a2":{"hp":45,"atk":10,"def":2,"ap":6,"ini":40},
+ "a3":{"hp":40,"atk":14,"def":1,"ap":5,"ini":60},
+ "e1":{"hp":50,"atk":8,"def":3,"ap":5,"ini":55},
+ "e2":{"hp":90,"atk":10,"def":5,"ap":4,"ini":70},
+ "e3":{"hp":35,"atk":9,"def":1,"ap":5,"ini":45},
+ "e4":{"hp":40,"atk":11,"def":2,"ap":5,"ini":50}
+},
+"skills":{
+ "slash":{"name":"베기","ap":2,"range":1,"power":1,"dmg":12,"elem":"phys"},
+ "arrow":{"name":"화살","ap":2,"range":5,"power":1,"dmg":9,"elem":"phys"},
+ "water":{"name":"물줄기","ap":2,"range":4,"power":0,"dmg":4,"elem":"water","tag":"wet"},
+ "fire":{"name":"화염구","ap":3,"range":4,"power":2,"dmg":10,"elem":"fire","tag":"burn"},
+ "bolt":{"name":"번개","ap":3,"range":4,"power":2,"dmg":9,"elem":"lightning","tag":"charged"},
+ "ice":{"name":"냉기","ap":2,"range":3,"power":1,"dmg":6,"elem":"ice","tag":"chill"}
+},
+"recipes":[
+ {"id":"shock","name":"감전","need":"wet","elem":"lightning","bonus":14,"add":"shock"},
+ {"id":"freeze","name":"빙결","need":"wet","elem":"ice","bonus":10,"add":"frozen"},
+ {"id":"shatter","name":"분쇄","need":"frozen","elem":"phys","bonus":18,"add":"broken"},
+ {"id":"blast","name":"폭발","need":"shock","elem":"fire","bonus":16,"add":"scorch"},
+ {"id":"steam","name":"증기","need":"burn","elem":"water","bonus":8,"add":"wet"},
+ {"id":"melt","name":"융해","need":"chill","elem":"fire","bonus":12,"add":"burn"}
+],
+"units":[
+ {"id":"a1","name":"전사","team":"a","q":1,"r":2,"fp":[[0,0]],"skills":["slash","bolt"]},
+ {"id":"a2","name":"궁수","team":"a","q":0,"r":4,"fp":[[0,0]],"skills":["arrow","water"]},
+ {"id":"a3","name":"마법사","team":"a","q":1,"r":6,"fp":[[0,0]],"skills":["water","bolt","ice","fire"]},
+ {"id":"e1","name":"병사","team":"e","q":8,"r":2,"fp":[[0,0]],"skills":["slash"]},
+ {"id":"e2","name":"거구","team":"e","q":7,"r":4,"fp":[[0,0],[1,0]],"skills":["slash"]},
+ {"id":"e3","name":"사수","team":"e","q":6,"r":6,"fp":[[0,0]],"skills":["arrow","water"]},
+ {"id":"e4","name":"주술사","team":"e","q":7,"r":6,"fp":[[0,0]],"skills":["fire","ice"]}
+]
+}
