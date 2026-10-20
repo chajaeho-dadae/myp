@@ -69,7 +69,7 @@ const KEY='sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc',SK='bomb_v2';
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const IC={angel:['😇','천사 +1'],bomb:['💣','폭탄 −1'],neutral:['⚪','중립 0'],double:['✨','더블 +2'],mirror:['🪞','거울(복사)']};
 const ROLE={detective:['🔍 탐정','상대 1명의 카드를 몰래 확인 (1회)'],shield:['🛡 방패','폭탄을 들고 있어도 한 번 점수 감점을 막아줍니다 (자동)'],force:['⚡ 강제 교환','상대 1명과 거절 불가로 즉시 교환 (1회)']};
-let S=JSON.parse(localStorage.getItem(SK)||'null'),V=null,shown=true,lastRound=0,chatKey='',busy=false,boomT=0;
+let S=JSON.parse(localStorage.getItem(SK)||'null'),V=null,shown=false,lastRound=0,chatKey='',busy=false,boomT=0;
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('on'),2600)}
 async function call(b){try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json',apikey:KEY,Authorization:'Bearer '+KEY},body:JSON.stringify({room:S?.room,pid:S?.pid,...b})});return await r.json()}catch(e){return{ok:false,err:'네트워크 오류'}}}
 async function send(b){const r=await call(b);if(!r.ok)toast(r.err);if(r.v){V=r.v;render()}return r}
@@ -85,7 +85,7 @@ async function poll(){if(!S||busy)return;busy=true;const r=await call({a:'state'
 setInterval(poll,1200);setInterval(()=>V&&V.status=='playing'&&tickUI(),250);
 
 function render(){if(!V)return;
- if(V.status=='waiting'){show('s-lobby');code.textContent=V.id;link.textContent=location.origin+location.pathname+'?room='+V.id;
+ if(V.status=='waiting'){shown=false;show('s-lobby');code.textContent=V.id;link.textContent=location.origin+location.pathname+'?room='+V.id;
   pc.textContent='('+V.players.length+'명)';lp.innerHTML=V.players.map(p=>`<span class="chip ${p.on?'':'off'}">${p.host?'👑 ':''}${esc(p.name)}</span>`).join('');
   cfg.classList.toggle('hide',!V.host);wm.classList.toggle('hide',V.host);return}
  if(V.status=='finished'){document.body.classList.remove('danger');show('s-result');return renderResult()}
