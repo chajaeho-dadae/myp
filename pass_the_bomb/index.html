@@ -50,10 +50,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{border:1px solid 
    <div class="row" id="trow"><input id="ti" maxlength="100" placeholder="메시지" onkeydown="if(event.key=='Enter')say()"><button class="p" style="flex:0 0 70px" onclick="say()">전송</button></div>
    <div class="row"><button class="r" id="agbtn" onclick="agree()">🔄 교환 동의</button><button onclick="send({a:'close',nego:V.nego.id})">협상 종료</button></div></div>
   <div class="card"><h3>👥 협상 신청할 상대 선택</h3><div class="chips" id="plist"></div></div></div>
- <div id="hostview" class="hide"><div class="card"><h3>📊 현재 카드 현황 (진행자 전용)</h3><div id="mx"></div></div>
-  <div class="card"><h3>🕸 실시간 교환 네트워크 (프로젝터용 · 카드는 숨김)</h3><canvas id="cv1" width="700" height="360"></canvas></div>
-  <button class="r" style="width:100%" onclick="confirm('게임을 즉시 종료할까요?')&&send({a:'end'})">🛑 게임 강제 종료</button></div>
- <div class="card"><h3>🏅 점수판</h3><div id="sb"></div></div></div>
+ <div id="hostview" class="hide"><div class="card"><h3>🕸 교환 네트워크 &nbsp;<span style="font-weight:400;color:var(--mu)">점선(주황) = 지금 협상 중 · 실선(청록) = 완료한 교환 · 카드 정보는 표시되지 않습니다</span></h3><canvas id="cv1" width="1200" height="640"></canvas><div id="livetxt" style="margin-top:8px;font-size:1.1rem;text-align:center;min-height:1.6em"></div></div>
+  <div style="height:110vh;text-align:center;color:var(--mu);padding-top:40px">▼ 진행자 전용 영역 ▼<br><small>전자칠판 공유 중에는 내리지 마세요</small></div>
+  <div class="card"><h3>📊 현재 카드 현황 (진행자 전용)</h3><div id="mx"></div></div></div>
+ <div class="card"><h3>🏅 점수판</h3><div id="sb"></div></div>
+ <div id="endbtn" class="hide"><button class="r" style="width:100%" onclick="confirm('게임을 즉시 종료할까요?')&&send({a:'end'})">🛑 게임 강제 종료 (진행자 전용)</button></div></div>
 
 <div id="s-result" class="hide"><h1>🏆 게임 종료!</h1><div id="win" style="text-align:center;font-size:1.3rem;color:var(--gd);margin-bottom:12px"></div>
  <div class="card"><h3>최종 순위 (누적 점수 → 교환 횟수)</h3><div id="rank"></div></div>
@@ -94,10 +95,11 @@ function render(){if(!V)return;
  lastRound=V.round;rd.textContent=`라운드 ${V.round} / ${V.cfg.rounds}`;
  rl.innerHTML=(V.rules.emoji?'<span class="tag">🤐 이모지만</span>':'')+(V.rules.max>1?'<span class="tag">🔄 교환 2회</span>':'')+(V.rules.last?'<span class="tag">⏱ 마지막(시간 절반)</span>':'');
  hint.textContent=V.hint!=null?`📢 중간 공개: 지금 폭탄 카드는 ${V.hint}장!`:'';
- stu.classList.toggle('hide',V.host);hostview.classList.toggle('hide',!V.host);
+ stu.classList.toggle('hide',V.host);hostview.classList.toggle('hide',!V.host);endbtn.classList.toggle('hide',!V.host);document.querySelector('.wrap').style.maxWidth=V.host?'1200px':'760px';
  sb.innerHTML='<table><tr><th>이름</th><th>점수</th><th>교환(인정)</th></tr>'+V.players.filter(p=>!p.host).sort((a,b)=>b.score-a.score||b.trades-a.trades).map(p=>`<tr><td>${esc(p.name)}</td><td>${p.score}</td><td>${p.trades}</td></tr>`).join('')+'</table>';
  if(V.host){mx.innerHTML='<table><tr><th>이름</th><th>카드</th><th>점수</th><th>교환</th></tr>'+V.players.filter(p=>!p.host).map(p=>{const c=V.cards[p.id];return `<tr><td>${esc(p.name)}</td><td class="${c=='bomb'?'b':'a'}">${IC[c][0]} ${IC[c][1]}</td><td>${p.score}</td><td>${p.trades}</td></tr>`}).join('')+'</table>';
-  graph(cv1,V.players.filter(p=>!p.host),V.edges);return}
+  const nm=Object.fromEntries(V.players.map(p=>[p.id,p.name]));livetxt.innerHTML=V.live.length?V.live.map(l=>`<span class="tag" style="font-size:1rem">${esc(nm[l.a])} ⇄ ${esc(nm[l.b])} ${l.st=='pending'?'(요청 중)':'(협상 중)'}</span>`).join(' '):'<span style="color:var(--mu)">지금 협상 중인 학생이 없습니다</span>';
+  graph(cv1,V.players.filter(p=>!p.host),V.edges,V.live);return}
  const m=V.me,c=IC[m.card]||['?',''];
  mycard.innerHTML=shown?`<div class="big c-${m.card}" onclick="shown=false;render()">${c[0]}<small>${c[1]}</small></div>`:`<div class="big c-back" onclick="shown=true;render()">🂠<small>눌러서 확인</small></div>`;
  myinfo.textContent=`이번 라운드 교환 ${m.tr}/${V.rules.max}`;
@@ -118,12 +120,13 @@ function tickUI(){const off=V.now-0;const now=V.now+(Date.now()-(V._t||(V._t=Dat
  tb.style.width=left/tot*100+'%';tb.style.background=left/tot>.4?'var(--an)':left/tot>.2?'var(--gd)':'var(--bm)';document.body.classList.toggle('danger',left>0&&left<=10000)}
 const _r=render;render=function(){if(V&&V.__seen!==V.now){V._t=Date.now();V.__seen=V.now}_r()};
 
-function graph(cv,pl,edges){const x=cv.getContext('2d'),W=cv.width,H=cv.height;x.clearRect(0,0,W,H);const N=pl.length;if(!N)return{};
- const pos={};pl.forEach((p,i)=>{const a=i/N*6.283-1.57;pos[p.id]=[W/2+Math.cos(a)*(W/2-70),H/2+Math.sin(a)*(H/2-45)]});
+function graph(cv,pl,edges,live){const x=cv.getContext('2d'),W=cv.width,H=cv.height;x.clearRect(0,0,W,H);const N=pl.length;if(!N)return{};
+ const pos={};pl.forEach((p,i)=>{const a=i/N*6.283-1.57;pos[p.id]=[W/2+Math.cos(a)*(W/2-W/9),H/2+Math.sin(a)*(H/2-H/9)]});
  const cnt={},deg={};(edges||[]).forEach(e=>{const k=[e.a,e.b].sort().join();cnt[k]=(cnt[k]||0)+1});
  Object.keys(cnt).forEach(k=>{const[a,b]=k.split(',');deg[a]=(deg[a]||0)+1;deg[b]=(deg[b]||0)+1;x.strokeStyle='#4ecdc4aa';x.lineWidth=1+cnt[k]*1.5;x.beginPath();x.moveTo(...pos[a]);x.lineTo(...pos[b]);x.stroke()});
- const hub=Object.keys(deg).sort((a,b)=>deg[b]-deg[a])[0];x.textAlign='center';x.font='13px sans-serif';
- pl.forEach(p=>{const[px,py]=pos[p.id],r=10+(deg[p.id]||0)*3;x.fillStyle=p.id==hub?'#ffd700':'#ff6b35';x.beginPath();x.arc(px,py,r,0,6.283);x.fill();x.fillStyle='#e8e6f0';x.fillText((p.id==hub&&hub?'⭐ ':'')+p.name,px,py+r+14)});
+ const hub=Object.keys(deg).sort((a,b)=>deg[b]-deg[a])[0];if(live){x.setLineDash([14,10]);x.strokeStyle='#ff6b35';x.lineWidth=W/200;live.forEach(l=>{x.beginPath();x.moveTo(...pos[l.a]);x.lineTo(...pos[l.b]);x.stroke()});x.setLineDash([])}
+ const lv=new Set((live||[]).flatMap(l=>[l.a,l.b]));x.textAlign='center';x.font=(W/42|0)+'px sans-serif';
+ pl.forEach(p=>{const[px,py]=pos[p.id],r=W/70+(deg[p.id]||0)*W/230;x.fillStyle=p.id==hub?'#ffd700':lv.has(p.id)?'#ff9b6b':'#ff6b35';x.beginPath();x.arc(px,py,r,0,6.283);x.fill();x.fillStyle='#e8e6f0';x.fillText((p.id==hub&&hub?'⭐ ':'')+p.name,px,py+r+W/40)});
  return{deg,hub}}
 
 function renderResult(){const pl=V.players.filter(p=>!p.host),by={};pl.forEach(p=>by[p.id]=p);
