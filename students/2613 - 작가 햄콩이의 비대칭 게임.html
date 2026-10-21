@@ -5,8 +5,8 @@
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;justify-content:center;padding:12px}
 #wrap{position:relative;width:1000px;max-width:100%}canvas{width:100%;display:block;border-radius:10px}
-.ov{position:absolute;inset:0;background:rgba(10,8,6,.88);color:#ece7df;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:16px;border-radius:10px;overflow:auto}
-.ov h1{margin:0;font-size:28px}.s{font-size:13px;opacity:.85;max-width:640px;line-height:1.6;margin:0}
+.ov{position:absolute;inset:0;background:rgba(10,8,6,.88);color:#ece7df;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:16px;border-radius:10px;overflow:auto}
+.ov h1{margin:0;font-size:28px}.ov>:first-child{margin-top:auto}.ov>:last-child{margin-bottom:auto}.s{font-size:13px;opacity:.85;max-width:640px;line-height:1.6;margin:0}
 button{font:inherit;background:var(--card);color:var(--fg);border:2px solid var(--ac);border-radius:10px;padding:10px 16px;cursor:pointer;margin:4px}
 button:hover{background:var(--ac);color:#fff}.row{display:flex;flex-wrap:wrap;justify-content:center}
 </style></head><body><div id="wrap"><canvas id="c" width="1000" height="640"></canvas>
@@ -143,7 +143,7 @@ const R=NR;NT={h:!!h,code:code.slice(2),pm:{}};R.presence({h:h?1:0});R.onPeers(l
 R.on('act',m=>{if(!NT.h||!G||G.over)return;const e=G.ents.find(e=>e.peer===m.peer),k=m.data&&m.data.k;if(e&&e.hu&&['q','e','r','t','sp'].includes(k))sk(e,k)});
 R.on('st',m=>{if(NT.h||!m.data)return;const p=R.peers().find(p=>p.presence.h===1);if(p&&p.peer===m.peer)applySnap(m.data)})}
 function lbUI(){if(G||!NR)return;const ps=NR.peers().filter(p=>p.kind==='viewer');
-$('step').innerHTML=`<p class="s"><b>방 코드: ${NT.code}</b> (친구에게 알려주세요) · 참가 ps.length명(최대4명플레이)</p><divclass="row">{Object.keys(CH).map(i=>`<button onclick="NR.presence({p:'${i}'})">${CH[i].n}</button>`).join('')}</div><p class="s">${ps.map((p,i)=>(p.isMe?'나':'플레이어'+(i+1))+': '+(CH[p.presence.p]?CH[p.presence.p].n:'선택 중')).join(' / ')}</p>`+(NT.h?'<button onclick="mstart()">게임 시작 (빈 자리는 AI)</button>':'<p class="s">방장이 시작하길 기다리는 중…</p>')+'<button onclick="menu()">← 나가기</button>'}
+$('step').innerHTML=`<p class="s"><b>방 코드: ${NT.code}</b> (친구에게 알려주세요) · 참가 ps.length명(최대4명플레이)</p><divclass="row">{Object.keys(CH).map(i=>`<button onclick="setPick('i')">{CH[i].n}</button>`).join('')}</div><p class="s">${ps.map((p,i)=>(p.isMe?'나':'플레이어'+(i+1))+': '+(CH[p.presence.p]?CH[p.presence.p].n:'선택 중')).join(' / ')}</p>`+(NT.h?'<button onclick="mstart()">게임 시작 (빈 자리는 AI)</button>':'<p class="s">방장이 시작하길 기다리는 중…</p>')+'<button onclick="menu()">← 나가기</button>'}
 function mstart(){const ps=NR.peers().filter(p=>p.kind==='viewer').sort((a,b)=>b.isMe-a.isMe).slice(0,4),used={},pm={},sl=i=>i==='ouro'||i==='sad'?'k':i,as=[];
 ps.forEach(p=>{let w=p.presence.p;if(!CH[w]||used[sl(w)])w=null;if(w)used[sl(w)]=1;as.push([p,w])});
 as.forEach(a=>{if(!a[1]){const f=['ham','dawn','noon','ouro'].find(s=>!used[sl(s)]);a[1]=f;used[sl(f)]=1}});
@@ -168,5 +168,8 @@ function act(k){if(G.net&&!G.net.h)NR.emit('act',{k});else sk(G.me,k)}
 function pick(s){const ids=Object.keys(CH).filter(i=>CH[i].s==s);('step').innerHTML='<divclass="row">'+ids.map(i=>`<buttononclick="start({s},'i')"><b>{CH[i].n}</b><br><small>체력 ${CH[i].hp} · 걷기 ${CH[i].w} · 달리기 ${CH[i].r}</small></button>`).join('')+'</div><button onclick="solo()">← 뒤로</button>'}
 addEventListener('keydown',ev=>{const k=ev.key===' '?'sp':ev.key.toLowerCase();if(['sp','w','a','s','d','q','e','r','t','shift'].includes(k))ev.preventDefault();keys[k]=1;if(ev.repeat||!G||G.over)return;if(['q','e','r','t','sp'].includes(k))act(k)});
 addEventListener('keyup',ev=>{keys[ev.key===' '?'sp':ev.key.toLowerCase()]=0});
+function setPick(i){if(NR)NR.presence({p:i})}
+Object.assign(window,{menu,solo,lobby,pick,start,jn,mstart,setPick});
+addEventListener('error',e=>{const s=('step');if(s&&!('menu').hidden)s.innerHTML='<p class="s">오류: '+e.message+'</p>'});
 menu();requestAnimationFrame(loop);
 </script></body></html>
