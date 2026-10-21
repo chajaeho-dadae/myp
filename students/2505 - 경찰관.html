@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1인칭 3D 경찰관 시뮬레이터</title>
+    <title>1인칭 3D 경찰관 도심 순찰 시뮬레이터</title>
     <style>
         * {
             box-sizing: border-box;
@@ -21,8 +21,8 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             transform: translate(-50%, -50%);
             pointer-events: none;
             z-index: 10;
@@ -30,21 +30,62 @@
         #crosshair::before, #crosshair::after {
             content: '';
             position: absolute;
-            background: rgba(255, 255, 255, 0.8);
-            box-shadow: 0 0 4px rgba(0,255,255,0.8);
+            background: rgba(0, 229, 255, 0.9);
+            box-shadow: 0 0 6px rgba(0,229,255,0.8);
         }
         #crosshair::before {
-            top: 7px;
+            top: 8px;
             left: 0;
-            width: 16px;
+            width: 18px;
             height: 2px;
         }
         #crosshair::after {
             top: 0;
-            left: 7px;
+            left: 8px;
             width: 2px;
-            height: 16px;
+            height: 18px;
         }
+
+        /* 화면 상단 전용 5분 타이머 & 시계 바 */
+        #top-timer-bar {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(5, 12, 25, 0.85);
+            border: 2px solid rgba(0, 229, 255, 0.6);
+            padding: 10px 30px;
+            border-radius: 30px;
+            backdrop-filter: blur(8px);
+            color: #fff;
+            z-index: 10;
+            pointer-events: none;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+        .timer-title {
+            font-size: 13px;
+            color: #ffcc00;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+        .timer-display {
+            font-size: 36px;
+            font-weight: 900;
+            font-family: 'Courier New', Courier, monospace;
+            color: #ffcc00;
+            text-shadow: 0 0 12px rgba(255, 204, 0, 0.8);
+        }
+        .real-clock {
+            font-size: 14px;
+            color: #94a3b8;
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            padding-left: 20px;
+        }
+
         #hud {
             position: absolute;
             top: 20px;
@@ -59,7 +100,7 @@
             background: rgba(0, 20, 40, 0.75);
             border: 1px solid rgba(0, 200, 255, 0.4);
             padding: 15px 20px;
-            border-radius: 8px;
+            border-radius: 10px;
             backdrop-filter: blur(4px);
             min-width: 260px;
         }
@@ -72,14 +113,15 @@
             font-size: 15px;
             margin: 5px 0;
         }
+
         #hp-bar-container {
             width: 100%;
             height: 14px;
-            background: #333;
+            background: #222;
             border-radius: 7px;
             overflow: hidden;
             margin-top: 4px;
-            border: 1px solid #555;
+            border: 1px solid #444;
         }
         #hp-bar {
             width: 100%;
@@ -87,6 +129,7 @@
             background: #22c55e;
             transition: width 0.2s, background-color 0.2s;
         }
+
         #overlay-screen {
             position: absolute;
             top: 0;
@@ -103,10 +146,10 @@
             cursor: pointer;
         }
         #overlay-screen h1 {
-            font-size: 36px;
+            font-size: 38px;
             color: #00e5ff;
             margin-bottom: 15px;
-            text-shadow: 0 0 10px rgba(0,229,255,0.5);
+            text-shadow: 0 0 12px rgba(0,229,255,0.6);
         }
         #overlay-screen p {
             font-size: 16px;
@@ -114,8 +157,8 @@
             margin-bottom: 8px;
         }
         #start-btn {
-            margin-top: 20px;
-            padding: 12px 30px;
+            margin-top: 25px;
+            padding: 14px 35px;
             font-size: 18px;
             font-weight: bold;
             color: #000;
@@ -123,13 +166,14 @@
             border: none;
             border-radius: 25px;
             cursor: pointer;
-            box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+            box-shadow: 0 0 18px rgba(0, 229, 255, 0.7);
             transition: transform 0.2s, background-color 0.2s;
         }
         #start-btn:hover {
             transform: scale(1.05);
             background-color: #00b8d4;
         }
+
         #action-msg {
             position: absolute;
             bottom: 80px;
@@ -143,9 +187,9 @@
             opacity: 0;
             transition: opacity 0.3s;
             z-index: 10;
-            background: rgba(0,0,0,0.7);
-            padding: 8px 20px;
-            border-radius: 20px;
+            background: rgba(0,0,0,0.85);
+            padding: 10px 24px;
+            border-radius: 25px;
             border: 1px solid #ffd700;
         }
         #damage-flash {
@@ -154,7 +198,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(255, 0, 0, 0.3);
+            background: rgba(255, 0, 0, 0.35);
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.1s;
@@ -167,155 +211,148 @@
     <div id="crosshair"></div>
     <div id="damage-flash"></div>
 
+    <!-- 화면 상단 전용 타이머 UI -->
+    <div id="top-timer-bar">
+        <div>
+            <div class="timer-title">⏱️ 작전 제한 시간</div>
+            <div id="timer" class="timer-display">05:00</div>
+        </div>
+        <div class="real-clock">
+            🕒 현재 시간: <span id="realtime-clock" style="color:#00e5ff; font-weight:bold;">00:00:00</span>
+        </div>
+    </div>
+
+    <!-- 좌측 정보 HUD -->
     <div id="hud">
         <div class="hud-panel">
-            <h2>🚨 경찰 순찰 모드 (쉬움→어려움)</h2>
+            <h2>🚨 도심 순찰 본부</h2>
             <p>경찰 체력 (HP): <span id="hp-text">100</span> / 100</p>
             <div id="hp-bar-container">
                 <div id="hp-bar"></div>
             </div>
-            <p style="margin-top:10px;">체포 현황: <span id="score" style="color:#00ff88; font-weight:bold;">0</span> / 20 명</p>
-            <p>남은 시간: <span id="timer" style="color:#ffcc00; font-weight:bold;">05:00</span></p>
-            <p>테이저건 탄약: <span id="ammo" style="color:#00e5ff; font-weight:bold;">10</span> 발</p>
-            <p>현재 난이도: <span id="difficulty" style="color:#22c55e;">LV. 1 (쉬움)</span></p>
+            <p style="margin-top:10px;">체포 실적: <span id="score" style="color:#00ff88; font-weight:bold;">0</span> / 20 명</p>
+            <p>테이저 탄약: <span id="ammo" style="color:#00e5ff; font-weight:bold;">10</span> 발</p>
+            <p>위험 난이도: <span id="difficulty" style="color:#22c55e;">LV. 1 (안전)</span></p>
         </div>
     </div>
 
-    <div id="action-msg">범인 제압 완료! 접근하여 한 번 더 클릭해 체포하세요!</div>
+    <div id="action-msg">범인 제압 완료! 접근하여 체포하세요!</div>
 
     <div id="overlay-screen">
-        <h1 id="overlay-title">🚨 경찰관 순찰 시뮬레이터</h1>
-        <p id="overlay-desc1">목표: 5분 안에 범인 20명을 체포하세요.</p>
-        <p id="overlay-desc2">난이도가 '쉬움'에서 시작하여 범인을 체포할수록 점점 더 빨라집니다!</p>
-        <p style="margin-top: 10px; color: #888;">조작법: W/A/S/D (이동), 마우스 (시선 전환 및 발사)</p>
-        <button id="start-btn">지금 바로 시작하기</button>
+        <h1 id="overlay-title">🚨 3D 도심 경찰관 시뮬레이터</h1>
+        <p id="overlay-desc1">목표: 5분 내에 도심 길거리에서 도망치는 범죄자 20명을 체포하세요.</p>
+        <p id="overlay-desc2">범인을 체포할수록 난이도가 상승하며 범인의 이동 및 공격 속도가 빨라집니다!</p>
+        <p style="margin-top: 12px; color: #aaa;">조작법: W/A/S/D (이동), 마우스 (시야 조작 및 사격/체포)</p>
+        <button id="start-btn">작전 개시 (시작하기)</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --- Web Audio API 기반 오디오 합성기 ---
-        let audioCtx = null;
+        // --- 시계 업데이트 ---
+        function updateClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            const el = document.getElementById('realtime-clock');
+            if (el) el.innerText = `
+h:{m}:${s}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
 
+        // --- 오디오 효과음 합성기 ---
+        let audioCtx = null;
         function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
-        // 1. 테이저건 전기 발사음
         function playTaserSound() {
             if (!audioCtx) return;
             const now = audioCtx.currentTime;
-            
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            
             osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(800, now);
-            osc.frequency.exponentialRampToValueAtTime(120, now + 0.15);
-
+            osc.frequency.setValueAtTime(900, now);
+            osc.frequency.exponentialRampToValueAtTime(100, now + 0.18);
             gain.gain.setValueAtTime(0.3, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.18);
+        }
 
+        function playCuffSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            for (let i = 0; i < 2; i++) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(2400 - i * 500, now + i * 0.08);
+                osc.frequency.exponentialRampToValueAtTime(300, now + i * 0.08 + 0.06);
+                gain.gain.setValueAtTime(0.4, now + i * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.06);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + i * 0.08);
+                osc.stop(now + i * 0.08 + 0.06);
+            }
+        }
+
+        function playFootstepSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const bufferSize = audioCtx.sampleRate * 0.04;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 500;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            noise.start(now);
+        }
+
+        function playHitSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(160, now);
+            osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+            gain.gain.setValueAtTime(0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
             osc.start(now);
             osc.stop(now + 0.15);
         }
 
-        // 2. 수갑 채우는 철컥 효과음
-        function playCuffSound() {
-            if (!audioCtx) return;
-            const now = audioCtx.currentTime;
-
-            for (let i = 0; i < 2; i++) {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(2200 - i * 400, now + i * 0.08);
-                osc.frequency.exponentialRampToValueAtTime(400, now + i * 0.08 + 0.05);
-
-                gain.gain.setValueAtTime(0.4, now + i * 0.08);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.05);
-
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-
-                osc.start(now + i * 0.08);
-                osc.stop(now + i * 0.08 + 0.05);
-            }
-        }
-
-        // 3. 범인 도망 발소리
-        function playFootstepSound() {
-            if (!audioCtx) return;
-            const now = audioCtx.currentTime;
-
-            const bufferSize = audioCtx.sampleRate * 0.04;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
-            }
-
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = buffer;
-
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = 600;
-
-            const gain = audioCtx.createGain();
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
-
-            noise.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            noise.start(now);
-        }
-
-        // 4. 피격/공격 소리
-        function playHitSound() {
-            if (!audioCtx) return;
-            const now = audioCtx.currentTime;
-
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(150, now);
-            osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
-
-            gain.gain.setValueAtTime(0.5, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
-
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start(now);
-            osc.stop(now + 0.12);
-        }
-
-        // --- 게임 상태 변수 ---
+        // --- 게임 변수 ---
         let score = 0;
         const targetScore = 20;
         let ammo = 10;
         let health = 100;
-        let timeRemaining = 300;
+        let timeRemaining = 300; // 5분
         let gameOver = false;
         let gameStarted = false;
-        
-        let baseSuspectSpeed = 0.035;
+        let baseSuspectSpeed = 0.038;
 
-        // --- 씬 및 기본 설정 ---
+        // --- Three.js 씬 초기화 ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0f172a);
-        scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
+        scene.background = new THREE.Color(0x0a101d);
+        scene.fog = new THREE.FogExp2(0x0a101d, 0.012);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -325,40 +362,52 @@
         document.body.appendChild(renderer.domElement);
 
         // --- 조명 ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xfff5ea, 0.8);
-        dirLight.position.set(30, 50, 20);
+        const dirLight = new THREE.DirectionalLight(0xfff5ea, 0.9);
+        dirLight.position.set(40, 60, 30);
         dirLight.castShadow = true;
         dirLight.shadow.mapSize.width = 2048;
         dirLight.shadow.mapSize.height = 2048;
         scene.add(dirLight);
 
-        // --- 도시 바닥 및 건물 ---
-        const citySize = 200;
+        // --- 도시 길거리 및 디테일 건물 생성 ---
+        const citySize = 220;
+        const buildingColliders = [];
+
+        // 아스팔트 바닥
         const floorGeo = new THREE.PlaneGeometry(citySize, citySize);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a202c, roughness: 0.85 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         scene.add(floor);
 
-        const buildingColliders = [];
+        function createDetailedCity() {
+            const buildingMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.6 });
+            const windowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+            const roadLineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
 
-        function createCity() {
-            const buildingMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 });
-            const gridSize = 6;
-            const spacing = 28;
+            // 도로 중앙선
+            for (let r = -90; r <= 90; r += 10) {
+                const line = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 4), roadLineMat);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(0, 0.02, r);
+                scene.add(line);
+            }
+
+            const gridSize = 5;
+            const spacing = 32;
 
             for (let i = -gridSize; i <= gridSize; i++) {
                 for (let j = -gridSize; j <= gridSize; j++) {
-                    if (Math.abs(i) <= 1 && Math.abs(j) <= 1) continue;
+                    if (Math.abs(i) <= 1 && Math.abs(j) <= 1) continue; // 중앙 도로/스폰지점 비워둠
 
-                    if (Math.random() > 0.3) {
-                        const width = 12 + Math.random() * 4;
-                        const depth = 12 + Math.random() * 4;
-                        const height = 15 + Math.random() * 30;
+                    if (Math.random() > 0.25) {
+                        const width = 14 + Math.random() * 6;
+                        const depth = 14 + Math.random() * 6;
+                        const height = 18 + Math.random() * 32;
 
                         const x = i * spacing;
                         const z = j * spacing;
@@ -370,6 +419,14 @@
                         building.receiveShadow = true;
                         scene.add(building);
 
+                        // 창문 장식
+                        for (let w = 0; w < 4; w++) {
+                            const win = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.2), windowMat);
+                            win.position.set(x + (Math.random() - 0.5) * (width - 4), 3 + Math.random() * (height - 6), z + depth / 2 + 0.02);
+                            scene.add(win);
+                        }
+
+                        // 완벽한 벽 충돌 박스 등록
                         buildingColliders.push({
                             minX: x - width / 2 - 0.6,
                             maxX: x + width / 2 + 0.6,
@@ -380,72 +437,88 @@
                 }
             }
         }
-        createCity();
+        createDetailedCity();
 
-        // --- 플레이어 (경찰관) ---
+        // --- 플레이어 (경찰관 1인칭 스폰) ---
         const player = {
             position: new THREE.Vector3(0, 1.65, 0),
             radius: 0.5
         };
-
         camera.position.copy(player.position);
 
+        // 1인칭 경찰 손 및 고퀄리티 테이저건
         const fpvGroup = new THREE.Group();
-        const armMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a });
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.4), armMat);
-        arm.rotation.x = Math.PI / 3;
-        arm.position.set(0.25, -0.25, -0.4);
+        const armMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8 }); // 경찰 제복 파란색
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.45), armMat);
+        arm.rotation.x = Math.PI / 2.8;
+        arm.position.set(0.28, -0.26, -0.42);
         fpvGroup.add(arm);
 
+        // 디테일 테이저건
+        const taserGroup = new THREE.Group();
         const taserBody = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 0.12, 0.25),
-            new THREE.MeshStandardMaterial({ color: 0xfacc15 })
+            new THREE.BoxGeometry(0.08, 0.13, 0.28),
+            new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.3 })
         );
-        taserBody.position.set(0.25, -0.18, -0.45);
-        fpvGroup.add(taserBody);
+        taserGroup.add(taserBody);
+
+        const taserGrip = new THREE.Mesh(
+            new THREE.BoxGeometry(0.07, 0.15, 0.08),
+            new THREE.MeshStandardMaterial({ color: 0x111827 })
+        );
+        taserGrip.position.set(0, -0.1, 0.06);
+        taserGrip.rotation.x = -0.2;
+        taserGroup.add(taserGrip);
+
+        taserGroup.position.set(0.28, -0.2, -0.48);
+        fpvGroup.add(taserGroup);
 
         camera.add(fpvGroup);
         scene.add(camera);
 
-        // --- 범인 NPC ---
+        // --- 고퀄리티 범죄자 NPC 생성 ---
         const suspects = [];
 
-        function createSuspect() {
+        function createDetailedSuspect() {
             const group = new THREE.Group();
 
-            const body = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.3, 0.25, 0.9),
-                new THREE.MeshStandardMaterial({ color: 0xd97706 })
-            );
-            body.position.y = 0.85;
+            // 상체 (주황색 죄수/가죽 자켓 느낌)
+            const jacketMat = new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.5 });
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.26, 0.95), jacketMat);
+            body.position.y = 0.88;
             body.castShadow = true;
             group.add(body);
 
-            const head = new THREE.Mesh(
-                new THREE.SphereGeometry(0.22, 16, 16),
-                new THREE.MeshStandardMaterial({ color: 0xffdbac })
-            );
-            head.position.y = 1.45;
+            // 머리 & 비니 모자
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xfdba74 });
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 16, 16), headMat);
+            head.position.y = 1.48;
             head.castShadow = true;
             group.add(head);
 
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x1f2937 });
-            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.7), legMat);
-            legL.position.set(-0.12, 0.35, 0);
+            const beanieMat = new THREE.MeshStandardMaterial({ color: 0x111827 });
+            const beanie = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.25, 0.18), beanieMat);
+            beanie.position.y = 1.62;
+            group.add(beanie);
+
+            // 팔다리
+            const limbMat = new THREE.MeshStandardMaterial({ color: 0x1f2937 });
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.72), limbMat);
+            legL.position.set(-0.13, 0.36, 0);
+            legL.castShadow = true;
             group.add(legL);
 
             const legR = legL.clone();
-            legR.position.x = 0.12;
+            legR.position.x = 0.13;
             group.add(legR);
 
+            // 길거리 도로 스폰 위치 계산
             const angle = Math.random() * Math.PI * 2;
-            const dist = 14 + Math.random() * 18;
-            group.position.set(
-                player.position.x + Math.cos(angle) * dist,
-                0,
-                player.position.z + Math.sin(angle) * dist
-            );
+            const dist = 14 + Math.random() * 20;
+            const spawnX = player.position.x + Math.cos(angle) * dist;
+            const spawnZ = player.position.z + Math.sin(angle) * dist;
 
+            group.position.set(spawnX, 0, spawnZ);
             scene.add(group);
 
             suspects.push({
@@ -459,9 +532,9 @@
             });
         }
 
-        for (let i = 0; i < 4; i++) createSuspect();
+        for (let i = 0; i < 4; i++) createDetailedSuspect();
 
-        // --- 포인터 락 ---
+        // --- 포인터 락 조작 ---
         let isLocked = false;
         let yaw = 0;
         let pitch = 0;
@@ -487,20 +560,16 @@
                 overlayScreen.style.display = 'none';
             } else {
                 isLocked = false;
-                if (!gameOver) {
-                    overlayScreen.style.display = 'flex';
-                }
+                if (!gameOver) overlayScreen.style.display = 'flex';
             }
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isLocked || gameOver) return;
-
-            const sensitivity = 0.002;
+            const sensitivity = 0.0022;
             yaw -= e.movementX * sensitivity;
             pitch -= e.movementY * sensitivity;
-
-            pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+            pitch = Math.max(-Math.PI / 2 + 0.08, Math.min(Math.PI / 2 - 0.08, pitch));
 
             camera.rotation.order = 'YXZ';
             camera.rotation.y = yaw;
@@ -525,8 +594,8 @@
             if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
         });
 
-        // --- 충돌 이동 ---
-        function moveWithCollision(currentPos, deltaX, deltaZ) {
+        // --- 완벽한 벽 통과 방지 (충돌 물리 슬라이딩) ---
+        function moveWithWallCollision(currentPos, deltaX, deltaZ) {
             let newX = currentPos.x + deltaX;
             let newZ = currentPos.z + deltaZ;
 
@@ -537,15 +606,15 @@
                 }
             }
 
-            const limit = citySize / 2 - 2;
-            newX = Math.max(-limit, Math.min(limit, newX));
-            newZ = Math.max(-limit, Math.min(limit, newZ));
+            const boundary = citySize / 2 - 3;
+            newX = Math.max(-boundary, Math.min(boundary, newX));
+            newZ = Math.max(-boundary, Math.min(boundary, newZ));
 
             currentPos.x = newX;
             currentPos.z = newZ;
         }
 
-        // --- 사격 및 체포 ---
+        // --- 사격 및 체포 시스템 ---
         const raycaster = new THREE.Raycaster();
         let canShoot = true;
 
@@ -553,19 +622,19 @@
             if (!isLocked || e.button !== 0 || !canShoot || gameOver) return;
 
             if (ammo <= 0) {
-                showActionMsg("❌ 탄약이 부족합니다!");
+                showActionMsg("❌ 탄약이 없습니다!");
                 return;
             }
 
             ammo--;
             document.getElementById('ammo').innerText = ammo;
-
             playTaserSound();
 
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            
-            fpvGroup.position.z = 0.08;
-            setTimeout(() => fpvGroup.position.z = 0, 100);
+
+            // 반동 효과
+            fpvGroup.position.z = 0.09;
+            setTimeout(() => fpvGroup.position.z = 0, 90);
 
             let hitFound = false;
 
@@ -581,12 +650,11 @@
                     if (!suspect.isDown) {
                         fireTaserVisual(suspect.mesh.position);
                         suspect.isDown = true;
-
                         suspect.mesh.rotation.x = -Math.PI / 2;
                         suspect.mesh.position.y = 0.2;
 
-                        showActionMsg("범인 제압 완료! 접근하여 체포하세요!");
-                    } else if (dist < 3.5) {
+                        showActionMsg("⚡ 범인 제압 완료! 접근하여 체포하세요!");
+                    } else if (dist < 3.8) {
                         playCuffSound();
 
                         scene.remove(suspect.mesh);
@@ -595,24 +663,24 @@
                         document.getElementById('score').innerText = score;
 
                         baseSuspectSpeed += 0.005;
-                        
+
                         let diffText = `LV. ${score + 1}`;
-                        if (score < 5) diffText += " (쉬움)";
-                        else if (score < 12) diffText += " (보통)";
-                        else diffText += " (어려움)";
-                        
+                        if (score < 5) diffText += " (안전)";
+                        else if (score < 12) diffText += " (주의)";
+                        else diffText += " (위험)";
+
                         const diffEl = document.getElementById('difficulty');
                         diffEl.innerText = diffText;
                         if (score >= 12) diffEl.style.color = '#ef4444';
                         else if (score >= 5) diffEl.style.color = '#eab308';
 
                         if (score >= targetScore) {
-                            endGame(true, "🎉 작전 성공! 모든 범인을 체포했습니다!");
+                            endGame(true, "🎉 축하합니다! 모든 범죄자를 소탕했습니다!");
                             return;
                         }
 
-                        showActionMsg("🚨 체포 완료! 난이도가 상승합니다!");
-                        setTimeout(createSuspect, 2500);
+                        showActionMsg("🚨 체포 완료! 범인들이 더 격렬해집니다!");
+                        setTimeout(createDetailedSuspect, 2200);
                     }
                 }
             });
@@ -624,30 +692,30 @@
             }
 
             canShoot = false;
-            setTimeout(() => canShoot = true, 500);
+            setTimeout(() => canShoot = true, 450);
         });
 
         function fireTaserVisual(targetVec) {
-            const muzzlePos = new THREE.Vector3(0.2, -0.15, -0.5);
+            const muzzlePos = new THREE.Vector3(0.28, -0.2, -0.5);
             muzzlePos.applyMatrix4(camera.matrixWorld);
 
             const points = [muzzlePos];
             const segs = 6;
             for (let i = 1; i < segs; i++) {
                 const p = muzzlePos.clone().lerp(targetVec, i / segs);
-                p.x += (Math.random() - 0.5) * 0.3;
-                p.y += (Math.random() - 0.5) * 0.3;
-                p.z += (Math.random() - 0.5) * 0.3;
+                p.x += (Math.random() - 0.5) * 0.35;
+                p.y += (Math.random() - 0.5) * 0.35;
+                p.z += (Math.random() - 0.5) * 0.35;
                 points.push(p);
             }
             points.push(targetVec.clone());
 
             const geo = new THREE.BufferGeometry().setFromPoints(points);
-            const mat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+            const mat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 3 });
             const line = new THREE.Line(geo, mat);
             scene.add(line);
 
-            setTimeout(() => scene.remove(line), 120);
+            setTimeout(() => scene.remove(line), 130);
         }
 
         function takeDamage(amount) {
@@ -669,7 +737,7 @@
             setTimeout(() => flash.style.opacity = '0', 150);
 
             if (health <= 0) {
-                endGame(false, "☠️ 경찰관이 순직했습니다. 작전 실패!");
+                endGame(false, "☠️ 체력이 전부 소진되었습니다. 작전 실패!");
             }
         }
 
@@ -687,26 +755,32 @@
             document.getElementById('overlay-title').innerText = isWin ? "MISSION COMPLETE" : "GAME OVER";
             document.getElementById('overlay-title').style.color = isWin ? "#00ff88" : "#ff4444";
             document.getElementById('overlay-desc1').innerText = message;
-            document.getElementById('overlay-desc2').innerText = "클릭하여 게임을 다시 시작하세요.";
+            document.getElementById('overlay-desc2').innerText = "클릭하여 작전을 재시작합니다.";
             startBtn.innerText = "다시 도전하기";
         }
 
-        // --- 타이머 ---
+        // --- 5분 타이머 루프 ---
         setInterval(() => {
             if (!gameStarted || gameOver) return;
 
             timeRemaining--;
             const mins = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
             const secs = (timeRemaining % 60).toString().padStart(2, '0');
-            document.getElementById('timer').innerText = `
-mins:{secs}`;
+
+            const timerEl = document.getElementById('timer');
+            timerEl.innerText = `mins:{secs}`;
+
+            if (timeRemaining < 60) {
+                timerEl.style.color = '#ef4444';
+                timerEl.style.textShadow = '0 0 12px rgba(239, 68, 68, 0.9)';
+            }
 
             if (timeRemaining <= 0) {
-                endGame(false, "⏱️ 제한 시간이 초과되었습니다!");
+                endGame(false, "⏱️ 제한 시간이 종료되었습니다!");
             }
         }, 1000);
 
-        // --- 애니메이션 루프 ---
+        // --- 프레임 애니메이션 ---
         const clock = new THREE.Clock();
 
         function animate() {
@@ -715,7 +789,7 @@ mins:{secs}`;
             const now = clock.getElapsedTime();
 
             if (isLocked && !gameOver) {
-                const moveSpeed = 8.5 * delta;
+                const moveSpeed = 8.8 * delta;
                 let dx = 0;
                 let dz = 0;
 
@@ -728,11 +802,12 @@ mins:{secs}`;
                     const moveVec = new THREE.Vector3(dx, 0, dz).normalize();
                     moveVec.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
 
-                    moveWithCollision(player.position, moveVec.x * moveSpeed, moveVec.z * moveSpeed);
+                    moveWithWallCollision(player.position, moveVec.x * moveSpeed, moveVec.z * moveSpeed);
                     camera.position.copy(player.position);
                 }
             }
 
+            // 범죄자 AI 움직임 (도망/공격 & 벽 통과 불가 적용)
             suspects.forEach((suspect) => {
                 if (suspect.isDown || gameOver) return;
 
@@ -742,13 +817,13 @@ mins:{secs}`;
                     .setY(0)
                     .normalize();
 
-                if (dist < 14) {
-                    moveWithCollision(suspect.mesh.position, dir.x * baseSuspectSpeed, dir.z * baseSuspectSpeed);
+                if (dist < 15) {
+                    moveWithWallCollision(suspect.mesh.position, dir.x * baseSuspectSpeed, dir.z * baseSuspectSpeed);
                     suspect.mesh.rotation.y = Math.atan2(dir.x, dir.z);
 
                     suspect.animTime += delta * 12;
-                    suspect.legL.rotation.x = Math.sin(suspect.animTime) * 0.6;
-                    suspect.legR.rotation.x = -Math.sin(suspect.animTime) * 0.6;
+                    suspect.legL.rotation.x = Math.sin(suspect.animTime) * 0.65;
+                    suspect.legR.rotation.x = -Math.sin(suspect.animTime) * 0.65;
 
                     if (now - suspect.lastFootstepTime > 0.35) {
                         playFootstepSound();
