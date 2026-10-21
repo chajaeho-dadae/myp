@@ -561,296 +561,341 @@ escapeHtml(sub.name)"onchange="updateSubject({sub.id}, 'name', this.value)"
 
       const listContainer = document.getElementById('planList');
       listContainer.innerHTML = '';
+      
+      const maxAlloc = Math.max(...currentPlan.items.map(i => i.allocatedMins));
 
       currentPlan.items.forEach(item => {
-        const pct = Math.round((item.allocatedMins / currentPlan.totalStudyMins) * 100);
         const itemH = Math.floor(item.allocatedMins / 60);
         const itemM = item.allocatedMins % 60;
         const timeStr = itemH > 0 ? `${itemH}시간 itemM분`:`{itemM}분`;
+        const percentage = Math.round((item.allocatedMins / maxAlloc) * 100);
 
         const div = document.createElement('div');
-        div.className = "bg-slate-100/60 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-700/40 space-y-2";
+        div.className = "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4";
         div.innerHTML = `
-          <div class="flex flex-wrap justify-between items-center text-sm gap-2">
-            <span class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>${escapeHtml(item.name)}
-              <span class="text-[11px] md:text-xs font-normal text-slate-500 dark:text-slate-400 whitespace-nowrap">(점수: ${item.score}점)</span>
-            </span>
-            <span class="font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">timeStr<spanclass="text-xstext-slate-500dark:text-slate-400font-normal">({pct}%)</span></span>
+          <div class="flex justify-between text-sm mb-2">
+            <span class="font-bold text-slate-800 dark:text-slate-200">${escapeHtml(item.name)}</span>
+            <span class="text-indigo-600 dark:text-indigo-400 font-bold">${timeStr}</span>
           </div>
-          <div class="w-full bg-slate-200 dark:bg-slate-900 rounded-full h-2.5 overflow-hidden">
-            <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-2.5 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+          <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5">
+            <div class="bg-indigo-500 h-2.5 rounded-full transition-all duration-1000" style="width: ${percentage}%"></div>
           </div>
         `;
         listContainer.appendChild(div);
       });
     }
 
-    // TIMER LOGIC & QUEUE
+    /* -------------------------------------------------------------------------
+       여기가 잘렸던 스크립트의 완성 부분입니다! 
+       ------------------------------------------------------------------------- */
+       
     function prepareTimerUI() {
-      if (currentPlan && currentPlan.items.length > 0) {
-        document.getElementById('freeTimerControls').classList.add('hidden');
-        buildTimerQueueFromPlan();
-      } else {
+      if (timerQueue.length === 0) {
         document.getElementById('freeTimerControls').classList.remove('hidden');
-        if (timerQueue.length === 0) {
-          timerQueue = [{
-            name: "자유 과목",
-            totalSec: 60 * 60,
-            remainingSec: 60 * 60
-          }];
-          currentQueueIndex = 0;
-          setupTimerSession();
-        }
+      } else {
+        document.getElementById('freeTimerControls').classList.add('hidden');
       }
-      renderQueueList();
     }
 
     function buildTimerQueueFromPlan() {
-      timerQueue = currentPlan.items.map(item => ({
-        name: item.name,
-        totalSec: item.allocatedMins * 60,
-        remainingSec: item.allocatedMins * 60
-      }));
+      if (!currentPlan) return;
+      
+      // 플랜에서 대기열 생성
+      timerQueue = currentPlan.items.map(item => {
+        return {
+          name: item.name,
+          totalSec: item.allocatedMins * 60,
+          remainingSec: item.allocatedMins * 60
+        };
+      });
+      
       currentQueueIndex = 0;
       timerPhase = 'study';
+      if(isTimerRunning) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+      }
       setupTimerSession();
+      document.getElementById('freeTimerControls').classList.add('hidden');
     }
 
     function setupTimerSession() {
-      clearInterval(timerInterval);
-      isTimerRunning = false;
-      updateStartBtnIcon();
-
-      const currentItem = timerQueue[currentQueueIndex];
-      if (!currentItem) {
-        document.getElementById('timerSubjectName').innerText = "모든 과목 달성 완료!";
-        document.getElementById('timerPhaseDesc').innerText = "오늘의 목표 공부를 모두 마치셨습니다. 수고하셨습니다!";
-        document.getElementById('timerDisplay').innerText = "00:00";
-        updateCircleProgress(0, 1);
+      if (currentQueueIndex >= timerQueue.length) {
+        // 모든 과목 완료
+        document.getElementById('timerStatusBadge').innerText = "완료";
+        document.getElementById('timerSubjectName').innerText = "모든 목표 달성!";
+        document.getElementById('timerPhaseDesc').innerText = "정말 고생 많으셨습니다!";
+        timeRemaining = 0;
+        totalSessionTime = 1;
+        updateTimerDisplay();
+        renderQueueList();
+        if(isTimerRunning) {
+          clearInterval(timerInterval);
+          isTimerRunning = false;
+          updateStartBtnIcon();
+        }
         return;
       }
 
+      const currentItem = timerQueue[currentQueueIndex];
+
       if (timerPhase === 'study') {
-        // Study session is up to 60 mins or whatever is left for this subject
-        const sessionMins = Math.min(60, Math.ceil(currentItem.remainingSec / 60));
-        totalSessionTime = sessionMins * 60;
+        const sessionMins = Math.min(60, Math.ceil(currentItem.remainingSec / 60)); 
+        totalSessionTime = sessionMins * 60; 
         timeRemaining = Math.min(currentItem.remainingSec, totalSessionTime);
 
+        document.getElementById('timerStatusBadge').innerText = "집중 학습 모드";
         document.getElementById('timerStatusBadge').className = "px-3 py-1 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 rounded-full text-xs font-semibold mb-6";
-        document.getElementById('timerStatusBadge').innerText = "집중 학습 세션";
         document.getElementById('timerSubjectName').innerText = currentItem.name;
-        document.getElementById('timerPhaseDesc').innerText = `할당된 목표 시간 중 ${Math.ceil(currentItem.remainingSec/60)}분 남음`;
+        document.getElementById('timerPhaseDesc').innerText = `남은 전체 시간: ${Math.floor(currentItem.remainingSec/60)}분`;
       } else {
-        // Break session
+        // 휴식 페이즈 (5분)
         totalSessionTime = 5 * 60;
-        timeRemaining = 5 * 60;
+        timeRemaining = totalSessionTime;
 
+        document.getElementById('timerStatusBadge').innerText = "휴식 모드";
         document.getElementById('timerStatusBadge').className = "px-3 py-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-full text-xs font-semibold mb-6";
-        document.getElementById('timerStatusBadge').innerText = "휴식 세션";
-        document.getElementById('timerSubjectName').innerText = "5분 휴식 타임";
-        document.getElementById('timerPhaseDesc').innerText = "뇌를 쉬어주고 스트레칭을 해주세요";
+        document.getElementById('timerSubjectName').innerText = "꿀맛 같은 휴식 시간";
+        document.getElementById('timerPhaseDesc').innerText = "다음 집중을 위해 머리를 식혀주세요.";
       }
-
-      updateDisplay();
+      
+      updateTimerDisplay();
       renderQueueList();
+      updateStartBtnIcon();
     }
 
     function toggleTimer() {
+      if (timerQueue.length === 0 || currentQueueIndex >= timerQueue.length) return;
+      
       if (isTimerRunning) {
         clearInterval(timerInterval);
         isTimerRunning = false;
       } else {
-        if (timeRemaining <= 0) return;
+        timerInterval = setInterval(timerTick, 1000);
         isTimerRunning = true;
-        timerInterval = setInterval(() => {
-          timeRemaining--;
-
-          if (timerPhase === 'study' && timerQueue[currentQueueIndex]) {
-            timerQueue[currentQueueIndex].remainingSec--;
-          }
-
-          updateDisplay();
-
-          if (timeRemaining <= 0) {
-            clearInterval(timerInterval);
-            isTimerRunning = false;
-            handleSessionComplete();
-          }
-        }, 1000);
       }
       updateStartBtnIcon();
     }
 
-    function handleSessionComplete() {
-      if (timerPhase === 'study') {
-        const currentItem = timerQueue[currentQueueIndex];
-        if (currentItem && currentItem.remainingSec <= 0) {
-          // Subject complete -> move to next queue item after break
-          timerPhase = 'break';
-        } else {
-          // Still has time left on this subject, take 5m break then continue
-          timerPhase = 'break';
-        }
+    function updateStartBtnIcon() {
+      const btn = document.getElementById('startBtn');
+      if (isTimerRunning) {
+        btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        btn.className = "w-14 h-14 bg-amber-500 hover:bg-amber-400 text-white rounded-full flex items-center justify-center text-xl shadow-lg transition";
       } else {
-        // Break ended
-        timerPhase = 'study';
-        if (timerQueue[currentQueueIndex] && timerQueue[currentQueueIndex].remainingSec <= 0) {
-          currentQueueIndex++;
-        }
+        btn.innerHTML = '<i class="fa-solid fa-play"></i>';
+        btn.className = "w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full flex items-center justify-center text-xl shadow-lg transition";
       }
-      setupTimerSession();
-      showAlert(timerPhase === 'break' ? '공부 세션 종료! 5분간 휴식하세요.' : '휴식 종료! 다음 공부를 시작하세요.');
     }
 
-    function skipToNextQueue() {
-      if (timerQueue.length === 0) return;
-      if (timerPhase === 'study') {
-        timerPhase = 'break';
-      } else {
-        timerPhase = 'study';
-        currentQueueIndex = (currentQueueIndex + 1) % timerQueue.length;
+    function timerTick() {
+      timeRemaining--;
+      updateTimerDisplay();
+
+      if (timeRemaining <= 0) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+        handleSessionEnd();
       }
+    }
+
+    function handleSessionEnd() {
+      const currentItem = timerQueue[currentQueueIndex];
+
+      if (timerPhase === 'study') {
+        currentItem.remainingSec -= totalSessionTime;
+
+        if (currentItem.remainingSec <= 0) {
+          timerPhase = 'break';
+        } else {
+          timerPhase = 'break';
+        }
+      } else {
+        if (currentItem.remainingSec <= 0) {
+          currentQueueIndex++;
+        }
+        timerPhase = 'study';
+      }
+      
       setupTimerSession();
+
+      if (currentQueueIndex < timerQueue.length) {
+        toggleTimer(); // 오토 시작
+      }
+    }
+
+    function updateTimerDisplay() {
+      const h = Math.floor(timeRemaining / 3600);
+      const m = Math.floor((timeRemaining % 3600) / 60);
+      const s = timeRemaining % 60;
+      let timeStr = h > 0 ? 
+        `String(h).padStart(2,'0'):{String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : 
+        `String(m).padStart(2,'0'):{String(s).padStart(2, '0')}`;
+        
+      document.getElementById('timerDisplay').innerText = timeStr;
+      
+      // 원형 프로그레스 업데이트
+      const circle = document.getElementById('timerProgressCircle');
+      const circumference = 2 * Math.PI * 45; // r=45 -> 둘레: 282.743
+      const percent = totalSessionTime > 0 ? timeRemaining / totalSessionTime : 0;
+      const offset = circumference - (percent * circumference);
+      circle.style.strokeDashoffset = offset;
     }
 
     function resetTimer() {
+      if(isTimerRunning) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+      }
       setupTimerSession();
     }
 
-    function updateDisplay() {
-      const m = Math.floor(timeRemaining / 60);
-      const s = timeRemaining % 60;
-      document.getElementById('timerDisplay').innerText = `String(m).padStart(2,'0'):{String(s).padStart(2, '0')}`;
-      updateCircleProgress(timeRemaining, totalSessionTime);
-    }
-
-    function updateCircleProgress(rem, total) {
-      const circle = document.getElementById('timerProgressCircle');
-      const circumference = 2 * Math.PI * 45; // 282.7
-      const offset = circumference - (rem / total) * circumference;
-      circle.style.strokeDashoffset = isNaN(offset) ? 0 : offset;
-    }
-
-    function updateStartBtnIcon() {
-      const btn = document.getElementById('startBtn');
-      btn.innerHTML = isTimerRunning ? `<i class="fa-solid fa-pause"></i>` : `<i class="fa-solid fa-play"></i>`;
-    }
-
-    function setFreeTimer() {
-      const min = parseInt(document.getElementById('freeTimerMin').value) || 30;
-      timerQueue = [{
-        name: "자유 과목",
-        totalSec: min * 60,
-        remainingSec: min * 60
-      }];
-      currentQueueIndex = 0;
-      timerPhase = 'study';
-      setupTimerSession();
+    function skipToNextQueue() {
+      if (currentQueueIndex < timerQueue.length) {
+        timerPhase = 'study';
+        timerQueue[currentQueueIndex].remainingSec = 0; // 현재 과목 스킵
+        currentQueueIndex++;
+        if(isTimerRunning) {
+          clearInterval(timerInterval);
+          isTimerRunning = false;
+        }
+        setupTimerSession();
+      }
     }
 
     function renderQueueList() {
-      const qList = document.getElementById('timerQueueList');
-      qList.innerHTML = '';
-
-      if (timerQueue.length === 0) {
-        qList.innerHTML = `<div class="text-xs text-slate-400 dark:text-slate-500 text-center py-4">대기열이 비어있습니다.</div>`;
+      const container = document.getElementById('timerQueueList');
+      container.innerHTML = '';
+      
+      if(timerQueue.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500">대기열이 없습니다.</p>';
         return;
       }
 
       timerQueue.forEach((item, idx) => {
         const isCurrent = idx === currentQueueIndex;
-        const remainingMin = Math.ceil(item.remainingSec / 60);
-        const div = document.createElement('div');
-        
-        let activeClass = isCurrent 
-          ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-300 dark:border-indigo-500/50 text-indigo-900 dark:text-white' 
-          : 'bg-white/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/30 text-slate-600 dark:text-slate-400';
+        const isDone = idx < currentQueueIndex;
+        const m = Math.floor(item.remainingSec / 60);
 
-        div.className = `p-3 rounded-xl border transition ${activeClass}`;
+        const div = document.createElement('div');
+        div.className = `p-3 rounded-xl border ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700' : isDone ? 'bg-slate-50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800 opacity-50' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'} flex justify-between items-center transition`;
         
         div.innerHTML = `
-          <div class="flex justify-between items-center text-xs">
-            <span class="font-semibold ${isCurrent ? 'text-indigo-600 dark:text-indigo-300' : ''}">
-              isCurrent?'<iclass="fa-solidfa-playtext-indigo-500dark:text-indigo-400mr-1.5"></i>':''{escapeHtml(item.name)}
-            </span>
-            <span class="font-mono item.remainingSec===0?'line-throughtext-slate-400dark:text-slate-500':''">{remainingMin}분 남음</span>
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs ${isCurrent ? 'bg-indigo-600 text-white' : isDone ? 'bg-slate-300 dark:bg-slate-700 text-slate-500' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}">
+              ${isDone ? '<i class="fa-solid fa-check"></i>' : (idx + 1)}
+            </div>
+            <div>
+              <p class="text-sm font-bold isCurrent?'text-indigo-900dark:text-indigo-100':'text-slate-700dark:text-slate-300'">{escapeHtml(item.name)}</p>
+              <p class="text-[10px] md:text-xs text-slate-500 dark:text-slate-500">남은 시간: ${m}분</p>
+            </div>
           </div>
+          ${isCurrent && timerPhase === 'study' ? '<div class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></div>' : ''}
         `;
-        qList.appendChild(div);
+        container.appendChild(div);
       });
+    }
+
+    function setFreeTimer() {
+      const mins = parseInt(document.getElementById('freeTimerMin').value);
+      if(isNaN(mins) || mins <= 0) {
+        showAlert('올바른 시간을 입력하세요.');
+        return;
+      }
+      
+      timerQueue = [{
+        name: "자율 학습",
+        totalSec: mins * 60,
+        remainingSec: mins * 60
+      }];
+      currentQueueIndex = 0;
+      timerPhase = 'study';
+      
+      if(isTimerRunning) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+      }
+      setupTimerSession();
     }
 
     function startTimerWithPlan() {
       switchTab('timer');
-      // Scroll to top on mobile
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      buildTimerQueueFromPlan();
     }
 
-    // PERSISTENCE (LOCALSTORAGE)
+    // ---------------- STORAGE ----------------
     function saveCurrentPlan() {
       if (!currentPlan) return;
-      savedPlans.unshift(currentPlan);
-      localStorage.setItem('doyul_study_plans', JSON.stringify(savedPlans));
-      showAlert('플랜이 보관함에 안전하게 저장되었습니다!');
+      savedPlans.push(currentPlan);
+      localStorage.setItem('studyPlans', JSON.stringify(savedPlans));
+      showAlert('플랜이 성공적으로 저장되었습니다. [보관함]에서 확인할 수 있습니다.');
     }
 
     function loadSavedPlansFromStorage() {
-      const data = localStorage.getItem('doyul_study_plans');
-      if (data) {
-        try { savedPlans = JSON.parse(data); } catch(e) { savedPlans = []; }
+      const stored = localStorage.getItem('studyPlans');
+      if (stored) {
+        try {
+          savedPlans = JSON.parse(stored);
+        } catch(e) {
+          savedPlans = [];
+        }
       }
     }
 
     function renderStorageList() {
-      const list = document.getElementById('storageList');
-      list.innerHTML = '';
-
+      const container = document.getElementById('storageList');
+      container.innerHTML = '';
       if (savedPlans.length === 0) {
-        list.innerHTML = `
-          <div class="col-span-1 md:col-span-2 py-12 text-center text-slate-400 dark:text-slate-500 text-sm">
-            <i class="fa-solid fa-box-open text-3xl mb-2 block"></i>
-            저장된 공부 플랜이 없습니다. 플랜 추천을 먼저 받아보세요!
-          </div>
-        `;
+        container.innerHTML = `<p class="col-span-full text-center text-slate-500 py-10 text-sm">저장된 플랜이 없습니다.</p>`;
         return;
       }
 
-      savedPlans.forEach((plan, idx) => {
-        const card = document.createElement('div');
-        card.className = "bg-white/50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 p-4 rounded-xl space-y-3";
-        
-        let itemsSummary = plan.items.map(i => `i.name({i.allocatedMins}분)`).join(', ');
+      [...savedPlans].reverse().forEach(plan => {
+        const h = Math.floor(plan.totalStudyMins / 60);
+        const m = plan.totalStudyMins % 60;
+        const subjectsStr = plan.items.map(i => i.name).join(', ');
 
-        card.innerHTML = `
-          <div class="flex justify-between items-start">
-            <div>
-              <p class="text-[11px] md:text-xs text-indigo-500 dark:text-indigo-400 font-semibold">${plan.date}</p>
-              <h4 class="text-sm font-bold text-slate-900 dark:text-white mt-0.5">목표 공부: ${Math.floor(plan.totalStudyMins/60)}시간 ${plan.totalStudyMins%60}분</h4>
+        const div = document.createElement('div');
+        div.className = "bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between";
+        div.onclick = () => loadPlan(plan.id);
+        
+        div.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-medium px-2 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-md">${plan.date}</span>
+              <button onclick="event.stopPropagation(); deletePlan(${plan.id})" class="text-slate-400 hover:text-red-500 transition"><i class="fa-solid fa-trash"></i></button>
             </div>
-            <button onclick="deletePlan(${idx})" class="text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 text-xs transition p-1">
-              <i class="fa-solid fa-trash"></i>
-            </button>
+            <h4 class="font-bold text-slate-800 dark:text-slate-200 mb-1 truncate">${subjectsStr}</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400">총 공부: ${h}시간 ${m}분 / 휴식: ${plan.totalBreakMins}분</p>
           </div>
-          <p class="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">${itemsSummary}</p>
-          <button onclick="loadPlanToActive(${idx})" class="w-full py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-xs font-semibold rounded-lg transition">
-            이 플랜으로 다시 불러오기
-          </button>
+          <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-right">
+            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">불러오기 &rarr;</span>
+          </div>
         `;
-        list.appendChild(card);
+        container.appendChild(div);
       });
     }
 
-    function loadPlanToActive(idx) {
-      currentPlan = savedPlans[idx];
-      renderPlanResult();
-      switchTab('planner');
-      showAlert('플랜을 성공적으로 불러왔습니다!');
+    function loadPlan(id) {
+      const plan = savedPlans.find(p => p.id === id);
+      if (plan) {
+        currentPlan = JSON.parse(JSON.stringify(plan));
+        subjects = currentPlan.items.map(item => ({
+          id: item.id,
+          name: item.name,
+          score: item.score,
+          pref: item.pref
+        }));
+        renderSubjects();
+        renderPlanResult();
+        switchTab('planner');
+        showAlert('플랜을 성공적으로 불러왔습니다!');
+      }
     }
 
-    function deletePlan(idx) {
-      savedPlans.splice(idx, 1);
-      localStorage.setItem('doyul_study_plans', JSON.stringify(savedPlans));
+    function deletePlan(id) {
+      savedPlans = savedPlans.filter(p => p.id !== id);
+      localStorage.setItem('studyPlans', JSON.stringify(savedPlans));
       renderStorageList();
     }
   </script>
