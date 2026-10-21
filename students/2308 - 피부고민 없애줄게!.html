@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>피부고민 없애줄게!</title>
+<style>
+:root{--green:#21845b;--dark:#174c38;--mint:#e9f8ef;--line:#d9eee1;--text:#203b2e;--muted:#6c8175;--white:#fff}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Pretendard","Noto Sans KR",Arial,sans-serif;color:var(--text);background:radial-gradient(circle at 8% 5%,#d7f8e3 0,transparent 32%),radial-gradient(circle at 92% 18%,#d5f2e6 0,transparent 28%),linear-gradient(135deg,#f5fff8,#eaf7ef);min-height:100vh}
+.app{width:min(900px,100%);margin:auto;padding:28px 16px 60px}
+header{text-align:center;padding:16px 8px 25px}.logo{font-weight:800;color:var(--green);letter-spacing:2px;font-size:13px}.title{font-size:clamp(30px,6vw,46px);margin:12px 0;color:var(--dark);letter-spacing:-1.5px}.subtitle{line-height:1.8;color:var(--muted);margin:0}
+.card{background:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.95);border-radius:25px;padding:clamp(20px,4vw,34px);margin:0 0 18px;box-shadow:0 14px 40px rgba(32,100,66,.08)}
+.center{text-align:center}.hidden{display:none!important}.big-icon{font-size:56px;margin-bottom:10px}.section-title{font-size:23px;letter-spacing:-.5px;margin:0 0 16px}.muted{color:var(--muted);line-height:1.75}.main-btn,.next-btn{background:var(--green);color:white}.main-btn{width:100%;margin-top:18px}.secondary-btn{background:#eaf5ee;color:var(--dark)}.dark-btn{background:var(--dark);color:#fff}.btn{border:0;border-radius:14px;padding:14px 18px;font-size:15px;font-weight:750;cursor:pointer;transition:transform .15s,filter .15s}.btn:hover{filter:brightness(.98);transform:translateY(-1px)}button:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #8fd3ab;outline-offset:2px}
+.progress-info{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-bottom:10px}.progress-bar{height:9px;border-radius:20px;background:#e5f0e8;overflow:hidden;margin-bottom:28px}.progress{height:100%;width:0;background:linear-gradient(90deg,#21845b,#75c99a);transition:width .2s}
+.qnum{color:var(--green);font-size:13px;font-weight:800;letter-spacing:1px;margin-bottom:10px}.question{font-size:clamp(21px,4vw,28px);line-height:1.5;letter-spacing:-.5px;margin:0 0 22px}.text-input{width:100%;min-height:135px;padding:16px;border:1.5px solid var(--line);border-radius:16px;font:inherit;font-size:16px;resize:vertical;background:#fbfffc;color:var(--text)}.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.choice{background:#f4faf6;color:var(--dark);border:1.5px solid var(--line);min-height:62px}.choice.selected{background:var(--green);color:#fff;border-color:var(--green)}.nav{display:flex;gap:10px;margin-top:24px}.nav .btn{flex:1}.skin-type{font-size:clamp(31px,7vw,42px);font-weight:900;color:var(--green);margin:8px 0 12px;letter-spacing:-1px}.pill{display:inline-block;background:#e7f7ed;color:#1e744e;padding:7px 12px;border-radius:30px;font-weight:750;font-size:13px;margin:3px}.box{background:#f3faf5;border:1px solid #e2f0e6;border-radius:17px;padding:17px;line-height:1.8;overflow-wrap:anywhere}.product{border:1px solid #e0eee5;background:#fbfefc;border-radius:17px;padding:18px;margin:12px 0}.product h3{margin:0 0 8px;font-size:18px}.product p{margin:6px 0;line-height:1.65}.tag{font-size:12px;background:#e9f7ee;color:#28734e;border-radius:20px;padding:5px 9px;display:inline-block;margin:3px 3px 3px 0}.routine{padding:16px 17px;background:#f5faf6;border-radius:15px;margin:10px 0;line-height:1.8}.routine h3{color:var(--green);margin:0 0 7px}.tip{border-left:4px solid #59ad7e;background:#f5fbf7;border-radius:8px;padding:13px 15px;margin:9px 0;line-height:1.7}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field label{display:block;font-size:14px;font-weight:750;margin-bottom:8px}.field select{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;background:#fbfffc;color:var(--text);font:inherit}.button-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.button-row .btn{flex:1}.note{font-size:12px;line-height:1.7;color:var(--muted)}.empty{padding:20px;text-align:center;background:#f6fbf7;border-radius:15px;color:var(--muted)}
+@media(max-width:560px){.app{padding:18px 12px 40px}.choices,.grid2{grid-template-columns:1fr}.nav{gap:8px}.nav .btn{padding:13px 10px}.card{border-radius:20px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo">✦ AI SKIN CARE</div>
+  <h1 class="title">피부고민 없애줄게!</h1>
+  <p class="subtitle">나의 피부 고민을 알아보고, 나에게 맞는<br>스킨케어와 제품 선택 팁을 찾아봐요.</p>
+</header>
+
+<section id="startScreen" class="card center">
+  <div class="big-icon">🌿</div>
+  <h2>나만의 피부 관리 가이드</h2>
+  <p class="muted">피부 고민을 직접 적고 30개 질문에 답해보세요.<br>쿠션과 파운데이션 추천은 원할 때만 따로 받을 수 있어요.</p>
+  <button class="btn main-btn" onclick="startQuiz()">피부 분석 시작하기 →</button>
+</section>
+
+<section id="quizScreen" class="card hidden">
+  <div class="progress-info"><span id="progressText">1 / 30</span><span>나의 피부 알아보기</span></div>
+  <div class="progress-bar"><div id="progress" class="progress"></div></div>
+  <div id="questionNumber" class="qnum">QUESTION 01</div>
+  <h2 id="question" class="question"></h2>
+  <div id="answerArea"></div>
+  <div class="nav">
+    <button class="btn secondary-btn" id="backButton" onclick="previousQuestion()">← 뒤로가기</button>
+    <button class="btn next-btn" onclick="nextQuestion()" id="nextButton">다음 →</button>
+  </div>
+</section>
+
+<div id="resultScreen" class="hidden">
+  <section class="card center">
+    <div class="big-icon">🌱</div><div class="logo">YOUR SKIN TYPE</div>
+    <div id="skinType" class="skin-type">피부 타입</div>
+    <p id="skinDescription" class="muted"></p>
+    <div id="scoreBadges"></div>
+  </section>
+  <section class="card">
+    <h2 class="section-title">💭 내가 입력한 피부 고민</h2>
+    <div id="myConcern" class="box"></div>
+  </section>
+  <section class="card">
+    <h2 class="section-title">🔎 함께 살펴볼 피부 고민</h2>
+    <div id="concernResult" class="box"></div>
+  </section>
+  <section class="card">
+    <h2 class="section-title">🧴 스킨케어 추천</h2>
+    <p class="muted">아래는 제품을 찾아볼 때 참고할 수 있는 예시예요. 성분과 사용감은 제품 상세 정보에서 확인해 주세요.</p>
+    <div id="skincareProducts"></div>
+  </section>
+  <section class="card">
+    <h2 class="section-title">🫧 기초 스킨케어 순서</h2>
+    <div class="routine"><h3>☀️ 아침 루틴</h3>세안(피부 상태에 맞게) → 보습제 → 선크림</div>
+    <div class="routine"><h3>🌙 저녁 루틴</h3>메이크업을 했다면 클렌징 → 순한 세안 → 보습제</div>
+    <p class="note">토너나 세럼은 꼭 여러 개 사용할 필요는 없어요. 피부가 편안한 최소 단계부터 시작해 보세요.</p>
+  </section>
+  <section class="card">
+    <h2 class="section-title">🌿 나의 피부 관리 팁</h2>
+    <div id="tips"></div>
+  </section>
+  <section class="card center">
+    <div class="big-icon">💄</div>
+    <h2 class="section-title">쿠션이나 파운데이션도 추천받을까요?</h2>
+    <p class="muted">이 버튼을 눌러야 메이크업 추천 화면이 열려요.<br>원하지 않으면 누르지 않아도 됩니다.</p>
+    <button class="btn main-btn" onclick="openMakeup()">쿠션·파운데이션 추천받기 →</button>
+  </section>
+  <section class="card">
+    <p class="note">※ 결과는 간단한 설문을 이용한 참고용 안내이며 의학적 진단이 아니에요. 제품의 지속력·커버력·마무리감은 피부 상태, 날씨, 사용법에 따라 달라질 수 있어요.</p>
+    <button class="btn dark-btn main-btn" onclick="restartQuiz()">처음부터 다시 하기</button>
+  </section>
+</div>
+
+<section id="makeupScreen" class="hidden">
+  <section class="card">
+    <div class="logo">OPTIONAL MAKEUP FINDER</div>
+    <h2 class="section-title">💄 쿠션 & 파운데이션 추천</h2>
+    <p class="muted">피부 타입과 계절을 선택하면 참고용 제품 후보를 보여줘요.</p>
+    <div class="grid2">
+      <div class="field"><label for="makeupType">피부 타입</label>
+        <select id="makeupType">
+          <option value="combination">복합성</option><option value="normal">중성</option><option value="dry">건성</option><option value="oily">지성</option><option value="dehydratedOily">수부지</option>
+        </select>
+      </div>
+      <div class="field"><label for="season">계절</label>
+        <select id="season"><option value="spring">봄</option><option value="summer">여름</option><option value="autumn">가을</option><option value="winter">겨울</option></select>
+      </div>
+    </div>
+    <div class="button-row">
+      <button class="btn next-btn" onclick="recommendMakeup()">추천 보기</button>
+      <button class="btn secondary-btn" onclick="backToResult()">결과로 돌아가기</button>
+    </div>
+  </section>
+  <section id="makeupResult" class="card hidden">
+    <h2 class="section-title">✨ 추천 후보</h2>
+    <div id="makeupProducts"></div>
+    <p class="note">별점은 실제 측정값이 아니라 프로그램 안에서 비교하기 위한 대략적인 참고 평가예요. 구매 전 올리브영에서 판매 여부, 색상, 성분 및 최신 후기를 확인해 주세요.</p>
+    <button class="btn secondary-btn main-btn" onclick="backToResult()">피부 분석 결과로 돌아가기</button>
+  </section>
+</section>
+
+</div>
+<script>
+const questions = [
+ {q:"당신의 직접적인 피부고민은 뭔가요?",type:"text"},
+ {q:"세안 후 피부가 당기는 느낌이 자주 있나요?",type:"dry"},
+ {q:"피부가 푸석하고 거칠게 느껴지나요?",type:"dry"},
+ {q:"볼이나 입 주변이 쉽게 건조해지나요?",type:"dry"},
+ {q:"각질이 자주 생기는 편인가요?",type:"dry"},
+ {q:"보습제를 바르지 않으면 피부가 불편한가요?",type:"dry"},
+ {q:"얼굴 전체에 유분기가 많은 편인가요?",type:"oily"},
+ {q:"오후가 되면 얼굴이 쉽게 번들거리나요?",type:"oily"},
+ {q:"코와 이마에 피지가 많이 생기나요?",type:"oily"},
+ {q:"유분 때문에 화장이 쉽게 무너지나요?",type:"oily"},
+ {q:"피지나 블랙헤드가 자주 신경 쓰이나요?",type:"oily"},
+ {q:"코와 이마는 번들거리지만 볼은 건조한가요?",type:"combination"},
+ {q:"얼굴 부위마다 유분과 건조함의 차이가 큰가요?",type:"combination"},
+ {q:"T존은 유분이 많고 U존은 건조한 편인가요?",type:"combination"},
+ {q:"코 주변은 번들거리는데 볼은 당기나요?",type:"combination"},
+ {q:"피부 부위에 따라 계절별 변화가 다른가요?",type:"combination"},
+ {q:"세안 직후에는 당기지만 조금 지나면 번들거리나요?",type:"dehydratedOily"},
+ {q:"피부 겉은 유분이 많은데 속은 건조하게 느껴지나요?",type:"dehydratedOily"},
+ {q:"기름기가 있는데도 피부가 당기는 느낌이 있나요?",type:"dehydratedOily"},
+ {q:"유분이 많지만 피부 속은 건조한 느낌인가요?",type:"dehydratedOily"},
+ {q:"세안 후에는 건조한데 오후에는 유분이 올라오나요?",type:"dehydratedOily"},
+ {q:"세안 후 심하게 당기거나 번들거리지 않는 편인가요?",type:"normal"},
+ {q:"피부의 유분과 수분이 전체적으로 균형 잡혀 있나요?",type:"normal"},
+ {q:"계절이 바뀌어도 피부 상태가 크게 달라지지 않나요?",type:"normal"},
+ {q:"평소 피부가 지나치게 건조하거나 번들거리지 않나요?",type:"normal"},
+ {q:"평소 피부가 비교적 편안한 편인가요?",type:"normal"},
+ {q:"작은 트러블이나 좁쌀이 자주 생기나요?",type:"acne"},
+ {q:"여드름이나 트러블 때문에 고민한 적이 있나요?",type:"acne"},
+ {q:"트러블 흔적이나 블랙헤드가 신경 쓰이나요?",type:"acne"},
+ {q:"마스크나 땀 때문에 트러블이 생기기 쉬운가요?",type:"acne"}
+];
+const typeNames={normal:"중성 피부",combination:"복합성 피부",oily:"지성 피부",dehydratedOily:"수부지",dry:"건성 피부"};
+const descriptions={
+ normal:"유분과 건조함이 비교적 균형 잡힌 편으로 보여요. 기본 보습과 자외선 차단을 꾸준히 해보세요.",
+ combination:"얼굴 부위에 따라 유분과 건조함이 다를 수 있어요. 부위별로 보습 정도를 조절해 보세요.",
+ oily:"유분이 비교적 많은 편으로 보여요. 과도한 세안은 피하고 가벼운 보습을 함께 해보세요.",
+ dehydratedOily:"유분과 속당김을 함께 느끼는 특징이 보여요. 유분만 없애기보다 수분과 보습을 함께 챙겨 보세요.",
+ dry:"건조함이나 당김을 자주 느끼는 편으로 보여요. 순한 세안과 보습을 중심으로 관리해 보세요."
+};
+const skincare={
+ normal:[["라운드랩 자작나무 수분 크림","가벼운 보습 제품 후보"],["자외선 차단제","매일 자외선 차단을 위한 제품 후보"]],
+ combination:[["라운드랩 자작나무 수분 크림","부위에 따라 양을 조절해 사용"],["가벼운 수분 에센스","필요할 때 추가할 수 있는 후보"]],
+ oily:[["가벼운 수분 젤 크림","답답함이 적은 보습 제품 후보"],["산뜻한 사용감의 선크림","매일 사용할 자외선 차단 제품 후보"]],
+ dehydratedOily:[["가벼운 수분 에센스","수분을 보충하는 단계의 후보"],["라운드랩 자작나무 수분 크림","피부가 편안한 정도로 보습"]],
+ dry:[["에스트라 아토베리어365 크림","건조함이 느껴질 때 고려할 보습 제품 후보"],["보습감 있는 선크림","자외선 차단과 사용감을 함께 확인"]]
+};
+const makeup={
+ normal:{cushion:["정샘물 스킨 누더 쿠션","★★★★☆","★★★★☆","내추럴·세미글로우"],foundation:["헤라 실키 스테이 파운데이션","★★★★☆","★★★★☆","세미매트"]},
+ combination:{cushion:["클리오 킬커버 쿠션","★★★★☆","★★★★☆","제품별로 세미매트 등 확인"],foundation:["헤라 실키 스테이 파운데이션","★★★★☆","★★★★☆","세미매트"]},
+ oily:{cushion:["클리오 킬커버 쿠션","★★★★☆","★★★★☆","세미매트 후보"],foundation:["에스쁘아 프로 테일러 비벨벳 파운데이션","★★★★☆","★★★★☆","매트·벨벳 계열 후보"]},
+ dehydratedOily:{cushion:["정샘물 스킨 누더 쿠션","★★★☆☆","★★★★☆","내추럴·세미글로우"],foundation:["헤라 실키 스테이 파운데이션","★★★★☆","★★★★☆","세미매트"]},
+ dry:{cushion:["정샘물 스킨 누더 쿠션","★★★☆☆","★★★☆☆","글로우 계열 후보"],foundation:["에스쁘아 프로 테일러 비 글로우 파운데이션","★★★☆☆","★★★☆☆","글로우"]}
+};
+let current=0,answers=[];
+const $=id=>document.getElementById(id);
+function show(id){$(id).classList.remove("hidden")}
+function hide(id){$(id).classList.add("hidden")}
+function startQuiz(){current=0;answers=[];hide("startScreen");hide("resultScreen");hide("makeupScreen");show("quizScreen");showQuestion()}
+function showQuestion(){
+ const item=questions[current];
+ 
+("progressText").textContent=`{current+1} / ${questions.length}`;
+ ("progress").style.width=`{(current+1)/questions.length*100}%`;
+ $("questionNumber").textContent=`QUESTION ${String(current+1).padStart(2,"0")}`;
+ $("question").textContent=item.q;
+ $("backButton").style.visibility=current===0?"hidden":"visible";
+ $("nextButton").textContent=current===questions.length-1?"결과 확인하기 ✨":"다음 →";
+ const area=$("answerArea");area.innerHTML="";
+ if(item.type==="text"){
+  const ta=document.createElement("textarea");ta.className="text-input";ta.placeholder="예: 여드름, 좁쌀, 블랙헤드, 건조함 등";ta.value=answers[current]||"";ta.addEventListener("input",()=>answers[current]=ta.value);area.appendChild(ta);
+ }else{
+  const choices=document.createElement("div");choices.className="choices";
+  [["veryYes","매우 그렇다"],["yes","그렇다"],["no","그렇지 않다"],["veryNo","매우 그렇지 않다"]].forEach(([value,label])=>{
+   const b=document.createElement("button");b.className="btn choice";b.textContent=label;b.dataset.value=value;
+   if(answers[current]===value)b.classList.add("selected");
+   b.onclick=()=>{answers[current]=value;choices.querySelectorAll("button").forEach(x=>x.classList.toggle("selected",x===b))};
+   choices.appendChild(b);
+  });area.appendChild(choices);
+ }
+}
+function nextQuestion(){
+ if(questions[current].type==="text"){if(!String(answers[current]||"").trim()){alert("직접적인 피부 고민을 적어주세요.");return}}
+ else if(!answers[current]){alert("네 가지 항목 중 하나를 선택해주세요.");return}
+ if(current<questions.length-1){current++;showQuestion()}else showResult()
+}
+function previousQuestion(){if(current>0){current--;showQuestion()}}
+function calculateScore(){
+ const s={normal:0,combination:0,oily:0,dehydratedOily:0,dry:0,acne:0};
+ for(let i=1;i<questions.length;i++){
+  const a=answers[i],t=questions[i].type;
+  if(["veryYes","yes"].includes(a))s[t]+=(a==="veryYes"?1.5:1);
+ }
+ return s;
+}
+function getType(s){
+ const keys=["normal","combination","oily","dehydratedOily","dry"];
+ const max=Math.max(...keys.map(k=>s[k]));
+ const tied=keys.filter(k=>s[k]===max);
+ const priority=["dehydratedOily","combination","oily","dry","normal"];
+ return priority.find(k=>tied.includes(k));
+}
+function showResult(){
+ const s=calculateScore(),type=getType(s);
+ hide("quizScreen");hide("makeupScreen");show("resultScreen");
+ ("skinType").textContent=typeNames[type];("skinDescription").textContent=descriptions[type];
+ $("scoreBadges").innerHTML=`<span class="pill">중성 ${s.normal.toFixed(1)}</span><span class="pill">복합성 ${s.combination.toFixed(1)}</span><span class="pill">지성 ${s.oily.toFixed(1)}</span><span class="pill">수부지 ${s.dehydratedOily.toFixed(1)}</span><span class="pill">건성 ${s.dry.toFixed(1)}</span>`;
+ $("myConcern").textContent=answers[0];
+ const concerns=[];
+ if(s.acne>=2)concerns.push("트러블 또는 좁쌀 고민");
+ if(s.oily>=3)concerns.push("유분·피지 고민");
+ if(s.dry>=3)concerns.push("건조함·당김 고민");
+ if(s.dehydratedOily>=3)concerns.push("속당김과 유분 고민");
+ if(s.combination>=3)concerns.push("부위별 피부 상태 차이");
+ $("concernResult").textContent=concerns.length?concerns.join(" · "):"뚜렷하게 높은 점수의 항목은 없어요. 평소 피부 변화를 관찰해 보세요.";
+ ("skincareProducts").innerHTML=skincare[type].map(([name,why])=>`<divclass="product"><h3>{escapeHTML(name)}</h3><p class="muted">${escapeHTML(why)}</p><span class="tag">올리브영에서 제품명 검색</span></div>`).join("");
+ const tipMap={
+  normal:["피부가 편안한 최소 단계의 루틴을 꾸준히 유지해 보세요.","자외선 차단제를 매일 사용해 보세요.","새 제품은 한 번에 하나씩 추가해 피부 반응을 확인하세요."],
+  combination:["건조한 부위와 번들거리는 부위에 보습 양을 다르게 조절해 보세요.","세안을 과하게 하거나 각질을 자주 문지르지 마세요.","자외선 차단과 기본 보습을 꾸준히 해보세요."],
+  oily:["유분이 많아도 보습을 완전히 생략하지 마세요.","너무 잦은 세안이나 강한 스크럽은 피하세요.","메이크업 전 얇게 바르고 충분히 흡수시켜 보세요."],
+  dehydratedOily:["유분이 있어도 피부가 당긴다면 보습을 챙겨 보세요.","순한 세안제를 사용하고 세안 후 보습해 보세요.","새로운 각질 관리 제품을 여러 개 한꺼번에 쓰지 마세요."],
+  dry:["세안 후 피부가 편안할 때 보습제를 발라 보세요.","뜨거운 물과 강한 문지르기를 피하세요.","건조함이 심하거나 오래 지속되면 보호자와 함께 피부 전문가에게 상담해 보세요."]
+ };
+ $("tips").innerHTML=tipMap[type].concat(s.acne>=2?["트러블을 손으로 만지거나 짜지 말고, 자극이 적은 기본 루틴부터 유지해 보세요."]:[]).map(t=>`<div class="tip">🌿 ${t}</div>`).join("");
+}
+function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function openMakeup(){
+ hide("resultScreen");show("makeupScreen");hide("makeupResult");
+ const map={normal:"normal",combination:"combination",oily:"oily",dehydratedOily:"dehydratedOily",dry:"dry"};
+ $("makeupType").value=map[getType(calculateScore())];
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+function recommendMakeup(){
+ const type=("makeupType").value,season=("season").value;
+ const seasonText={spring:"봄",summer:"여름",autumn:"가을",winter:"겨울"}[season];
+ const item=makeup[type];
+ const seasonTip={
+  spring:"기온과 습도가 바뀌는 시기라 얇게 발라 피부 반응을 확인해 보세요.",
+  summer:"땀과 피지로 무너질 수 있어 얇게 바르고 필요하면 가볍게 수정하세요.",
+  autumn:"건조함이 시작될 수 있어 메이크업 전 보습을 챙겨 보세요.",
+  winter:"건조함과 들뜸이 생길 수 있어 메이크업 전 보습 후 충분히 흡수시켜 보세요."
+ }[season];
+ const makeCard=(label,p)=>`<div class="product"><span class="tag">label</span><h3>{escapeHTML(p[0])}</h3><div class="grid2"><div class="box"><b>커버력</b><br>p[1]</div><divclass="box"><b>지속력</b><br>{p[2]}</div><div class="box"><b>마무리감</b><br>escapeHTML(p[3])</div><divclass="box"><b>선택팁</b><br>{seasonText}에는 피부 상태에 맞춰 얇게 레이어링</div></div><p class="muted">제품 성능 표기는 프로그램용 참고 평가이며 공식 시험 결과가 아니에요.</p></div>`;
+ $("makeupProducts").innerHTML=makeCard("쿠션",item.cushion)+makeCard("파운데이션",item.foundation)+`<div class="tip">🍃 ${seasonTip}</div><p class="note">올리브영에서 제품명으로 검색해 최신 판매 여부와 색상·성분·후기를 확인하세요. 제품명과 마무리감은 라인·리뉴얼에 따라 달라질 수 있어요.</p>`;
+ show("makeupResult");window.scrollTo({top:0,behavior:"smooth"});
+}
+function backToResult(){hide("makeupScreen");show("resultScreen");window.scrollTo({top:0,behavior:"smooth"})}
+function restartQuiz(){current=0;answers=[];hide("quizScreen");hide("resultScreen");hide("makeupScreen");show("startScreen");window.scrollTo({top:0,behavior:"smooth"})}
+</script>
+</body>
+</html>
