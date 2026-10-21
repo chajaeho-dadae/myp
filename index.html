@@ -899,7 +899,7 @@
 
     /* 진단 패널: 주소 끝에 ?debug=1 을 붙이면 표시 */
     if (new URLSearchParams(location.search).has("debug")) {
-      const schoolName = { nam: "BSN", dadae: "DADAE" };
+      const schoolName = { nam: "BSN", dadae: "DD" };
       const rows = students.map(s => {
         const where = s.school ? `${schoolName[s.school]} ${s.cls[0]}-${s.cls[1]}` : "⚠ 학번 인식 안 됨";
         return `<tr><td>${esc(s.file)}</td><td>${where}</td></tr>`;
