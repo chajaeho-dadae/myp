@@ -10,7 +10,7 @@ const T={
  tank:{hp:100,acc:190,maxV:130,turn:1.5,turret:2,r:18},
  tur:{maxW:2.6,acc:6,k:4}, // 수동 조준 포탑 관성: 최대 각속도(rad/s), 각가속도, 오차 추종 계수
  ar:{lo:.72,hi:.92,miss:.3,bonus:1.25,fast:.8}, // 액티브 리로드: 완벽 구간 시작/끝(재장전 진행률), 불발 지연(초), 완벽 발사 피해 배율, 완벽 후 다음 재장전 배율
- fuel:{max:100,use:2,can:40,boost:1.5,canP:.6,drop:{grunt:20,rush:15,sniper:30,heavy:45}}, // 기름: 최대량, 초당 소모(최대 입력 기준), 오일 캔 회복량, 부스트 배율(속도·소모), 청크당 캔 확률, 적 종류별 드롭량
+ fuel:{max:100,use:2,can:40,boost:1.5,canP:.6,hr:1,drop:{grunt:20,rush:15,sniper:30,heavy:45}}, // 기름: 최대량, 초당 소모(최대 입력 기준), 오일 캔 회복량, 부스트 배율(속도·소모), 청크당 캔 확률, 적 종류별 드롭량
  trk:20, // 발자국 지속 시간(초)
  prismP:.05, // 카드 3장 제시 시 프리즘이 끼어들 확률
  score:[100,250,450,750,1200,1850,2550,3400], heal:25, // 8단계 레벨업 점수, 레벨업 시 회복 %
@@ -262,10 +262,11 @@ function drawCan(c){ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.a);
  ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(-6,-7,16,20);ctx.fillStyle='#b02a1e';ctx.fillRect(-8,-10,16,20);ctx.fillStyle='#d8503a';ctx.fillRect(-8,-10,16,5);
  ctx.fillStyle='#2a2a22';ctx.fillRect(2,-14,5,5);ctx.strokeStyle='#5a1410';ctx.lineWidth=1.5;ctx.strokeRect(-8,-10,16,20);ctx.beginPath();ctx.moveTo(-8,-10);ctx.lineTo(8,10);ctx.stroke();
  ctx.fillStyle='rgba(255,225,130,'+.22*(.5+.5*Math.sin(t*3+c.x))+')';ctx.fillRect(-8,-10,16,20);ctx.restore()}
-function pickCans(){const C_=T.C,f=T.fuel;if(p.fuel>f.max-10)return;
+function pickCans(){ // 기름 우선 충전 → 남는 양은 부족한 체력 보충(T.fuel.hr 비율). 기름·체력이 모두 가득이면 캔을 남겨둠
+ const C_=T.C,f=T.fuel,full=()=>p.fuel>=f.max&&p.hp>=p.mhp;if(full())return;
  for(const cx of new Set([Math.floor((p.x-30)/C_),Math.floor((p.x+30)/C_)]))for(const cy of new Set([Math.floor((p.y-30)/C_),Math.floor((p.y+30)/C_)])){const cs=chunk(cx,cy).cans;
-  for(let i=cs.length-1;i>=0;i--){const c=cs[i];if(Math.hypot(c.x-p.x,c.y-p.y)<T.tank.r+14){cs.splice(i,1);const g=Math.min(c.v,f.max-p.fuel);p.fuel+=g;
-   pop(c.x,c.y-20,'+'+Math.round(g)+' 기름','#ffb84a');sfx('pick');vib(10);for(let k=0;k<5;k++)P(c.x,c.y,R_(160),R_(160),.3,3,'#ffcf7a',0);if(p.fuel>f.max-10)return}}}}
+  for(let i=cs.length-1;i>=0;i--){const c=cs[i];if(Math.hypot(c.x-p.x,c.y-p.y)<T.tank.r+14){cs.splice(i,1);const g=Math.min(c.v,f.max-p.fuel),h=Math.min((c.v-g)*f.hr,p.mhp-p.hp);p.fuel+=g;p.hp+=h;
+   if(g>=1)pop(c.x,c.y-20,'+'+Math.round(g)+' 기름','#ffb84a');if(h>=1)pop(c.x,c.y-(g>=1?44:20),'+'+Math.round(h)+' 체력','#9bd84a');sfx('pick');vib(10);for(let k=0;k<5;k++)P(c.x,c.y,R_(160),R_(160),.3,3,'#ffcf7a',0);if(full())return}}}}
 const btns=()=>[{x:W-48,y:8,i:S=='pause'?'▶':'⏸',f:pz},{x:W-96,y:8,i:sndOn?'🔊':'🔇',f:()=>sndOn=!sndOn},{x:W-144,y:8,i:vibOn?'📳':'📴',f:()=>vibOn=!vibOn}];
 function pz(){if(S=='play'){S='pause';stick.id=null;aim.id=null}else if(S=='pause')S='play'}
 function draw(dt){
