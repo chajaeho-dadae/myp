@@ -130,15 +130,36 @@ function start(s,id){const sv=['ham','dawn','noon'],ents=[];let me;
 if(s){sv.forEach((v,i)=>{const e=mk(v,60,120+i*200,v!==id);ents.push(e);if(v===id)me=e});ents.push(mk(rnd()<.5?'ouro':'sad',940,320,1))}
 else{sv.forEach((v,i)=>ents.push(mk(v,60,120+i*200,1)));me=mk(id,940,320,0);ents.push(me)}
 me.hu=1;G={ents,me,k:ents.find(e=>!e.c.s),walls:[],spikes:[],zones:[],tm:[],fx:[],reveal:0,left:120,msg:null,over:0};('menu').hidden=1;('end').hidden=1}
+function loadPeer(){return new Promise((ok,no)=>{if(window.Peer)return ok();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';s.onload=ok;s.onerror=()=>no(new Error('PeerJS 로드 실패 (인터넷 연결 확인)'));document.head.appendChild(s)})}
+const FB={async join(name,host){await loadPeer();
+const H={},PP=[],conns={},tbl={},myP={},hostId='skv-'+name;let me=null,peerList=[],dirty=0,iv=0,hc=null;
+const P=new Peer(host?hostId:undefined);
+await new Promise((ok,no)=>{P.on('open',i=>{me=i;ok()});P.on('error',e=>no(new Error(e.type==='unavailable-id'?'이미 사용 중인 방 코드입니다':e.type==='peer-unavailable'?'방을 찾을 수 없습니다':String(e.type))))});
+const list=()=>host?[{peer:me,presence:myP},...Object.keys(conns).map(k=>({peer:k,presence:tbl[k]||{}}))]:peerList;
+const peers=()=>list().map(p=>({peer:p.peer,presence:p.presence,isMe:p.peer===me,sameTab:p.peer===me,kind:'viewer'}));
+const notify=()=>PP.forEach(f=>f({peers:peers()})),bcast=m=>Object.values(conns).forEach(c=>c.open&&c.send(m)),fire=m=>(H[m.topic]||[]).forEach(f=>f(m)),merge=(o,p)=>{for(const k in p){if(p[k]===null)delete o[k];else o[k]=p[k]}};
+const R={presence(p){merge(myP,p);if(host){dirty=1;notify()}else if(hc&&hc.open)hc.send({t:'p',d:p});return Promise.resolve()},peers,
+onPeers(f){PP.push(f);setTimeout(()=>f({peers:peers()}));return()=>{}},on(t,f){(H[t]=H[t]||[]).push(f);return()=>{}},
+emit(t,d){if(host)bcast({t:'e',o:t,d});else if(hc&&hc.open)hc.send({t:'e',o:t,d});return Promise.resolve()},
+leave(){clearInterval(iv);try{P.destroy()}catch(e){}return Promise.resolve()},connected:()=>true};
+if(host){P.on('connection',c=>{c.on('open',()=>{conns[c.peer]=c;tbl[c.peer]={};dirty=1;notify()});
+c.on('data',m=>{if(m.t==='p'){merge(tbl[c.peer]||(tbl[c.peer]={}),m.d);dirty=1;notify()}else if(m.t==='e')fire({topic:m.o,data:m.d,peer:c.peer})});
+c.on('close',()=>{delete conns[c.peer];delete tbl[c.peer];dirty=1;notify()})});
+iv=setInterval(()=>{if(dirty){dirty=0;bcast({t:'l',l:list()})}},200)}
+else{hc=P.connect(hostId,{reliable:true});
+await new Promise((ok,no)=>{hc.on('open',ok);P.on('error',e=>no(new Error(e.type==='peer-unavailable'?'방을 찾을 수 없습니다':String(e.type))));setTimeout(()=>no(new Error('방 연결 시간 초과')),8000)});
+hc.on('data',m=>{if(m.t==='l'){peerList=m.l;notify()}else if(m.t==='e')fire({topic:m.o,data:m.d,peer:hostId})});
+hc.on('close',()=>{peerList=[];notify()})}
+return R}};
 let NR=null,NR0=null,NT=null;
 function menu(){if(NR){NR.leave();NR=null}G=null;('menu').hidden=0;('end').hidden=1;$('step').innerHTML='<div class="row"><button onclick="solo()">솔로 모드 (AI 대전)</button><button onclick="lobby()">멀티 모드 (최대 4명)</button></div>'}
 function solo(){$('step').innerHTML='<div class="row"><button onclick="pick(1)">생존자</button><button onclick="pick(0)">살인자</button></div><button onclick="menu()">← 뒤로</button>'}
 const err=t=>$('step').innerHTML='<p class="s">'+t+'</p><button onclick="menu()">← 뒤로</button>';
 async function lobby(){let r=null;try{r=window.claude&&await claude.use('room')}catch(e){}
-if(!r)return err('멀티 모드를 사용할 수 없습니다. 이 아티팩트에 접근 권한이 있는 로그인 사용자끼리만 멀티가 가능합니다.');
+if(!r)r=FB;
 NR0=r;$('step').innerHTML='<div class="row"><button onclick="jn(1)">방 만들기</button><input id="rc" placeholder="방 코드" size="6" style="font:inherit;padding:8px;border-radius:8px"><button onclick="jn(0)">참가</button></div><button onclick="menu()">← 뒤로</button>'}
 async function jn(h){const code='sk'+(h?String(1000+rnd()*9000|0):$('rc').value.replace(/\W/g,'').toLowerCase());if(code==='sk')return;
-try{NR=await NR0.join(code)}catch(e){return err('입장 실패: '+(e.code||e.message))}
+try{NR=await NR0.join(code,h)}catch(e){return err('입장 실패: '+(e.code||e.message))}
 const R=NR;NT={h:!!h,code:code.slice(2),pm:{}};R.presence({h:h?1:0});R.onPeers(lbUI);
 R.on('act',m=>{if(!NT.h||!G||G.over)return;const e=G.ents.find(e=>e.peer===m.peer),k=m.data&&m.data.k;if(e&&e.hu&&['q','e','r','t','sp'].includes(k))sk(e,k)});
 R.on('st',m=>{if(NT.h||!m.data)return;const p=R.peers().find(p=>p.presence.h===1);if(p&&p.peer===m.peer)applySnap(m.data)})}
