@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>철권 3D 파이터 - Tekken Style 3D Arena</title>
+<!-- Tailwind CSS for UI -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Three.js Engine -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+ @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+KR:wght@500;700;900&display=swap');
+  body {
+   font-family: 'Noto Sans KR', sans-serif;
+   background-color: #020617;
+   color: #f8fafc;
+   overflow: hidden;
+   user-select: none;
+ }
+
+
+ .font-orbitron {
+   font-family: 'Orbitron', sans-serif;
+ }
+
+
+ .glass-panel {
+   background: rgba(15, 23, 42, 0.85);
+   backdrop-filter: blur(16px);
+   -webkit-backdrop-filter: blur(16px);
+   border: 1px solid rgba(255, 255, 255, 0.15);
+ }
+
+
+ .card-glow:hover {
+   box-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
+   border-color: #f59e0b;
+ }
+
+
+ .card-selected {
+   border-color: #f59e0b !important;
+   box-shadow: 0 0 30px rgba(245, 158, 11, 0.6) !important;
+   background: rgba(30, 41, 59, 0.95) !important;
+ }
+
+
+ /* HP Bar Motion */
+ .hp-bar-fill {
+   transition: width 0.1s ease-out;
+ }
+ .hp-bar-damage {
+   transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+ }
+
+
+ @keyframes pulseText {
+   0%, 100% { transform: scale(1); opacity: 1; }
+   50% { transform: scale(1.15); opacity: 0.9; }
+ }
+ .pulse-ready {
+   animation: pulseText 0.8s infinite alternate;
+ }
+</style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col justify-between bg-slate-950 text-slate-100">
+
+
+ <!-- HUD Overlay Container -->
+ <div id="app" class="relative w-full h-full flex flex-col justify-between p-4 sm:p-6 z-10 pointer-events-none">
+
+
+   <!-- Header Navigation -->
+   <header class="flex justify-between items-center w-full max-w-7xl mx-auto pointer-events-auto">
+     <div class="flex items-center gap-3">
+       <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-red-600 to-purple-600 flex items-center justify-center font-black text-xl shadow-lg shadow-amber-500/30">
+         ⚔️
+       </div>
+       <div>
+         <h1 class="text-xl sm:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 font-orbitron">
+           TEKKEN 3D ARENA
+         </h1>
+         <p class="text-xs text-slate-400">철권 스타일 커맨드 3D 액션</p>
+       </div>
+     </div>
+
+
+     <div id="step-indicator" class="px-4 py-1.5 rounded-full glass-panel text-xs sm:text-sm font-bold text-amber-400 border border-amber-500/30">
+       STEP 1 / 4: 대전 모드 선택
+     </div>
+   </header>
+
+
+   <!-- CENTER OVERLAY CONTENT (Page Screens) -->
+   <main class="w-full max-w-5xl mx-auto my-auto pointer-events-auto">
+
+
+     <!-- PAGE 0: Mode & Settings Selection -->
+     <section id="page-0" class="page-screen glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl transition-all duration-300">
+       <div class="text-center mb-6">
+         <h2 class="text-2xl sm:text-3xl font-black mb-2">게임 모드 및 라운드 설정</h2>
+         <p class="text-slate-400 text-sm">총 3판(3세트) 매치 구조 / 라운드 수를 설정하세요.</p>
+       </div>
+
+
+       <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto mb-6">
+         <!-- AI Mode Card -->
+         <button data-mode="ai" class="mode-card card-selected glass-panel rounded-2xl p-6 text-left border-2 border-slate-700/50 hover:border-amber-500 transition-all cursor-pointer group">
+           <div class="w-12 h-12 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+             🤖
+           </div>
+           <h3 class="text-xl font-bold mb-1 group-hover:text-amber-400 transition-colors">1P vs AI (컴퓨터)</h3>
+           <p class="text-xs text-slate-400">철권 인공지능 상대와 3세트 연속 대결을 펼칩니다.</p>
+         </button>
+
+
+         <!-- 2P Mode Card -->
+         <button data-mode="two" class="mode-card glass-panel rounded-2xl p-6 text-left border-2 border-slate-700/50 hover:border-amber-500 transition-all cursor-pointer group">
+           <div class="w-12 h-12 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+             ⚔️
+           </div>
+           <h3 class="text-xl font-bold mb-1 group-hover:text-rose-400 transition-colors">1P vs 2P (2인 대전)</h3>
+           <p class="text-xs text-slate-400">한 키보드에서 2명의 플레이어가 실시간 대결을 진행합니다.</p>
+         </button>
+       </div>
+
+
+       <!-- Rounds Selection Option -->
+       <div class="max-w-md mx-auto glass-panel p-4 rounded-xl mb-6 border border-slate-700 flex justify-between items-center">
+         <span class="font-bold text-sm text-slate-200">세트당 라운드 수 (최대 10):</span>
+         <div class="flex items-center gap-3">
+           <input type="range" id="round-slider" min="1" max="10" value="3" class="w-32 accent-amber-500 cursor-pointer" oninput="document.getElementById('round-val').textContent = this.value">
+           <span id="round-val" class="font-orbitron font-black text-amber-400 text-lg">3</span> <span class="text-xs text-slate-400">승</span>
+         </div>
+       </div>
+
+
+       <div class="flex justify-end">
+         <button id="btn-to-page-1" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 font-bold text-white shadow-lg shadow-rose-600/30 hover:brightness-110 active:scale-95 transition-all">
+           캐릭터 선택 →
+         </button>
+       </div>
+     </section>
+
+
+     <!-- PAGE 1: P1 Character Selection -->
+     <section id="page-1" class="page-screen hidden glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl transition-all duration-300">
+       <div class="text-center mb-6">
+         <h2 class="text-2xl sm:text-3xl font-black mb-1">PLAYER 1 파이터 선택</h2>
+         <p class="text-slate-400 text-xs sm:text-sm">특수 커맨드 무술을 구사하는 캐릭터를 선택하세요.</p>
+       </div>
+
+
+       <div id="roster-p1" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4"></div>
+
+
+       <div class="mt-8 flex justify-between items-center">
+         <button class="btn-back px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-all" data-back="0">
+           ← 이전
+         </button>
+         <button id="btn-to-page-2" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 font-bold text-white shadow-lg shadow-rose-600/30 hover:brightness-110 active:scale-95 transition-all">
+           상대 파이터 선택 →
+         </button>
+       </div>
+     </section>
+
+
+     <!-- PAGE 2: P2 Character Selection -->
+     <section id="page-2" class="page-screen hidden glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl transition-all duration-300">
+       <div class="text-center mb-6">
+         <h2 class="text-2xl sm:text-3xl font-black mb-1">PLAYER 2 (상대) 파이터 선택</h2>
+         <p class="text-slate-400 text-xs sm:text-sm">맞대결을 펼칠 라이벌을 선택하세요.</p>
+       </div>
+
+
+       <div id="roster-p2" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4"></div>
+
+
+       <div class="mt-8 flex justify-between items-center">
+         <button class="btn-back px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-all" data-back="1">
+           ← 이전
+         </button>
+         <button id="btn-to-page-3" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 font-bold text-white shadow-lg shadow-rose-600/30 hover:brightness-110 active:scale-95 transition-all">
+           3D 스테이지 선택 →
+         </button>
+       </div>
+     </section>
+
+
+     <!-- PAGE 3: Stage Selection -->
+     <section id="page-3" class="page-screen hidden glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl transition-all duration-300">
+       <div class="text-center mb-6">
+         <h2 class="text-2xl sm:text-3xl font-black mb-1">철권 스타일 3D 스테이지 선택</h2>
+         <p class="text-slate-400 text-xs sm:text-sm">화려한 다채로운 조명과 파티클이 가득한 3D 전장을 선택하세요.</p>
+       </div>
+
+
+       <div id="stage-list" class="grid grid-cols-1 sm:grid-cols-3 gap-6"></div>
+
+
+       <div class="mt-8 flex justify-between items-center">
+         <button class="btn-back px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-all" data-back="2">
+           ← 이전
+         </button>
+         <button id="btn-start-fight" class="px-10 py-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 font-black text-lg text-white shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all">
+           대결 시작 (GET READY!) ⚔️
+         </button>
+       </div>
+     </section>
+
+
+     <!-- PAGE 4: HUD & Realtime Battle UI -->
+     <section id="page-4" class="page-screen hidden w-full h-full relative flex flex-col justify-between">
+      
+       <!-- Top Health Bars & Round Score -->
+       <div class="w-full flex justify-between items-start gap-4 sm:gap-8">
+        
+         <!-- P1 HP HUD -->
+         <div class="flex-1 glass-panel rounded-2xl p-3 sm:p-4 border-l-4 border-l-cyan-400 shadow-xl">
+           <div class="flex justify-between items-center mb-1">
+             <span id="p1-hud-name" class="font-black text-sm sm:text-lg text-cyan-300 tracking-wider">JIN KAZAMA</span>
+             <div id="p1-round-dots" class="flex gap-1 text-amber-400 text-sm"></div>
+           </div>
+           <!-- HP Bar -->
+           <div class="w-full h-4 sm:h-5 bg-slate-900/90 rounded-full overflow-hidden border border-slate-700 relative">
+             <div id="p1-hp-dmg" class="hp-bar-damage absolute top-0 left-0 bottom-0 bg-red-600" style="width:100%;"></div>
+             <div id="p1-hp-fill" class="hp-bar-fill absolute top-0 left-0 bottom-0 bg-gradient-to-r from-emerald-400 to-cyan-400" style="width:100%;"></div>
+           </div>
+           <div id="p1-cmd-display" class="h-4 mt-1 text-xs font-bold text-amber-400 font-orbitron"></div>
+         </div>
+
+
+         <!-- Match / Round Info -->
+         <div class="flex flex-col items-center justify-center pt-1 min-w-[100px]">
+           <div id="game-match-text" class="text-xs font-bold text-slate-400 font-orbitron mb-0.5">GAME 1 / 3</div>
+           <div id="round-num-text" class="text-sm sm:text-lg font-black text-amber-400 font-orbitron">ROUND 1</div>
+           <span id="round-time" class="font-orbitron font-black text-2xl sm:text-3xl text-slate-100">60</span>
+         </div>
+
+
+         <!-- P2 HP HUD -->
+         <div class="flex-1 glass-panel rounded-2xl p-3 sm:p-4 border-r-4 border-r-rose-500 text-right shadow-xl">
+           <div class="flex justify-between items-center mb-1 flex-row-reverse">
+             <span id="p2-hud-name" class="font-black text-sm sm:text-lg text-rose-400 tracking-wider">KAZUYA</span>
+             <div id="p2-round-dots" class="flex gap-1 text-amber-400 text-sm"></div>
+           </div>
+           <!-- HP Bar -->
+           <div class="w-full h-4 sm:h-5 bg-slate-900/90 rounded-full overflow-hidden border border-slate-700 relative">
+             <div id="p2-hp-dmg" class="hp-bar-damage absolute top-0 right-0 bottom-0 bg-red-600" style="width:100%;"></div>
+             <div id="p2-hp-fill" class="hp-bar-fill absolute top-0 right-0 bottom-0 bg-gradient-to-r from-emerald-400 to-cyan-400" style="width:100%;"></div>
+           </div>
+           <div id="p2-cmd-display" class="h-4 mt-1 text-xs font-bold text-rose-400 font-orbitron"></div>
+         </div>
+
+
+       </div>
+
+
+       <!-- Center READY... FIGHT Banner Overlay -->
+       <div id="ready-banner" class="hidden absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20">
+         <div id="ready-text" class="text-5xl sm:text-7xl font-black italic tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-500 to-red-600 drop-shadow-[0_0_20px_rgba(245,158,11,0.8)] font-orbitron pulse-ready">
+           READY...
+         </div>
+       </div>
+
+
+       <!-- Match Result Modal Overlay -->
+       <div id="game-over-modal" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-md z-30 rounded-3xl">
+         <h2 id="winner-text" class="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-rose-500 font-orbitron mb-2 animate-pulse">
+           PLAYER 1 WIN!
+         </h2>
+         <p id="winner-subtext" class="text-slate-300 text-sm mb-8">3판 세트 매치 최종 승리!</p>
+         <div class="flex gap-4">
+           <button id="btn-next-round" class="px-6 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm transition-all shadow-lg shadow-amber-500/30">
+             다음 세트 / 재대결 🔄
+           </button>
+           <button id="btn-reselect" class="px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all">
+             메인 메뉴 ⚙️
+           </button>
+         </div>
+       </div>
+
+
+     </section>
+
+
+   </main>
+
+
+   <!-- Bottom Controls Info Footer -->
+   <footer class="w-full max-w-7xl mx-auto flex justify-between items-center text-xs text-slate-400 pointer-events-auto">
+     <div id="controls-bar" class="hidden sm:flex gap-4 glass-panel px-4 py-2 rounded-xl border border-slate-800">
+       <div><span class="text-amber-400 font-bold">P1 이동:</span> A/D (좌우), W (점프), S (앉기) | <span class="text-amber-400 font-bold">공격:</span> J (LP), K (RP), U (LK), I (RK)</div>
+       <div><span class="text-amber-300 font-bold">★특수 커맨드:</span> D+J (전진훅), A+K (어퍼컷), S+U (하단쓸기), D,D+I (날아차기)</div>
+     </div>
+     <div class="text-right ml-auto">
+       <span>Tekken 3D Three.js Engine</span>
+     </div>
+   </footer>
+
+
+ </div>
+
+
+ <!-- 3D Canvas Background -->
+ <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+
+ <script>
+   /* =========================================================================
+      1. DATA DEFINITIONS (Characters, Stages, Thumbnails)
+      ========================================================================= */
+
+
+   function createCardSvg(color1, color2, iconSymbol) {
+     const c = document.createElement('canvas');
+     c.width = 240; c.height = 300;
+     const ctx = c.getContext('2d');
+
+
+     const grad = ctx.createLinearGradient(0, 0, 240, 300);
+     grad.addColorStop(0, '#0f172a');
+     grad.addColorStop(1, '#020617');
+     ctx.fillStyle = grad;
+     ctx.fillRect(0, 0, 240, 300);
+
+
+     const glow = ctx.createRadialGradient(120, 120, 10, 120, 120, 110);
+     glow.addColorStop(0, color1 + '88');
+     glow.addColorStop(1, 'transparent');
+     ctx.fillStyle = glow;
+     ctx.fillRect(0, 0, 240, 300);
+
+
+     ctx.fillStyle = color1;
+     ctx.beginPath(); ctx.arc(120, 95, 36, 0, Math.PI * 2); ctx.fill();
+
+
+     ctx.fillStyle = color2;
+     ctx.beginPath(); ctx.roundRect(75, 145, 90, 110, [16, 16, 0, 0]); ctx.fill();
+
+
+     ctx.font = '36px sans-serif';
+     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+     ctx.fillText(iconSymbol, 120, 95);
+
+
+     return c.toDataURL();
+   }
+
+
+   const CHARACTERS = [
+     { id: 'jin', name: '진 (Kazama Style)', style: '가자마류 무술', color: '#3b82f6', altColor: '#1e3a8a', speed: 0.16, hp: 100, img: createCardSvg('#3b82f6', '#1e3a8a', '🥋') },
+     { id: 'kazuya', name: '카즈야 (Mishima)', style: '미시마류 가라테', color: '#ef4444', altColor: '#7f1d1d', speed: 0.15, hp: 105, img: createCardSvg('#ef4444', '#7f1d1d', '⚡') },
+     { id: 'nina', name: '니나 (Assassin)', style: '암살 암술', color: '#a855f7', altColor: '#581c87', speed: 0.18, hp: 90, img: createCardSvg('#a855f7', '#581c87', '🗡️') },
+     { id: 'king', name: '킹 (Pro Wrestler)', style: '프로레슬링', color: '#f59e0b', altColor: '#78350f', speed: 0.13, hp: 120, img: createCardSvg('#f59e0b', '#78350f', '🐆') },
+     { id: 'cyborg', name: '잭-8 (Cyborg)', style: '사이보그 중격투', color: '#06b6d4', altColor: '#164e63', speed: 0.12, hp: 130, img: createCardSvg('#06b6d4', '#164e63', '🤖') }
+   ];
+
+
+   const STAGES = [
+     { id: 'dojo', name: '미시마 도장 (Mishima Dojo)', desc: '목조 건축과 붉은 등불, 용 조각품이 배치된 전통 무술 아레나', bgHex: 0x110a05, floorHex: 0x3d2314, accentHex: 0xf59e0b, secondaryHex: 0xd97706 },
+     { id: 'volcano', name: '화산 용암 지대 (Volcanic Pit)', desc: '붉게 타오르는 용암 바닥과 용암 불꽃 파티클이 상승하는 지옥 전장', bgHex: 0x1f0303, floorHex: 0x450a0a, accentHex: 0xef4444, secondaryHex: 0xf97316 },
+     { id: 'cyber', name: '사이버 네온 시티 (Cyber Arena)', desc: '시안과 마젠타 네온 조명, 홀로그램 기둥이 가득한 사이버 아레나', bgHex: 0x030712, floorHex: 0x0f172a, accentHex: 0x06b6d4, secondaryHex: 0xe11d48 }
+   ];
+
+
+   // Global Match State
+   let selectedMode = 'ai';
+   let targetRoundsToWin = 3;
+   let p1Index = 0;
+   let p2Index = 1;
+   let selectedStageIndex = 0;
+   let currentPage = 0;
+
+
+   let currentMatchIndex = 1; // Total 3 matches
+   let p1MatchWins = 0;
+   let p2MatchWins = 0;
+
+
+   let p1RoundWins = 0;
+   let p2RoundWins = 0;
+
+
+   /* =========================================================================
+      2. THREE.JS ENGINE & FIGHTER LOGIC
+      ========================================================================= */
+
+
+   let scene, camera, renderer;
+   let stageLights = [];
+   let stageProps = [];
+   let particleSystem;
+   let fighter1, fighter2;
+   let gameLoopId = null;
+   let screenShakeIntensity = 0;
+
+
+   let roundTime = 60;
+   let timerInterval = null;
+   let isRoundActive = false; // Prevents attacks before "READY... FIGHT!"
+   let isGameOver = false;
+
+
+   const keys = {};
+   const keyHistory = []; // Key input history for direction double tap
+
+
+   window.addEventListener('keydown', (e) => {
+     keys[e.code] = true;
+     keyHistory.push({ code: e.code, time: Date.now() });
+     if (keyHistory.length > 10) keyHistory.shift();
+
+
+     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyS'].includes(e.code)) {
+       e.preventDefault();
+     }
+   });
+   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+
+   function initThreeScene() {
+     const container = document.getElementById('canvas-container');
+     container.innerHTML = '';
+
+
+     scene = new THREE.Scene();
+     scene.background = new THREE.Color(0x020617);
+     scene.fog = new THREE.FogExp2(0x020617, 0.035);
+
+
+     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+     camera.position.set(0, 2.8, 8.5);
+
+
+     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+     renderer.setSize(window.innerWidth, window.innerHeight);
+     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+     renderer.shadowMap.enabled = true;
+     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+     container.appendChild(renderer.domElement);
+
+
+     window.addEventListener('resize', onWindowResize);
+   }
+
+
+   function onWindowResize() {
+     if (!camera || !renderer) return;
+     camera.aspect = window.innerWidth / window.innerHeight;
+     camera.updateProjectionMatrix();
+     renderer.setSize(window.innerWidth, window.innerHeight);
+   }
+
+
+   /* -------------------------------------------------------------------------
+      3D ANATOMICAL FIGHTER MESH
+      ------------------------------------------------------------------------- */
+   class Fighter3D {
+     constructor(characterData, startX, isFacingRight) {
+       this.info = characterData;
+       this.x = startX;
+       this.y = 0;
+       this.z = 0;
+       this.vx = 0;
+       this.vy = 0;
+       this.isFacingRight = isFacingRight;
+       this.hp = characterData.hp;
+       this.maxHp = characterData.hp;
+       this.isGrounded = true;
+       this.isCrouching = false;
+
+
+       this.state = 'idle'; // idle, move, duck, punch_l, punch_r, kick_l, kick_r, cmd_hook, cmd_upper, cmd_sweep, cmd_dropkick, hit
+       this.animTime = 0;
+       this.attackFrame = 0;
+       this.hitCooldown = 0;
+
+
+       this.meshGroup = new THREE.Group();
+       this.buildMesh();
+       this.meshGroup.position.set(this.x, this.y, this.z);
+      
+       // Ensure all child meshes in group have computed geometry bounding spheres
+       this.meshGroup.traverse((child) => {
+         if (child.isMesh && child.geometry) {
+           if (!child.geometry.boundingSphere) {
+             child.geometry.computeBoundingSphere();
+           }
+           if (!child.geometry.boundingBox) {
+             child.geometry.computeBoundingBox();
+           }
+         }
+       });
+
+
+       scene.add(this.meshGroup);
+     }
+
+
+     buildMesh() {
+       const matMain = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.info.color), roughness: 0.3, metalness: 0.2 });
+       const matAlt = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.info.altColor), roughness: 0.4 });
+       const matGlove = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2 });
+       const matSkin = new THREE.MeshStandardMaterial({ color: 0xfbcfe8, roughness: 0.6 });
+
+
+       // Helper to safely create mesh with computed bounds
+       const makeMesh = (geo, mat) => {
+         geo.computeBoundingSphere();
+         geo.computeBoundingBox();
+         const m = new THREE.Mesh(geo, mat);
+         m.castShadow = true;
+         m.receiveShadow = true;
+         return m;
+       };
+
+
+       // Pelvis Base
+       this.pelvis = makeMesh(new THREE.BoxGeometry(0.5, 0.25, 0.35), matAlt);
+       this.pelvis.position.y = 1.1;
+       this.meshGroup.add(this.pelvis);
+
+
+       // Chest/Torso
+       this.torso = makeMesh(new THREE.BoxGeometry(0.65, 0.7, 0.45), matMain);
+       this.torso.position.y = 0.5;
+       this.pelvis.add(this.torso);
+
+
+       // Head
+       this.head = makeMesh(new THREE.SphereGeometry(0.22, 16, 16), matSkin);
+       this.head.position.y = 0.55;
+       this.torso.add(this.head);
+
+
+       // Visor
+       const visor = makeMesh(new THREE.BoxGeometry(0.25, 0.08, 0.15), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+       visor.position.set(0, 0.02, 0.15);
+       this.head.add(visor);
+
+
+       // Left Arm & Glove
+       this.shoulderL = new THREE.Group();
+       this.shoulderL.position.set(-0.42, 0.25, 0);
+       this.torso.add(this.shoulderL);
+
+
+       this.armL = makeMesh(new THREE.BoxGeometry(0.18, 0.45, 0.18), matMain);
+       this.armL.position.y = -0.2;
+       this.shoulderL.add(this.armL);
+
+
+       this.gloveL = makeMesh(new THREE.SphereGeometry(0.14, 12, 12), matGlove);
+       this.gloveL.position.y = -0.45;
+       this.shoulderL.add(this.gloveL);
+
+
+       // Right Arm & Glove
+       this.shoulderR = new THREE.Group();
+       this.shoulderR.position.set(0.42, 0.25, 0);
+       this.torso.add(this.shoulderR);
+
+
+       this.armR = makeMesh(new THREE.BoxGeometry(0.18, 0.45, 0.18), matMain);
+       this.armR.position.y = -0.2;
+       this.shoulderR.add(this.armR);
+
+
+       this.gloveR = makeMesh(new THREE.SphereGeometry(0.14, 12, 12), matGlove);
+       this.gloveR.position.y = -0.45;
+       this.shoulderR.add(this.gloveR);
+
+
+       // Left Leg
+       this.hipL = new THREE.Group();
+       this.hipL.position.set(-0.18, -0.1, 0);
+       this.pelvis.add(this.hipL);
+
+
+       this.legL = makeMesh(new THREE.BoxGeometry(0.22, 0.55, 0.22), matAlt);
+       this.legL.position.y = -0.28;
+       this.hipL.add(this.legL);
+
+
+       // Right Leg
+       this.hipR = new THREE.Group();
+       this.hipR.position.set(0.18, -0.1, 0);
+       this.pelvis.add(this.hipR);
+
+
+       this.legR = makeMesh(new THREE.BoxGeometry(0.22, 0.55, 0.22), matAlt);
+       this.legR.position.y = -0.28;
+       this.hipR.add(this.legR);
+     }
+
+
+     update(opponent) {
+       this.animTime += 0.12;
+       if (this.hitCooldown > 0) this.hitCooldown--;
+
+
+       if (this.state.startsWith('punch') || this.state.startsWith('kick') || this.state.startsWith('cmd')) {
+         this.attackFrame++;
+         if (this.attackFrame > 14) {
+           this.state = 'idle';
+           this.attackFrame = 0;
+         }
+       }
+
+
+       // Gravity
+       this.vy -= 0.012;
+       this.x += this.vx;
+       this.y += this.vy;
+
+
+       if (this.y <= 0) {
+         this.y = 0;
+         this.vy = 0;
+         this.isGrounded = true;
+       }
+
+
+       this.x = Math.max(-5.0, Math.min(5.0, this.x));
+
+
+       if (!this.state.startsWith('punch') && !this.state.startsWith('kick') && !this.state.startsWith('cmd')) {
+         this.isFacingRight = this.x < opponent.x;
+       }
+
+
+       this.vx *= 0.75;
+
+
+       this.meshGroup.position.set(this.x, this.y, this.z);
+       const targetRotY = this.isFacingRight ? Math.PI / 2 : -Math.PI / 2;
+       this.meshGroup.rotation.y = THREE.MathUtils.lerp(this.meshGroup.rotation.y, targetRotY, 0.2);
+
+
+       this.updatePoses();
+     }
+
+
+     updatePoses() {
+       const sin = Math.sin(this.animTime);
+
+
+       if (this.state === 'idle') {
+         this.pelvis.position.y = 1.1;
+         this.torso.position.y = 0.5 + sin * 0.02;
+         this.shoulderL.rotation.set(0.8, 0, 0.3 + sin * 0.05);
+         this.shoulderR.rotation.set(0.8, 0, -0.3 - sin * 0.05);
+         this.hipL.rotation.set(-0.1, 0, 0);
+         this.hipR.rotation.set(0.1, 0, 0);
+       } else if (this.state === 'duck') {
+         this.pelvis.position.y = 0.7;
+         this.torso.position.y = 0.4;
+         this.hipL.rotation.set(-0.8, 0, 0);
+         this.hipR.rotation.set(-0.8, 0, 0);
+       } else if (this.state === 'punch_l' || this.state === 'punch_r') {
+         this.shoulderL.rotation.set(-Math.PI / 2, 0.2, 0);
+       } else if (this.state === 'cmd_hook') {
+         this.shoulderL.rotation.set(-Math.PI / 2, 0.6, 0);
+         this.torso.rotation.y = 0.5;
+       } else if (this.state === 'cmd_upper') {
+         this.shoulderR.rotation.set(-Math.PI, 0, 0);
+         this.pelvis.position.y = 1.3;
+       } else if (this.state === 'cmd_sweep') {
+         this.pelvis.position.y = 0.5;
+         this.hipR.rotation.set(-Math.PI / 2, 0, -0.4);
+       } else if (this.state === 'cmd_dropkick') {
+         this.hipL.rotation.set(-Math.PI / 2, 0, 0);
+         this.hipR.rotation.set(-Math.PI / 2, 0, 0);
+       } else if (this.state === 'hit') {
+         this.torso.rotation.x = -0.4;
+       }
+     }
+
+
+     attack(opponent, type, moveName) {
+       if (!isRoundActive || this.state.startsWith('punch') || this.state.startsWith('kick') || this.state.startsWith('cmd')) return;
+
+
+       this.state = type;
+       this.attackFrame = 0;
+
+
+       let range = 1.2;
+       let damage = 8;
+
+
+       if (type === 'cmd_hook') { range = 1.4; damage = 14; }
+       else if (type === 'cmd_upper') { range = 1.3; damage = 16; }
+       else if (type === 'cmd_sweep') { range = 1.5; damage = 12; }
+       else if (type === 'cmd_dropkick') { range = 1.8; damage = 18; }
+
+
+       if (moveName) {
+         const displayEl = this === fighter1 ? document.getElementById('p1-cmd-display') : document.getElementById('p2-cmd-display');
+         displayEl.textContent = `★ ${moveName}!`;
+         setTimeout(() => { displayEl.textContent = ''; }, 1000);
+       }
+
+
+       const dist = Math.abs(this.x - opponent.x);
+       if (dist < range && Math.abs(this.y - opponent.y) < 0.9) {
+         opponent.takeDamage(damage, this.isFacingRight);
+         screenShakeIntensity = 0.3;
+         createHitSparkParticles(opponent.x, opponent.y + 1.2);
+       }
+     }
+
+
+     takeDamage(amount, fromLeft) {
+       this.hp = Math.max(0, this.hp - amount);
+       this.hitCooldown = 15;
+       this.state = 'hit';
+       this.vx = fromLeft ? 0.14 : -0.14;
+       this.vy = 0.06;
+     }
+
+
+     destroy() {
+       scene.remove(this.meshGroup);
+     }
+   }
+
+
+   /* -------------------------------------------------------------------------
+      STAGES BUILDER (Tekken Detailed Environments)
+      ------------------------------------------------------------------------- */
+   function build3DStage(stageData) {
+     stageProps.forEach(p => scene.remove(p));
+     stageLights.forEach(l => scene.remove(l));
+     stageProps = [];
+     stageLights = [];
+
+
+     scene.background = new THREE.Color(stageData.bgHex);
+     scene.fog.color = new THREE.Color(stageData.bgHex);
+
+
+     const makeStageMesh = (geo, mat) => {
+       geo.computeBoundingSphere();
+       geo.computeBoundingBox();
+       return new THREE.Mesh(geo, mat);
+     };
+
+
+     // Floor
+     const floorMat = new THREE.MeshStandardMaterial({ color: stageData.floorHex, roughness: 0.3, metalness: 0.2 });
+     const floorGeo = new THREE.BoxGeometry(16, 0.4, 6);
+     const floor = makeStageMesh(floorGeo, floorMat);
+     floor.position.y = -0.2;
+     floor.receiveShadow = true;
+     scene.add(floor);
+     stageProps.push(floor);
+
+
+     // Ambient & Spotlights
+     const ambLight = new THREE.AmbientLight(0xffffff, 0.7);
+     scene.add(ambLight);
+     stageLights.push(ambLight);
+
+
+     const spot1 = new THREE.SpotLight(stageData.accentHex, 3.0);
+     spot1.position.set(-5, 8, 4);
+     scene.add(spot1);
+     stageLights.push(spot1);
+
+
+     const spot2 = new THREE.SpotLight(stageData.secondaryHex, 3.0);
+     spot2.position.set(5, 8, 4);
+     scene.add(spot2);
+     stageLights.push(spot2);
+
+
+     // Backdrop Details
+     for (let i = -7; i <= 7; i += 3.5) {
+       let pillar;
+       if (stageData.id === 'dojo') {
+         pillar = makeStageMesh(new THREE.CylinderGeometry(0.25, 0.25, 5, 8), new THREE.MeshStandardMaterial({ color: 0x3d2314 }));
+         const lantern = new THREE.PointLight(0xf59e0b, 2, 4);
+         lantern.position.set(i, 2, -2.4);
+         scene.add(lantern);
+         stageLights.push(lantern);
+       } else if (stageData.id === 'volcano') {
+         pillar = makeStageMesh(new THREE.ConeGeometry(0.6, 4, 6), new THREE.MeshStandardMaterial({ color: 0x262626 }));
+       } else {
+         pillar = makeStageMesh(new THREE.BoxGeometry(0.3, 6, 0.3), new THREE.MeshStandardMaterial({ color: 0x06b6d4, metalness: 0.8 }));
+       }
+       pillar.position.set(i, 2.3, -2.5);
+       scene.add(pillar);
+       stageProps.push(pillar);
+     }
+
+
+     buildParticles(stageData.accentHex);
+   }
+
+
+   function buildParticles(accentHex) {
+     if (particleSystem) scene.remove(particleSystem);
+     const count = 150;
+     const geo = new THREE.BufferGeometry();
+     const pos = new Float32Array(count * 3);
+     for (let i = 0; i < count * 3; i += 3) {
+       pos[i] = (Math.random() - 0.5) * 16;
+       pos[i + 1] = Math.random() * 6;
+       pos[i + 2] = (Math.random() - 0.5) * 6;
+     }
+     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+     geo.computeBoundingSphere();
+     geo.computeBoundingBox();
+
+
+     particleSystem = new THREE.Points(geo, new THREE.PointsMaterial({ color: accentHex, size: 0.1, transparent: true, opacity: 0.8 }));
+     scene.add(particleSystem);
+   }
+
+
+   let activeSparks = [];
+   function createHitSparkParticles(x, y) {
+     const count = 25;
+     const pos = []; const vels = [];
+     for (let i = 0; i < count; i++) {
+       pos.push(x, y, 0);
+       vels.push((Math.random() - 0.5) * 0.25, (Math.random() - 0.2) * 0.25, (Math.random() - 0.5) * 0.1);
+     }
+     const geo = new THREE.BufferGeometry();
+     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+     const pMesh = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xf59e0b, size: 0.14, transparent: true }));
+     scene.add(pMesh);
+     activeSparks.push({ mesh: pMesh, vels: vels, life: 1.0 });
+   }
+
+
+   function updateSparks() {
+     for (let i = activeSparks.length - 1; i >= 0; i--) {
+       const s = activeSparks[i];
+       s.life -= 0.08;
+       const pos = s.mesh.geometry.attributes.position.array;
+       for (let j = 0; j < pos.length; j += 3) {
+         pos[j] += s.vels[j];
+         pos[j + 1] += s.vels[j + 1];
+         pos[j + 2] += s.vels[j + 2];
+       }
+       s.mesh.geometry.attributes.position.needsUpdate = true;
+       s.mesh.material.opacity = s.life;
+       if (s.life <= 0) {
+         scene.remove(s.mesh);
+         activeSparks.splice(i, 1);
+       }
+     }
+   }
+
+
+   /* -------------------------------------------------------------------------
+      INPUT HANDLING & COMMAND ATTACKS
+      ------------------------------------------------------------------------- */
+   function checkDoubleTap(code) {
+     const now = Date.now();
+     const recent = keyHistory.filter(k => k.code === code && now - k.time < 350);
+     return recent.length >= 2;
+   }
+
+
+   function handleInput() {
+     if (!isRoundActive || isGameOver || !fighter1 || !fighter2) return;
+
+
+     // P1 Controls & Command Attacks
+     if (keys['KeyS']) {
+       fighter1.state = 'duck';
+     } else {
+       if (keys['KeyA']) fighter1.vx = -fighter1.info.speed;
+       if (keys['KeyD']) fighter1.vx = fighter1.info.speed;
+     }
+
+
+     if (keys['KeyW'] && fighter1.isGrounded) {
+       fighter1.vy = 0.22;
+       fighter1.isGrounded = false;
+     }
+
+
+     // P1 Commands
+     if (keys['KeyD'] && keys['KeyJ']) {
+       fighter1.attack(fighter2, 'cmd_hook', '전진 훅 (Electric Hook)');
+     } else if (keys['KeyA'] && keys['KeyK']) {
+       fighter1.attack(fighter2, 'cmd_upper', '어퍼컷 (Launcher Upper)');
+     } else if (keys['KeyS'] && keys['KeyU']) {
+       fighter1.attack(fighter2, 'cmd_sweep', '하단 쓸기 (Low Sweep)');
+     } else if (checkDoubleTap('KeyD') && keys['KeyI']) {
+       fighter1.attack(fighter2, 'cmd_dropkick', '날아차기 (Flying Kick)');
+     } else if (keys['KeyJ']) {
+       fighter1.attack(fighter2, 'punch_l', '왼손 펀치');
+     } else if (keys['KeyK']) {
+       fighter1.attack(fighter2, 'punch_r', '오른손 펀치');
+     } else if (keys['KeyU']) {
+       fighter1.attack(fighter2, 'kick_l', '왼발 차기');
+     } else if (keys['KeyI']) {
+       fighter1.attack(fighter2, 'kick_r', '오른발 차기');
+     }
+
+
+     // P2 / AI Controls
+     if (selectedMode === 'two') {
+       if (keys['ArrowLeft']) fighter2.vx = -fighter2.info.speed;
+       if (keys['ArrowRight']) fighter2.vx = fighter2.info.speed;
+       if (keys['ArrowUp'] && fighter2.isGrounded) {
+         fighter2.vy = 0.22;
+         fighter2.isGrounded = false;
+       }
+       if (keys['Numpad1'] || keys['KeyN']) fighter2.attack(fighter1, 'punch_l', 'LP');
+       if (keys['Numpad2'] || keys['KeyM']) fighter2.attack(fighter1, 'kick_l', 'LK');
+     } else {
+       // AI Attack Logic
+       const dist = fighter1.x - fighter2.x;
+       if (Math.abs(dist) > 1.1) {
+         fighter2.vx = dist > 0 ? fighter2.info.speed * 0.7 : -fighter2.info.speed * 0.7;
+       } else {
+         if (Math.random() < 0.06) {
+           const r = Math.random();
+           if (r < 0.3) fighter2.attack(fighter1, 'cmd_hook', 'AI전진훅');
+           else if (r < 0.6) fighter2.attack(fighter1, 'cmd_upper', 'AI어퍼컷');
+           else fighter2.attack(fighter1, 'punch_l', 'AI펀치');
+         }
+       }
+     }
+   }
+
+
+   function updateHUD() {
+     if (!fighter1 || !fighter2) return;
+
+
+     const p1Pct = Math.max(0, (fighter1.hp / fighter1.maxHp) * 100);
+     const p2Pct = Math.max(0, (fighter2.hp / fighter2.maxHp) * 100);
+
+
+     document.getElementById('p1-hp-fill').style.width = p1Pct + '%';
+     document.getElementById('p2-hp-fill').style.width = p2Pct + '%';
+
+
+     setTimeout(() => {
+       document.getElementById('p1-hp-dmg').style.width = p1Pct + '%';
+       document.getElementById('p2-hp-dmg').style.width = p2Pct + '%';
+     }, 150);
+
+
+     // Check Round Over
+     if ((fighter1.hp <= 0 || fighter2.hp <= 0 || roundTime <= 0) && isRoundActive) {
+       endRound();
+     }
+   }
+
+
+   function gameLoop() {
+     handleInput();
+
+
+     if (fighter1) fighter1.update(fighter2);
+     if (fighter2) fighter2.update(fighter1);
+
+
+     updateSparks();
+     updateHUD();
+
+
+     if (camera && fighter1 && fighter2) {
+       const midX = (fighter1.x + fighter2.x) / 2;
+       const dist = Math.abs(fighter1.x - fighter2.x);
+       camera.position.x = THREE.MathUtils.lerp(camera.position.x, midX, 0.08);
+       camera.position.z = THREE.MathUtils.lerp(camera.position.z, Math.max(7.0, dist + 3.5), 0.08);
+
+
+       if (screenShakeIntensity > 0) {
+         camera.position.x += (Math.random() - 0.5) * screenShakeIntensity;
+         camera.position.y = 2.8 + (Math.random() - 0.5) * screenShakeIntensity;
+         screenShakeIntensity *= 0.8;
+       } else {
+         camera.position.y = 2.8;
+       }
+     }
+
+
+     if (renderer && scene && camera) {
+       renderer.render(scene, camera);
+     }
+
+
+     gameLoopId = requestAnimationFrame(gameLoop);
+   }
+
+
+   /* =========================================================================
+      4. ROUND & MATCH MANAGEMENT
+      ========================================================================= */
+
+
+   function startRoundSequence() {
+     isRoundActive = false;
+     roundTime = 60;
+     document.getElementById('round-time').textContent = roundTime;
+
+
+     // Reset Fighters HP & Positions
+     if (fighter1) { fighter1.hp = fighter1.maxHp; fighter1.x = -2.2; }
+     if (fighter2) { fighter2.hp = fighter2.maxHp; fighter2.x = 2.2; }
+
+
+     // Banner Ready... Fight Sequence
+     const readyBanner = document.getElementById('ready-banner');
+     const readyText = document.getElementById('ready-text');
+
+
+     readyBanner.classList.remove('hidden');
+     readyText.textContent = `ROUND ${p1RoundWins + p2RoundWins + 1}`;
+
+
+     setTimeout(() => {
+       readyText.textContent = "READY...";
+     }, 1200);
+
+
+     setTimeout(() => {
+       readyText.textContent = "FIGHT!";
+     }, 2200);
+
+
+     setTimeout(() => {
+       readyBanner.classList.add('hidden');
+       isRoundActive = true;
+
+
+       clearInterval(timerInterval);
+       timerInterval = setInterval(() => {
+         if (isRoundActive && roundTime > 0) {
+           roundTime--;
+           document.getElementById('round-time').textContent = roundTime;
+         }
+       }, 1000);
+     }, 3000);
+   }
+
+
+   function endRound() {
+     isRoundActive = false;
+     clearInterval(timerInterval);
+
+
+     if (fighter1.hp > fighter2.hp) p1RoundWins++;
+     else if (fighter2.hp > fighter1.hp) p2RoundWins++;
+
+
+     renderRoundDots();
+
+
+     // Check Match Winner (Target Rounds reached)
+     if (p1RoundWins >= targetRoundsToWin || p2RoundWins >= targetRoundsToWin) {
+       if (p1RoundWins > p2RoundWins) p1MatchWins++;
+       else p2MatchWins++;
+
+
+       endMatch();
+     } else {
+       // Next Round
+       setTimeout(startRoundSequence, 1500);
+     }
+   }
+
+
+   function endMatch() {
+     isGameOver = true;
+     const modal = document.getElementById('game-over-modal');
+     const winText = document.getElementById('winner-text');
+     const winSub = document.getElementById('winner-subtext');
+
+
+     let winner = p1MatchWins > p2MatchWins ? 'PLAYER 1' : 'PLAYER 2';
+     winText.textContent = `${winner} WIN!`;
+     winSub.textContent = `총 3판 중 세트 승리! (P1: ${p1MatchWins}세트 / P2: ${p2MatchWins}세트)`;
+
+
+     modal.classList.remove('hidden');
+   }
+
+
+   function renderRoundDots() {
+     const p1Container = document.getElementById('p1-round-dots');
+     const p2Container = document.getElementById('p2-round-dots');
+
+
+     p1Container.innerHTML = '★'.repeat(p1RoundWins);
+     p2Container.innerHTML = '★'.repeat(p2RoundWins);
+   }
+
+
+   /* =========================================================================
+      5. UI RENDERERS & NAVIGATION
+      ========================================================================= */
+
+
+   function setPage(pageIdx) {
+     currentPage = pageIdx;
+     document.querySelectorAll('.page-screen').forEach((el, idx) => {
+       if (idx === pageIdx) el.classList.remove('hidden');
+       else el.classList.add('hidden');
+     });
+
+
+     const steps = ['STEP 1 / 4: 대전 모드 선택', 'STEP 2 / 4: P1 파이터 선택', 'STEP 3 / 4: P2 파이터 선택', 'STEP 4 / 4: 3D 스테이지 선택', 'REALTIME 3D BATTLE'];
+     document.getElementById('step-indicator').textContent = steps[pageIdx] || '';
+
+
+     const ctrlBar = document.getElementById('controls-bar');
+     if (pageIdx === 4) ctrlBar.classList.remove('hidden');
+     else ctrlBar.classList.add('hidden');
+   }
+
+
+   function renderRosters() {
+     ['roster-p1', 'roster-p2'].forEach((containerId, isP2) => {
+       const container = document.getElementById(containerId);
+       container.innerHTML = '';
+       CHARACTERS.forEach((char, idx) => {
+         const isSelected = (isP2 ? p2Index : p1Index) === idx;
+         const card = document.createElement('div');
+         card.className = `glass-panel rounded-2xl p-3 border-2 transition-all cursor-pointer card-glow ${isSelected ? 'card-selected' : 'border-slate-800'}`;
+         card.innerHTML = `
+           <img src="${char.img}" class="w-full h-32 object-cover rounded-xl mb-2" alt="${char.name}"/>
+           <div class="font-bold text-sm text-slate-100">${char.name}</div>
+           <div class="text-xs text-amber-400">${char.style}</div>
+         `;
+         card.onclick = () => {
+           if (isP2) p2Index = idx;
+           else p1Index = idx;
+           renderRosters();
+         };
+         container.appendChild(card);
+       });
+     });
+   }
+
+
+   function renderStages() {
+     const container = document.getElementById('stage-list');
+     container.innerHTML = '';
+     STAGES.forEach((stage, idx) => {
+       const isSelected = selectedStageIndex === idx;
+       const card = document.createElement('div');
+       card.className = `glass-panel rounded-2xl p-4 border-2 transition-all cursor-pointer card-glow ${isSelected ? 'card-selected' : 'border-slate-800'}`;
+       card.innerHTML = `
+         <div class="w-full h-32 rounded-xl mb-3 flex items-center justify-center font-bold text-lg" style="background:${stage.bgHex}; border:2px solid ${stage.accentHex}">
+           ${stage.name}
+         </div>
+         <h3 class="font-bold text-lg text-slate-100 mb-1">${stage.name}</h3>
+         <p class="text-xs text-slate-400">${stage.desc}</p>
+       `;
+       card.onclick = () => {
+         selectedStageIndex = idx;
+         renderStages();
+       };
+       container.appendChild(card);
+     });
+   }
+
+
+   // Bind Buttons
+   document.querySelectorAll('.mode-card').forEach(btn => {
+     btn.onclick = () => {
+       selectedMode = btn.dataset.mode;
+       document.querySelectorAll('.mode-card').forEach(b => b.classList.remove('card-selected'));
+       btn.classList.add('card-selected');
+     };
+   });
+
+
+   document.getElementById('btn-to-page-1').onclick = () => {
+     targetRoundsToWin = parseInt(document.getElementById('round-slider').value);
+     renderRosters();
+     setPage(1);
+   };
+   document.getElementById('btn-to-page-2').onclick = () => setPage(2);
+   document.getElementById('btn-to-page-3').onclick = () => { renderStages(); setPage(3); };
+
+
+   document.querySelectorAll('.btn-back').forEach(btn => {
+     btn.onclick = () => setPage(parseInt(btn.dataset.back));
+   });
+
+
+   document.getElementById('btn-start-fight').onclick = () => {
+     p1MatchWins = 0; p2MatchWins = 0;
+     currentMatchIndex = 1;
+     startFullMatch();
+   };
+
+
+   document.getElementById('btn-next-round').onclick = () => {
+     document.getElementById('game-over-modal').classList.add('hidden');
+     if (currentMatchIndex < 3) {
+       currentMatchIndex++;
+       startFullMatch();
+     } else {
+       setPage(0);
+     }
+   };
+
+
+   document.getElementById('btn-reselect').onclick = () => {
+     document.getElementById('game-over-modal').classList.add('hidden');
+     setPage(0);
+   };
+
+
+   function startFullMatch() {
+     setPage(4);
+     p1RoundWins = 0; p2RoundWins = 0;
+     isGameOver = false;
+
+
+     document.getElementById('game-match-text').textContent = `GAME ${currentMatchIndex} / 3`;
+     document.getElementById('p1-hud-name').textContent = CHARACTERS[p1Index].name;
+     document.getElementById('p2-hud-name').textContent = CHARACTERS[p2Index].name;
+     renderRoundDots();
+
+
+     if (fighter1) fighter1.destroy();
+     if (fighter2) fighter2.destroy();
+
+
+     build3DStage(STAGES[selectedStageIndex]);
+
+
+     fighter1 = new Fighter3D(CHARACTERS[p1Index], -2.2, true);
+     fighter2 = new Fighter3D(CHARACTERS[p2Index], 2.2, false);
+
+
+     startRoundSequence();
+
+
+     if (!gameLoopId) gameLoop();
+   }
+
+
+   window.onload = () => {
+     initThreeScene();
+     renderRosters();
+     renderStages();
+   };
+ </script>
+</body>
+</html>
