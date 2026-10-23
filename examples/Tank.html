@@ -10,11 +10,13 @@ const T={
  tank:{hp:100,acc:190,maxV:130,turn:1.5,turret:2,r:18},
  tur:{maxW:2.6,acc:6,k:4}, // 수동 조준 포탑 관성: 최대 각속도(rad/s), 각가속도, 오차 추종 계수
  ar:{lo:.72,hi:.92,miss:.3,bonus:1.25,fast:.8}, // 액티브 리로드: 완벽 구간 시작/끝(재장전 진행률), 불발 지연(초), 완벽 발사 피해 배율, 완벽 후 다음 재장전 배율
- fuel:{max:100,use:2,can:40,boost:1.5,canP:.6,hr:1,drop:{grunt:20,rush:15,sniper:30,heavy:45}}, // 기름: 최대량, 초당 소모(최대 입력 기준), 오일 캔 회복량, 부스트 배율(속도·소모), 청크당 캔 확률, 적 종류별 드롭량
+ fuel:{max:100,use:1.5,can:40,boost:1.5,canP:.6,hr:1,xr:1,drop:{grunt:20,rush:15,sniper:30,heavy:45}}, // 기름: 최대량, 초당 소모(최대 입력 기준), 오일 캔 회복량, 부스트 배율(속도·소모), 청크당 캔 확률, 적 종류별 드롭량
  trk:20, // 발자국 지속 시간(초)
+ card:{hp:20,vm:.1,rl:.1,dm:.12,tur:.15,regen:1,rg:.1,sp:.2,loot:4,sc:.1,red:.08,wd:.15,wr:.08}, // 카드 1단계당 효과: 체력+, 이속+, 재장전-, 피해+, 포탑+, 초당회복, 사거리+, 산포-, 격파회복, 점수+, 피해감소, 무기중첩 피해+, 무기중첩 재장전-
+ env:{dayLen:260,nightFrom:.82,view:240,flash:500}, // 하루 길이(초), 밤 시작 지점(0~1), 밤 시야 반경, 발포 시 시야 확대량
  prismP:.05, // 카드 3장 제시 시 프리즘이 끼어들 확률
  score:[100,250,450,750,1200,1850,2550,3400], heal:25, // 8단계 레벨업 점수, 레벨업 시 회복 %
- C:1000, ruinP:.1, natP:.24, squadP:.25, maxP:350, // 청크 크기, 폐허/자연/분대 확률, 파티클 상한
+ C:1000, ruinP:.1, natP:.24, squadP:.3125, maxP:350, // 청크 크기, 폐허/자연/분대 확률, 파티클 상한
  W:[ // 이름,재장전,탄속,사거리,피해,발수,산포,관통(횟수),유도,폭발반경
   ['기본포',1.8,560,560,34,1,.012,0,0,0],['쌍발포',1.6,580,600,30,2,.02,0,0,0],['산탄',2,520,420,13,7,.2,0,0,0],
   ['관통 레일',2.4,1100,900,55,1,.004,3,0,0],['유도 미사일',2.2,360,900,40,1,.03,0,1,45],
@@ -113,7 +115,7 @@ function burst(x,y,k){
   for(let i=0;i<5;i++)P(x,y,R_(300),R_(300),.9,3,'#3a3020',0);dec.push({x,y,k:1,r:14+Math.random()*10,l:30,m:30});rings.push({x,y,r:6,l:.6,s:1});shake=Math.min(18,shake+6)}}
 /* ===== 능력치 계산·카드 ===== */
 function calc(){const L=i=>p.cl[i]||0;
- p.st={mhp:T.tank.hp+20*L('a1'),vm:1+.1*L('a2'),rl:1-.1*L('a3'),dm:1+.12*L('a4'),tur:1+.15*L('a5'),regen:L('a6'),rg:1+.1*L('a7'),sp:Math.pow(.8,L('a8')),loot:4*L('a9'),sc:1+.1*L('a10'),pw:L('a11'),red:.08*L('a12'),
+ const k=T.card;p.st={mhp:T.tank.hp+k.hp*L('a1'),vm:1+k.vm*L('a2'),rl:1-k.rl*L('a3'),dm:1+k.dm*L('a4'),tur:1+k.tur*L('a5'),regen:k.regen*L('a6'),rg:1+k.rg*L('a7'),sp:Math.pow(1-k.sp,L('a8')),loot:k.loot*L('a9'),sc:1+k.sc*L('a10'),pw:L('a11'),red:k.red*L('a12'),
   extra:L('x1'),pierce:L('x2'),hom:[0,.6,.9,1.2][L('x3')],aoe:[0,40,60,80][L('x4')]};p.mhp=p.st.mhp}
 function roll(){const pool=[],pr=[];
  C.forEach((c,i)=>{if((p.cl[c.id]||0)>=3)return;if(c.m&&!mode)return;(c.t==2?pr:pool).push(i)});
@@ -123,7 +125,7 @@ function roll(){const pool=[],pr=[];
 function openCards(){stick.id=null;aim.id=null;offer=roll();if(!offer.length){p.pend=0;return}S='card'}
 function choose(i){const c=C[offer[i]];if(!c||S!='card')return;
  p.cl[c.id]=Math.min(3,(p.cl[c.id]||0)+1);if(c.t==0){p.w=c.w;p.cd=Math.min(p.cd,.6);p.rl=.6}
- calc();if(c.id=='a1')p.hp+=20;p.hp=Math.min(p.mhp,p.hp);
+ calc();if(c.id=='a1')p.hp+=T.card.hp;p.hp=Math.min(p.mhp,p.hp);
  banner={t:c.n+' Lv'+p.cl[c.id],l:2.2};rings.push({x:p.x,y:p.y,r:10,l:1});shake+=6;sfx('evo');vib([20,30,20]);
  p.pend--;if(p.pend>0)openCards();else S='play'}
 /* ===== 전투 로직 ===== */
@@ -131,7 +133,7 @@ const wake=e=>{for(const q of enemies)if(q.camp===e.camp)q.on=1;e.camp.on=0};
 const prog=()=>p.rl>0?Math.max(0,Math.min(1,1-p.cd/p.rl)):1,
  win=()=>[T.ar.lo-.04*p.st.pw,Math.min(.97,T.ar.hi+.025*p.st.pw)];
 function fire(pf){const st=p.st,w_=T.W[p.w],wl=(p.cl['w'+p.w]||1)-1,n=w_[5]+st.extra,mvf=Math.hypot(p.vx,p.vy)/T.tank.maxV,cs=Math.cos(p.ta),sn=Math.sin(p.ta),
-  dm=w_[4]*st.dm*(1+.15*wl)*(pf?T.ar.bonus:1),rl=w_[1]*st.rl*(1-.08*wl)*(pf?T.ar.fast:1),fan=n>2&&n<=5?.07:0;
+  dm=w_[4]*st.dm*(1+T.card.wd*wl)*(pf?T.ar.bonus:1),rl=w_[1]*st.rl*(1-T.card.wr*wl)*(pf?T.ar.fast:1),fan=n>2&&n<=5?.07:0;
  for(let i=0;i<n;i++){const a=p.ta+(Math.random()*2-1)*(w_[6]*st.sp+mvf*.08*st.sp)+(i-(n-1)/2)*fan,off=n==2?(i?7:-7):0;
   bul.push({x:p.x+cs*28-sn*off,y:p.y+sn*28+cs*off,vx:Math.cos(a)*w_[2],vy:Math.sin(a)*w_[2],l:w_[3]*st.rg,dm,own:0,pierce:w_[7]+st.pierce,hom:Math.max(w_[8],st.hom),aoe:w_[9]+st.aoe,h:[]})}
  p.cd=rl;p.rl=rl;p.rc=1;shake+=3;light=.5;sfx('fire');vib(15);
@@ -262,11 +264,12 @@ function drawCan(c){ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.a);
  ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(-6,-7,16,20);ctx.fillStyle='#b02a1e';ctx.fillRect(-8,-10,16,20);ctx.fillStyle='#d8503a';ctx.fillRect(-8,-10,16,5);
  ctx.fillStyle='#2a2a22';ctx.fillRect(2,-14,5,5);ctx.strokeStyle='#5a1410';ctx.lineWidth=1.5;ctx.strokeRect(-8,-10,16,20);ctx.beginPath();ctx.moveTo(-8,-10);ctx.lineTo(8,10);ctx.stroke();
  ctx.fillStyle='rgba(255,225,130,'+.22*(.5+.5*Math.sin(t*3+c.x))+')';ctx.fillRect(-8,-10,16,20);ctx.restore()}
-function pickCans(){ // 기름 우선 충전 → 남는 양은 부족한 체력 보충(T.fuel.hr 비율). 기름·체력이 모두 가득이면 캔을 남겨둠
- const C_=T.C,f=T.fuel,full=()=>p.fuel>=f.max&&p.hp>=p.mhp;if(full())return;
+function pickCans(){ // 기름 우선 충전 → 남는 양은 체력(T.fuel.hr 비율) → 체력 초과분은 경험치(점수, T.fuel.xr 비율)
+ const C_=T.C,f=T.fuel;
  for(const cx of new Set([Math.floor((p.x-30)/C_),Math.floor((p.x+30)/C_)]))for(const cy of new Set([Math.floor((p.y-30)/C_),Math.floor((p.y+30)/C_)])){const cs=chunk(cx,cy).cans;
-  for(let i=cs.length-1;i>=0;i--){const c=cs[i];if(Math.hypot(c.x-p.x,c.y-p.y)<T.tank.r+14){cs.splice(i,1);const g=Math.min(c.v,f.max-p.fuel),h=Math.min((c.v-g)*f.hr,p.mhp-p.hp);p.fuel+=g;p.hp+=h;
-   if(g>=1)pop(c.x,c.y-20,'+'+Math.round(g)+' 기름','#ffb84a');if(h>=1)pop(c.x,c.y-(g>=1?44:20),'+'+Math.round(h)+' 체력','#9bd84a');sfx('pick');vib(10);for(let k=0;k<5;k++)P(c.x,c.y,R_(160),R_(160),.3,3,'#ffcf7a',0);if(full())return}}}}
+  for(let i=cs.length-1;i>=0;i--){const c=cs[i];if(Math.hypot(c.x-p.x,c.y-p.y)<T.tank.r+14){cs.splice(i,1);const g=Math.min(c.v,f.max-p.fuel),r1=c.v-g,h=Math.min(r1*f.hr,p.mhp-p.hp),xp=(r1-(f.hr>0?h/f.hr:0))*f.xr;p.fuel+=g;p.hp+=h;
+   let oy=20;if(g>=1){pop(c.x,c.y-oy,'+'+Math.round(g)+' 기름','#ffb84a');oy+=24}if(h>=1){pop(c.x,c.y-oy,'+'+Math.round(h)+' 체력','#9bd84a');oy+=24}
+   if(xp>=1){p.sc+=Math.round(xp);pop(c.x,c.y-oy,'+'+Math.round(xp)+' 경험치','#8ac8ff');checkEvo()}sfx('pick');vib(10);for(let k=0;k<5;k++)P(c.x,c.y,R_(160),R_(160),.3,3,'#ffcf7a',0);}}}}
 const btns=()=>[{x:W-48,y:8,i:S=='pause'?'▶':'⏸',f:pz},{x:W-96,y:8,i:sndOn?'🔊':'🔇',f:()=>sndOn=!sndOn},{x:W-144,y:8,i:vibOn?'📳':'📴',f:()=>vibOn=!vibOn}];
 function pz(){if(S=='play'){S='pause';stick.id=null;aim.id=null}else if(S=='pause')S='play'}
 function draw(dt){
@@ -293,9 +296,9 @@ function draw(dt){
  ctx.font='bold '+Math.max(16,18/z)+'px sans-serif';ctx.textAlign='center';for(const q of pops){ctx.globalAlpha=Math.min(1,q.l*1.5);ctx.lineWidth=3/z;ctx.strokeStyle='rgba(0,0,0,.6)';ctx.strokeText(q.s,q.x,q.y);ctx.fillStyle=q.c;ctx.fillText(q.s,q.x,q.y)}ctx.globalAlpha=1;
  ctx.restore();
  /* 화면 오버레이: 시간대·밤 시야·날씨·비네팅 */
- const tod=.5-.5*Math.cos(t*6.2832/260),night=Math.max(0,tod-.82)/.18,dusk=Math.sin(tod*3.1416);
+ const tod=.5-.5*Math.cos(t*6.2832/T.env.dayLen),night=Math.max(0,tod-T.env.nightFrom)/(1-T.env.nightFrom),dusk=Math.sin(tod*3.1416);
  ctx.fillStyle='rgba(255,140,50,'+dusk*.14+')';ctx.fillRect(0,0,W,H);ctx.fillStyle='rgba(8,12,30,'+night*.5+')';ctx.fillRect(0,0,W,H);
- if(night>.05){const px=(p.x-cam.x)*z+W/2,py=(p.y-cam.y)*z+H/2,Rr=(240+light*500)*z,g=ctx.createRadialGradient(px,py,Rr*.618,px,py,Rr*1.6);g.addColorStop(0,'rgba(5,8,18,0)');g.addColorStop(1,'rgba(5,8,18,'+night*.8+')');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
+ if(night>.05){const px=(p.x-cam.x)*z+W/2,py=(p.y-cam.y)*z+H/2,Rr=(T.env.view+light*T.env.flash)*z,g=ctx.createRadialGradient(px,py,Rr*.618,px,py,Rr*1.6);g.addColorStop(0,'rgba(5,8,18,0)');g.addColorStop(1,'rgba(5,8,18,'+night*.8+')');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
  if(wa>.03){ctx.fillStyle=wk==2?'rgba(30,40,50,'+.18*wa+')':'rgba(160,130,70,'+.2*wa+')';ctx.fillRect(0,0,W,H);ctx.strokeStyle=wk==2?'rgba(170,190,210,'+.5*wa+')':'rgba(210,180,120,'+.3*wa+')';ctx.lineWidth=1;ctx.beginPath();
   for(const d of rain){d.y=(d.y+dt*(wk==2?1.1:.05))%1;d.x=(d.x-dt*(wk==2?.05:.6)+1)%1;const x=d.x*W,y=d.y*H;ctx.moveTo(x,y);ctx.lineTo(x+(wk==2?-3:-22),y+(wk==2?14:2))}ctx.stroke()}
  let g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.4,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'rgba(15,12,0,0)');g.addColorStop(1,'rgba(15,12,0,.55)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
@@ -371,5 +374,13 @@ function loop(ms){requestAnimationFrame(loop);let dt=Math.min(.05,(ms-last)/1000
  else if(S=='over'){over+=dt;for(const q of par){q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt}par=par.filter(q=>q.l>0);shake*=Math.exp(-8*dt);hurt=Math.max(0,hurt-dt);if(eg)eg.gain.value=0}
  else if(eg)eg.gain.value=0;
  draw(dt)}
+/* ===== 튜닝 적용 (TankEditor.html 연동) ===== */
+const TUNE_DEFAULT={}; // 에디터에서 복사한 JSON을 여기에 붙여넣으면 고정 적용됩니다
+function setPath(path,v){const a=path.split('.');let o=T;for(let i=0;i<a.length-1;i++){o=o[a[i]];if(o==null)return}const k=a[a.length-1];if(typeof o[k]=='number')o[k]=v}
+function applyTune(m){for(const k in m)if(typeof m[k]=='number'&&isFinite(m[k]))setPath(k,m[k]);if(p){calc();p.hp=Math.min(p.hp,p.mhp)}}
+try{applyTune(TUNE_DEFAULT);applyTune(JSON.parse(localStorage.getItem('tankTune')||'{}'))}catch(e){}
+addEventListener('message',e=>{const d=e.data;if(!d||typeof d!='object')return;
+ if(d.type=='tune')applyTune(d.values||{});else if(d.type=='start')start(d.mode===1?1:0)});
+try{if(parent!==window)parent.postMessage({type:'ready'},'*')}catch(e){}
 reset();requestAnimationFrame(loop);
 </script></body></html>
