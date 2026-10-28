@@ -13,6 +13,7 @@ canvas{display:block;filter:brightness(.78) contrast(1.08) saturate(.9)}
 #tp{max-width:560px}b{color:#f2d21a}
 button{margin:6px;padding:12px 22px;border:0;border-radius:8px;background:#13864a;color:#fff;font-size:17px;cursor:pointer}button:disabled{opacity:.35}
 </style>
+<body>
 <div id=vig class=o></div><div id=x class=o></div><div id=lvl class=o>출구 0</div><div id=help class=o>WASD 이동 · 마우스/←→ 시선 · R 재시작</div><div id=c class=o></div><div id=f class=o></div>
 <div id=s><div id=tp></div><div><button id=pv>◀ 이전</button><button id=nx>다음 ▶</button></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -130,3 +131,4 @@ $("pv").onclick=()=>{ti--;tr()};
 $("nx").onclick=()=>{if(ti<3){ti++;tr();return}$("s").style.display="none";init();play=1;try{cv.requestPointerLock()}catch(e){}};
 tr();build();loop();
 </script>
+</body></html>
