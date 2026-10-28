@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>온기뮤직 | 나를 위한 노래 추천</title>
+<style>
+:root{--ink:#342c2a;--muted:#796b66;--rose:#b96859;--cream:#fff9f2;--peach:#f4dfd2;--line:#ead9ce;--green:#657b68}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(135deg,#fff8f0,#f5e5dd 60%,#f7eee3);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif}
+.wrap{max-width:1000px;margin:auto;padding:26px 18px 60px}
+.hero{border-radius:28px;padding:34px 28px;background:linear-gradient(120deg,#f2d7c8dd,#fffaf2ee),radial-gradient(circle at 90% 20%,#d7b5a4,transparent 40%);box-shadow:0 15px 45px #8a62551a;position:relative;overflow:hidden}
+.kicker{letter-spacing:.16em;font-size:12px;color:var(--rose);font-weight:800}
+.hero h1{font-size:clamp(30px,6vw,48px);margin:10px 0 8px;letter-spacing:-.05em}
+.hero p{max-width:600px;line-height:1.7;color:#695650}
+.note{font-size:12px;color:var(--muted)}
+nav{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+.mode{border:1px solid var(--line);background:#fffaf5;border-radius:18px;padding:18px 12px;text-align:left;cursor:pointer;color:var(--ink);transition:.2s}
+.mode:hover,.mode.active{background:#f1d8cb;border-color:#d5a18f;transform:translateY(-2px)}
+.mode b{display:block;font-size:16px;margin:8px 0 4px}
+.mode span{font-size:12px;color:var(--muted);line-height:1.5}
+.emoji{font-size:24px}
+.panel{background:#fffdf9;border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 10px 35px #76554b0c}
+.panel h2{margin:0 0 6px;font-size:23px}
+.sub{color:var(--muted);margin:0 0 22px;line-height:1.6}
+.qgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.q{padding:15px;border:1px solid #f0e2d9;border-radius:16px;background:#fffaf6}
+.q label{font-weight:750;display:block;margin-bottom:10px}
+.opts{display:flex;flex-wrap:wrap;gap:7px}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0}
+.opt span{display:block;border:1px solid var(--line);border-radius:999px;padding:8px 11px;font-size:13px;cursor:pointer;background:white}
+.opt input:checked+span{background:#e8c4b4;border-color:#c78976;color:#4c2d25}
+.field{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;background:white;font:inherit;color:var(--ink)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.btn{border:0;border-radius:999px;padding:12px 20px;font-weight:750;cursor:pointer}
+.primary{background:var(--rose);color:white}
+.secondary{background:#f4e9e1;color:#604a41}
+.results{margin-top:22px}
+.result-head{display:flex;justify-content:space-between;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:14px}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.song{border:1px solid var(--line);border-radius:18px;padding:17px;background:#fffaf6;min-width:0}
+.rank{color:var(--rose);font-size:12px;font-weight:800}
+.song h3{font-size:18px;line-height:1.35;margin:8px 0 4px;overflow-wrap:anywhere}
+.artist{color:var(--muted);font-size:13px}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin:12px 0}
+.tag{background:#f2e4da;border-radius:999px;padding:4px 8px;font-size:11px}
+.reason{font-size:13px;line-height:1.65;color:#554843}
+.lyric{font-size:12px;line-height:1.6;color:#8a5a4d;border-top:1px solid var(--line);padding-top:10px;margin-top:12px}
+.empty{padding:22px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);line-height:1.7}
+.footer{margin-top:18px;font-size:12px;line-height:1.7;color:var(--muted)}
+a{color:#965648}
+@media(max-width:700px){nav{grid-template-columns:1fr}.qgrid,.cards{grid-template-columns:1fr}.hero{padding:26px 20px}.panel{padding:17px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<section class="hero">
+  <div class="kicker">YOUR MOOD, YOUR MUSIC</div>
+  <h1>오늘의 마음에,<br>노래 한 곡의 온기</h1>
+  <p>기분과 취향을 하나씩 골라 주세요. 시대와 가수 유형, 장르까지 고려해 어울리는 노래를 찾아볼게요.</p>
+  <div class="note">🎧 온기뮤직 · 감성 음악 추천 실험실</div>
+</section>
+
+<nav aria-label="추천 방식">
+  <button class="mode active" data-mode="mood">
+    <div class="emoji">☁️</div><b>지금 기분에 맞게</b>
+    <span>현재 감정과 원하는 분위기를 바탕으로 추천</span>
+  </button>
+  <button class="mode" data-mode="taste">
+    <div class="emoji">🎨</div><b>내 취향에 맞게</b>
+    <span>장르, 시대, 가수 유형을 세밀하게 반영</span>
+  </button>
+  <button class="mode" data-mode="similar">
+    <div class="emoji">💿</div><b>좋아하는 곡과 비슷하게</b>
+    <span>입력한 노래의 특징을 비교해 추천</span>
+  </button>
+</nav>
+
+<section class="panel" id="formPanel"></section>
+<section class="results" id="results" aria-live="polite"></section>
+
+<div class="footer">
+참고: 이 파일은 브라우저에서 작동하는 데모이며, 외부 AI 감정 분석이나 실시간 멜론 데이터 연결은 포함하지 않습니다. 곡 정보는 추천 알고리즘 시연용으로 정리했으며, 개별 곡의 멜론 연간 차트 수록 여부를 모두 검증한 데이터로 표시하지 않습니다. 최신 차트는 <a href="https://www.melon.com/chart/" target="_blank" rel="noopener">멜론 TOP100</a>에서 확인할 수 있습니다. 가사는 저작권 보호를 위해 길게 싣지 않고 곡의 주제와 분위기를 설명합니다.
+</div>
+</main>
+
+<script>
+const songs = [
+["좋은 사람","토이","2000s","발라드","남성 솔로","아련함","잔잔","사랑과 그리움이 남는 서정적인 발라드"],
+["그녀가 웃잖아","김형중","2000s","발라드","남성 솔로","설렘","잔잔","담백한 보컬과 풋풋한 사랑의 감정"],
+["그랬나봐","김형중","2000s","발라드","남성 솔로","그리움","잔잔","뒤늦게 깨닫는 마음을 담은 감성 발라드"],
+["벌써 일년","브라운 아이즈","2000s","R&B","혼성/그룹","그리움","잔잔","시간이 지나도 남아 있는 이별의 여운"],
+["점점","브라운 아이즈","2000s","R&B","혼성/그룹","슬픔","잔잔","차분한 편곡과 쓸쓸한 정서"],
+["보고싶다","김범수","2000s","발라드","남성 솔로","그리움","웅장","감정을 크게 끌어올리는 보컬 중심 곡"],
+["희재","성시경","2000s","발라드","남성 솔로","슬픔","잔잔","영화처럼 아련한 분위기와 섬세한 보컬"],
+["내 여자라니까","이승기","2000s","댄스/팝","남성 솔로","설렘","밝음","경쾌하고 솔직한 고백의 느낌"],
+["거짓말","빅뱅","2000s","댄스/팝","남성 그룹","그리움","신남","중독성 있는 리듬과 이별 감정의 대비"],
+["하루하루","빅뱅","2000s","댄스/팝","남성 그룹","슬픔","신남","강한 비트 위에 얹힌 애절한 감정"],
+["Gee","소녀시대","2000s","댄스/팝","여성 그룹","행복","신남","밝고 통통 튀는 에너지"],
+["Nobody","원더걸스","2000s","댄스/팝","여성 그룹","행복","신남","복고풍 리듬과 따라 부르기 쉬운 후렴"],
+["잔소리","아이유, 임슬옹","2010s","댄스/팝","혼성/그룹","설렘","밝음","티격태격하는 사랑의 경쾌함"],
+["좋은 날","아이유","2010s","댄스/팝","여성 솔로","설렘","신남","밝은 멜로디와 벅차오르는 전개"],
+["너랑 나","아이유","2010s","댄스/팝","여성 솔로","설렘","신남","동화 같은 사운드와 힘찬 전개"],
+["하늘을 달리다","이적","2000s","록","남성 솔로","희망","신남","답답함을 털어내는 시원한 밴드 사운드"],
+["벚꽃 엔딩","버스커 버스커","2010s","인디/밴드","남성 그룹","행복","밝음","산뜻한 봄날의 설렘"],
+["모든 날, 모든 순간","폴킴","2010s","발라드","남성 솔로","설렘","잔잔","따뜻하고 편안한 사랑의 분위기"],
+["너를 만나","폴킴","2010s","발라드","남성 솔로","행복","잔잔","고마움과 다정함을 전하는 곡"],
+["사랑을 했다","iKON","2010s","댄스/팝","남성 그룹","그리움","밝음","쉽게 기억되는 멜로디에 담긴 이별"],
+["뚜두뚜두","BLACKPINK","2010s","댄스/팝","여성 그룹","자신감","신남","강렬한 비트와 자신감 있는 분위기"],
+["빨간 맛","레드벨벳","2010s","댄스/팝","여성 그룹","행복","신남","상큼한 사운드와 여름의 에너지"],
+["삐삐","아이유","2010s","댄스/팝","여성 솔로","자신감","밝음","개성 있는 리듬과 당당한 태도"],
+["밤편지","아이유","2010s","발라드","여성 솔로","그리움","잔잔","조용히 마음을 전하는 어쿠스틱 감성"],
+["비도 오고 그래서","헤이즈","2010s","R&B","여성 솔로","슬픔","잔잔","비 오는 날과 어울리는 쓸쓸한 R&B"],
+["널 너무 모르고","헤이즈","2010s","R&B","여성 솔로","그리움","잔잔","절제된 보컬과 이별 후의 복잡한 감정"],
+["선물","멜로망스","2010s","발라드","혼성/그룹","행복","밝음","따뜻한 피아노와 설레는 고백"],
+["주저하는 연인들을 위해","잔나비","2010s","인디/밴드","남성 그룹","설렘","잔잔","빈티지한 밴드 사운드와 청춘의 망설임"],
+["한 페이지가 될 수 있게","DAY6","2010s","록","남성 그룹","희망","신남","함께 달려가는 듯한 밴드 에너지"],
+["예뻤어","DAY6","2010s","록","남성 그룹","그리움","신남","밝은 밴드 사운드와 아련한 회상"],
+["사랑했나봐","윤도현","2000s","록","남성 솔로","그리움","신남","시원한 록 사운드와 후회가 섞인 감정"],
+["Marry Me","마크툽","2010s","발라드","남성 솔로","행복","잔잔","포근하고 진심 어린 사랑의 고백"],
+["에잇","아이유","2020s","댄스/팝","여성 솔로","그리움","밝음","청량한 사운드 속에 담긴 추억과 위로"],
+["Dynamite","방탄소년단","2020s","댄스/팝","남성 그룹","행복","신남","디스코 리듬과 긍정적인 에너지"],
+["Butter","방탄소년단","2020s","댄스/팝","남성 그룹","자신감","신남","매끄러운 팝 사운드와 경쾌한 리듬"],
+["LOVE DIVE","IVE","2020s","댄스/팝","여성 그룹","자신감","신남","세련된 비트와 몽환적인 팝 분위기"],
+["After LIKE","IVE","2020s","댄스/팝","여성 그룹","행복","신남","화려한 디스코 감각과 강한 후렴"],
+["I AM","IVE","2020s","댄스/팝","여성 그룹","자신감","신남","상승감 있는 전개와 당당한 메시지"],
+["Hype Boy","NewJeans","2020s","댄스/팝","여성 그룹","설렘","밝음","가볍고 산뜻한 리듬과 풋풋한 설렘"],
+["Ditto","NewJeans","2020s","댄스/팝","여성 그룹","그리움","잔잔","몽글몽글한 질감과 향수를 자극하는 분위기"],
+["Super Shy","NewJeans","2020s","댄스/팝","여성 그룹","설렘","신남","가벼운 비트와 수줍은 설렘"],
+["Drama","aespa","2020s","댄스/팝","여성 그룹","자신감","신남","강렬한 사운드와 카리스마"],
+["Whiplash","aespa","2020s","댄스/팝","여성 그룹","자신감","신남","미니멀한 비트와 자신감 있는 퍼포먼스 감성"],
+["ANTIFRAGILE","LE SSERAFIM","2020s","댄스/팝","여성 그룹","자신감","신남","리듬감 있고 당당한 분위기"],
+["Perfect Night","LE SSERAFIM","2020s","댄스/팝","여성 그룹","행복","밝음","친구들과 보내는 밤처럼 편안하고 경쾌함"],
+["Ditto","NewJeans","2020s","댄스/팝","여성 그룹","슬픔","잔잔","부드러운 비트와 쓸쓸한 향수"],
+["사건의 지평선","윤하","2020s","록","여성 솔로","희망","신남","점점 커지는 밴드 사운드와 새로운 출발"],
+["오르트구름","윤하","2020s","록","여성 솔로","희망","신남","힘 있게 뻗어 나가는 모험의 분위기"],
+["TOMBOY","(여자)아이들","2020s","록","여성 그룹","자신감","신남","거친 기타와 개성 있는 태도"],
+["퀸카","(여자)아이들","2020s","댄스/팝","여성 그룹","자신감","신남","당당하고 장난스러운 팝 에너지"],
+["Love wins all","아이유","2020s","발라드","여성 솔로","슬픔","잔잔","영화적인 감성과 애틋한 보컬"],
+["밤양갱","비비","2020s","인디/밴드","여성 솔로","그리움","밝음","산뜻한 멜로디에 담긴 아쉬움"],
+["그때 그 순간 그대로","WSG워너비","2020s","발라드","혼성/그룹","그리움","밝음","추억을 떠올리게 하는 따뜻한 합창"],
+["취중고백","김민석","2020s","발라드","남성 솔로","설렘","잔잔","솔직한 고백과 부드러운 보컬"],
+["헤어지자 말해요","박재정","2020s","발라드","남성 솔로","슬픔","웅장","감정을 크게 드러내는 이별 발라드"],
+["사랑인가 봐","멜로망스","2020s","발라드","혼성/그룹","설렘","밝음","밝고 따뜻한 로맨틱 감성"],
+["신호등","이무진","2020s","인디/밴드","남성 솔로","희망","밝음","일상적인 고민과 성장의 메시지"],
+["나는 반딧불","황가람","2020s","발라드","남성 솔로","위로","잔잔","스스로를 다독이는 따뜻한 정서"],
+["HAPPY","DAY6","2020s","록","남성 그룹","행복","신남","밴드 사운드와 행복을 바라는 마음"],
+["Welcome to the Show","DAY6","2020s","록","남성 그룹","희망","신남","함께하는 순간을 축하하는 힘찬 곡"],
+["Magnetic","ILLIT","2020s","댄스/팝","여성 그룹","설렘","신남","통통 튀는 비트와 사랑에 끌리는 감정"],
+["Supernova","aespa","2020s","댄스/팝","여성 그룹","자신감","신남","실험적인 전자음과 강한 에너지"],
+["첫 만남은 계획대로 되지 않아","TWS","2020s","댄스/팝","남성 그룹","설렘","신남","풋풋한 첫 만남과 청량한 분위기"],
+["Plot Twist","TWS","2020s","댄스/팝","남성 그룹","설렘","밝음","청량한 사운드와 학교생활 같은 설렘"],
+["Love Lee","AKMU","2020s","댄스/팝","혼성/그룹","행복","밝음","장난스럽고 사랑스러운 어쿠스틱 팝"],
+["어떻게 이별까지 사랑하겠어, 널 사랑하는 거지","AKMU","2010s","발라드","혼성/그룹","슬픔","잔잔","섬세한 표현과 깊은 이별의 감정"],
+["200%","AKMU","2010s","댄스/팝","혼성/그룹","설렘","밝음","산뜻하고 귀여운 사랑의 고백"],
+["우주를 줄게","볼빨간사춘기","2010s","인디/밴드","여성 그룹","설렘","밝음","통통 튀는 보컬과 사랑스러운 상상"],
+["여행","볼빨간사춘기","2010s","인디/밴드","여성 그룹","행복","신남","일상에서 벗어나고 싶은 가벼운 에너지"],
+["폰서트","10CM","2010s","인디/밴드","남성 솔로","설렘","밝음","소박하고 귀여운 고백의 분위기"],
+["스토커","10CM","2010s","인디/밴드","남성 솔로","그리움","잔잔","어쿠스틱 사운드와 짝사랑의 쓸쓸함"],
+["사랑은 은하수 다방에서","10CM","2010s","인디/밴드","남성 솔로","행복","밝음","포근하고 소박한 인디 감성"],
+["그대라는 사치","한동근","2010s","발라드","남성 솔로","행복","웅장","풍성한 보컬과 벅찬 사랑의 감정"],
+["이 소설의 끝을 다시 써보려 해","한동근","2010s","발라드","남성 솔로","슬픔","웅장","강한 보컬과 이별의 여운"],
+["안아줘","정준일","2010s","발라드","남성 솔로","위로","잔잔","차분한 편곡과 위로를 바라는 마음"],
+["숨","박효신","2010s","발라드","남성 솔로","위로","웅장","지친 마음을 감싸는 따뜻한 메시지"],
+["걱정말아요 그대","이적","2010s","발라드","남성 솔로","위로","잔잔","괜찮다고 다독이는 위로의 노래"],
+["소주 한 잔","임창정","2000s","발라드","남성 솔로","슬픔","웅장","진한 감정과 호소력 있는 보컬"],
+["사랑의 바보","더 넛츠","2000s","록","남성 그룹","그리움","신남","밴드 사운드와 애절한 사랑의 감정"],
+["사랑했나봐","윤도현","2000s","록","남성 솔로","그리움","신남","후회와 미련을 힘 있게 풀어내는 록"],
+["사랑은 봄비처럼 이별은 겨울비처럼","임현정","2000s","발라드","여성 솔로","슬픔","잔잔","계절의 이미지로 이별을 표현한 곡"],
+["아마도 그건","홍민정","2000s","발라드","여성 솔로","설렘","잔잔","맑은 목소리와 풋풋한 감성"],
+["사랑 안 해","백지영","2000s","발라드","여성 솔로","슬픔","웅장","단단한 보컬과 이별의 결심"],
+["총 맞은 것처럼","백지영","2000s","발라드","여성 솔로","슬픔","웅장","극적인 보컬과 강한 이별 감정"],
+["U-Go-Girl","이효리","2000s","댄스/팝","여성 솔로","자신감","신남","당당하고 유쾌한 댄스 팝"],
+["Tell Me","원더걸스","2000s","댄스/팝","여성 그룹","행복","신남","복고풍 비트와 중독성 있는 리듬"],
+["미스터","카라","2000s","댄스/팝","여성 그룹","행복","신남","경쾌한 리듬과 에너지 넘치는 퍼포먼스"],
+["Fantastic Baby","빅뱅","2010s","댄스/팝","남성 그룹","자신감","신남","강렬한 전자음과 축제 같은 분위기"],
+["으르렁","EXO","2010s","댄스/팝","남성 그룹","자신감","신남","묵직한 리듬과 카리스마 있는 분위기"],
+["봄날","방탄소년단","2010s","댄스/팝","남성 그룹","그리움","잔잔","기다림과 그리움을 담은 따뜻한 사운드"],
+["소나기","아이오아이","2010s","발라드","여성 그룹","슬픔","잔잔","이별과 추억을 담은 서정적인 곡"],
+["너의 의미","아이유","2010s","인디/밴드","여성 솔로","행복","잔잔","부드럽고 포근한 리메이크 감성"],
+["금요일에 만나요","아이유","2010s","댄스/팝","여성 솔로","설렘","밝음","약속을 기다리는 설레는 리듬"],
+["Blueming","아이유","2010s","댄스/팝","여성 솔로","행복","신남","톡톡 튀는 팝 사운드와 밝은 설렘"],
+["Celebrity","아이유","2020s","댄스/팝","여성 솔로","위로","밝음","자신의 특별함을 응원하는 메시지"],
+["Lilac","아이유","2020s","댄스/팝","여성 솔로","희망","신남","화사한 팝 사운드와 새로운 시작"],
+["나의 사춘기에게","볼빨간사춘기","2010s","발라드","여성 그룹","위로","잔잔","불안한 마음을 다독이는 진솔한 노래"],
+["너였다면","정승환","2010s","발라드","남성 솔로","슬픔","웅장","절절한 보컬과 간절한 감정"],
+["이 바보야","정승환","2010s","발라드","남성 솔로","그리움","웅장","후회가 묻어나는 강한 발라드"],
+["사랑에 연습이 있었다면","임재현","2010s","발라드","남성 솔로","슬픔","웅장","이별 후 후회와 감정의 고조"],
+["취기를 빌려","산들","2020s","발라드","남성 솔로","설렘","잔잔","수줍은 고백을 담은 부드러운 곡"],
+["밤하늘의 별을","경서","2020s","발라드","여성 솔로","설렘","잔잔","따뜻하고 편안한 고백의 감성"]
+].map((s,i)=>({id:i,title:s[0],artist:s[1],era:s[2],genre:s[3],singer:s[4],mood:s[5],energy:s[6],vibe:s[7]}));
+
+const state={mode:"mood"};
+const formPanel=document.querySelector("#formPanel");
+const results=document.querySelector("#results");
+
+const questions={
+mood:{
+title:"지금 기분에 어울리는 노래",
+desc:"지금 마음과 원하는 분위기를 골라 주세요. 6개 답변을 모두 추천 점수에 반영해요.",
+qs:[
+["mood","지금 감정이 어떤가요?",["행복","슬픔","화남","설렘","그리움","자신감","희망","위로"]],
+["energy","원하는 에너지는?",["잔잔","밝음","신남","웅장"]],
+["genre","듣고 싶은 장르는?",["상관없음","발라드","댄스/팝","R&B","록","인디/밴드"]],
+["era","어느 시대 노래가 좋아요?",["상관없음","2000s","2010s","2020s"]],
+["singer","선호하는 가수 유형은?",["상관없음","여성 솔로","남성 솔로","여성 그룹","남성 그룹","혼성/그룹"]],
+["goal","노래를 듣고 어떤 기분이 들었으면 하나요?",["위로","설렘","힘내기","추억","기분 전환"]]
+]},
+taste:{
+title:"내 음악 취향 찾기",
+desc:"좋아하는 음악의 특징을 선택하면 각 답변을 함께 비교해 추천해요.",
+qs:[
+["genre","가장 좋아하는 장르는?",["댄스/팝","발라드","R&B","록","인디/밴드"]],
+["era","선호하는 시대는?",["2000s","2010s","2020s"]],
+["singer","좋아하는 가수 유형은?",["여성 솔로","남성 솔로","여성 그룹","남성 그룹","혼성/그룹"]],
+["energy","좋아하는 분위기는?",["잔잔","밝음","신남","웅장"]],
+["mood","좋아하는 감정선은?",["설렘","행복","그리움","슬픔","자신감","희망","위로"]],
+["language","주로 어떤 곡을 원하나요?",["한국 대중음악","장르와 분위기 우선"]]
+]},
+similar:{
+title:"좋아하는 노래와 비슷한 곡",
+desc:"곡 제목을 입력해 주세요. 데이터에 있는 곡이면 특징을 직접 비교하고, 없으면 임시 후보를 보여 줘요.",
+qs:[]
+}
+};
+
+function renderForm(){
+  document.querySelectorAll(".mode").forEach(b=>b.classList.toggle("active",b.dataset.mode===state.mode));
+  const cfg=questions[state.mode];
+
+  if(state.mode==="similar"){
+    formPanel.innerHTML=`<h2>${cfg.title}</h2>
+    <p class="sub">${cfg.desc}</p>
+    <label for="favSong">좋아하는 노래 제목</label>
+    <input id="favSong" class="field" placeholder="예: 좋은 사람">
+    <div class="actions">
+      <button class="btn primary" id="recommend">비슷한 노래 찾기</button>
+      <button class="btn secondary" id="reset">처음으로</button>
+    </div>
+    <p class="note">팁: 가수 이름도 함께 쓰면 더 정확하게 찾을 수 있어요. 예: 좋은 사람 - 토이</p>`;
+  }else{
+    formPanel.innerHTML=`<h2>${cfg.title}</h2>
+    <p class="sub">${cfg.desc}</p>
+    <div class="qgrid">${cfg.qs.map((q,i)=>`<div class="q">
+    <label>${i+1}. ${q[1]}</label>
+    <div class="opts">${q[2].map((v,j)=>`<label class="opt">
+    <input type="radio" name="
+q[0]"value="{v}" ${j===0?"checked":""}>
+    <span>${({"2000s":"2000년대","2010s":"2010년대","2020s":"2020년대"}[v]||v)}</span>
+    </label>`).join("")}</div></div>`).join("")}</div>
+    <div class="actions">
+      <button class="btn primary" id="recommend">내 노래 추천받기</button>
+      <button class="btn secondary" id="reset">선택 초기화</button>
+    </div>`;
+  }
+
+  document.querySelector("#recommend").addEventListener("click",recommend);
+  document.querySelector("#reset").addEventListener("click",()=>{results.innerHTML="";renderForm()});
+}
+
+function recommend(){
+  let chosen={};
+
+  if(state.mode==="similar"){
+    const val=document.querySelector("#favSong").value.trim();
+    if(!val){
+      results.innerHTML='<div class="empty">좋아하는 곡 제목을 먼저 입력해 주세요.</div>';
+      return;
+    }
+
+    const query=val.toLowerCase();
+    let seed=songs.find(s=>
+      (s.title+" "+s.artist).toLowerCase().includes(query)||
+      query.includes(s.title.toLowerCase())
+    );
+
+    if(!seed){
+      const fallbackTitles=["LOVE DIVE","밤편지","한 페이지가 될 수 있게","모든 날, 모든 순간","Ditto"];
+      const fallback=fallbackTitles
+        .map(t=>songs.find(s=>s.title===t))
+        .filter(Boolean)
+        .map(s=>({...s,why:[]}));
+
+      results.innerHTML=`<div class="panel">
+      <div class="result-head"><div>
+      <div class="kicker">SIMILAR SONG STARTER</div>
+      <h2>‘${escapeHtml(val)}’와 비슷한 곡 찾기</h2>
+      <p class="sub">입력한 곡은 현재 내장 데이터에서 확인되지 않아 정확한 유사도를 계산할 수 없어요. 그래도 추천이 비어 있지 않도록 서로 다른 스타일의 후보 5곡을 골랐어요. 아래 곡들은 <b>확정된 유사곡이 아니라 임시 후보</b>예요.</p>
+      <p class="note"><a href="https://www.melon.com/search/song/index.htm?q=${encodeURIComponent(val)}" target="_blank" rel="noopener">멜론에서 입력한 곡 정보 확인하기 ↗</a></p>
+      </div><span class="note">후보 ${fallback.length}곡</span></div>
+      <div class="cards">${fallback.map((s,i)=>`<article class="song">
+      <div class="rank">PICK 0${i+1}</div>
+      <h3>${escapeHtml(s.title)}</h3>
+      <div class="artist">${escapeHtml(s.artist)} · ${s.era.replace("s","년대")}</div>
+      <div class="tags"><span class="tag">escapeHtml(s.genre)</span><spanclass="tag">{escapeHtml(s.singer)}</span><span class="tag">escapeHtml(s.mood)</span><spanclass="tag">{escapeHtml(s.energy)}</span></div>
+      <div class="reason"><b>후보로 고른 이유</b><br>${escapeHtml(s.vibe)}<br><span class="note">입력곡과의 실제 유사성이 확인된 것은 아니에요.</span></div>
+      <div class="lyric"><b>가사 감성</b><br>${lyricTheme(s)}</div>
+      <div class="actions"><button class="btn secondary" onclick="searchMelon('${encodeURIComponent(s.title)}')">멜론에서 보기 ↗</button></div>
+      </article>`).join("")}</div>
+      <div class="actions"><button class="btn primary" id="again">다른 곡 입력하기</button></div></div>`;
+
+      document.querySelector("#again").addEventListener("click",()=>{
+        results.innerHTML="";
+        document.querySelector("#favSong")?.focus();
+        window.scrollTo({top:0,behavior:"smooth"});
+      });
+      return;
+    }
+
+    let candidates=songs.filter(s=>s.id!==seed.id).map(s=>({
+      ...s,
+      score:(s.era===seed.era?3:0)+
+      (s.genre===seed.genre?4:0)+
+      (s.singer===seed.singer?2:0)+
+      (s.mood===seed.mood?2:0)+
+      (s.energy===seed.energy?2:0)
+    })).sort((a,b)=>b.score-a.score);
+
+    const list=diverse(candidates,5);
+    showResults(list,`‘${seed.title}’ · ${seed.artist}`,
+      "원곡과 시대, 장르, 가수 유형, 감정선, 에너지의 공통점을 비교했어요.",seed.title);
+    return;
+  }
+
+  questions[state.mode].qs.forEach(q=>{
+    chosen[q[0]]=document.querySelector(`input[name="${q[0]}"]:checked`)?.value||q[2][0];
+  });
+
+  let list=songs.map(s=>{
+    let score=0,why=[];
+    for(const [k,v] of Object.entries(chosen)){
+      if(!v||v==="상관없음"||v==="장르와 분위기 우선"||v==="한국 대중음악")continue;
+      let match=s[k]===v;
+
+      if(k==="goal"){
+        match=(v==="위로"&&s.mood==="위로")||
+        (v==="설렘"&&s.mood==="설렘")||
+        (v==="힘내기"&&(s.mood==="희망"||s.mood==="자신감"))||
+        (v==="추억"&&s.mood==="그리움")||
+        (v==="기분 전환"&&(s.energy==="밝음"||s.energy==="신남"));
+      }
+
+      if(match){
+        score+=({era:4,genre:5,singer:4,mood:5,energy:3,goal:2,language:0})[k]||2;
+        why.push(({era:"선택한 시대",genre:"선호 장르",singer:"선호 가수 유형",mood:"감정 키워드",energy:"원하는 에너지",goal:"원하는 감정 변화"})[k]||k);
+      }
+    }
+    return {...s,score,why};
+  }).sort((a,b)=>b.score-a.score);
+
+  const filtered=list.filter(s=>s.score>0);
+  showResults(diverse(filtered.length?filtered:list,3),
+    state.mode==="mood"?"지금 기분에 맞춘 추천":"내 취향 맞춤 추천",
+    "선택한 조건과 일치하는 특징을 기준으로 점수를 계산했어요.");
+}
+
+function diverse(list,n){
+  let out=[],artists=new Set(),titles=new Set();
+  for(let s of list){
+    if(titles.has(s.title))continue;
+    if(artists.has(s.artist)&&out.length<n-1)continue;
+    out.push(s);
+    artists.add(s.artist);
+    titles.add(s.title);
+    if(out.length===n)break;
+  }
+  for(let s of list){
+    if(out.length===n)break;
+    if(!titles.has(s.title)){out.push(s);titles.add(s.title);}
+  }
+  return out;
+}
+
+function showResults(list,title,subtitle,seedTitle){
+  results.innerHTML=`<div class="panel">
+  <div class="result-head"><div><div class="kicker">YOUR PLAYLIST</div>
+  <h2>escapeHtml(title)</h2><pclass="sub">{escapeHtml(subtitle)}</p>
+  </div><span class="note">추천 ${list.length}곡</span></div>
+  ${list.length?`<div class="cards">${list.map((s,i)=>`<article class="song">
+  <div class="rank">PICK 0${i+1}</div>
+  <h3>${escapeHtml(s.title)}</h3>
+  <div class="artist">${escapeHtml(s.artist)} · ${s.era.replace("s","년대")}</div>
+  <div class="tags"><span class="tag">escapeHtml(s.genre)</span><spanclass="tag">{escapeHtml(s.singer)}</span><span class="tag">escapeHtml(s.mood)</span><spanclass="tag">{escapeHtml(s.energy)}</span></div>
+  <div class="reason"><b>추천 이유</b><br>escapeHtml(s.vibe){s.why?.length?` 선택한 조건 중 ${escapeHtml(s.why.slice(0,3).join(", "))}와 연결돼요.`:seedTitle?` 원곡과 ${s.era===songs.find(x=>x.title===seedTitle)?.era?"같은 시대":"다른 시대"}의 곡이며, 음악적 특징을 비교한 후보예요.`:" 선택한 분위기와 곡의 특징이 맞아 추천해요."}</div>
+  <div class="lyric"><b>가사 감성</b><br>${lyricTheme(s)}</div>
+  <div class="actions"><button class="btn secondary" onclick="searchMelon('${encodeURIComponent(s.title)}')">멜론에서 보기 ↗</button></div>
+  </article>`).join("")}</div>`:'<div class="empty">선택과 일치하는 곡이 충분하지 않아요. 장르나 시대를 ‘상관없음’으로 바꾸어 다시 시도해 보세요.</div>'}
+  <div class="actions"><button class="btn primary" id="again">조건 바꾸기</button></div></div>`;
+
+  document.querySelector("#again").addEventListener("click",()=>{
+    results.innerHTML="";
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+}
+
+function lyricTheme(s){
+  const themes={
+    "그리움":"떠난 사람과 함께한 시간을 떠올리는 정서",
+    "슬픔":"마음을 숨기지 않고 아픔을 마주하는 정서",
+    "설렘":"좋아하는 마음이 커지는 순간의 정서",
+    "행복":"함께하는 순간을 소중히 여기는 정서",
+    "자신감":"나답게 빛나고 싶다는 당당한 정서",
+    "희망":"새로운 시작을 향해 나아가는 정서",
+    "위로":"괜찮다고 스스로를 다독이는 정서",
+    "아련함":"오래 남는 기억과 여운의 정서"
+  };
+  return themes[s.mood]||"곡 전체의 분위기와 감정선을 느껴 보세요.";
+}
+
+function searchMelon(title){
+  window.open("https://www.melon.com/search/song/index.htm?q="+title,"_blank","noopener");
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+document.querySelectorAll(".mode").forEach(b=>b.addEventListener("click",()=>{
+  state.mode=b.dataset.mode;
+  results.innerHTML="";
+  renderForm();
+}));
+
+renderForm();
+</script>
+</body>
+</html>
