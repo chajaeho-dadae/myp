@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>선생님 몰래 자기</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#202938;font-family:Arial,sans-serif}
+#game{
+ height:100vh;min-height:600px;position:relative;overflow:hidden;
+ background:linear-gradient(#c8d9e4 0 12%,#e5d6c5 12% 18%,#155344 18% 52%,#d4c4b0 52% 70%,#9c6d48 70%);
+}
+.window{position:absolute;left:0;top:12%;width:18%;height:38%;
+ background:linear-gradient(90deg,#b8e0f6,#eff8ff);border:8px solid #eee}
+.board{position:absolute;left:18%;right:0;top:18%;height:34%;
+ background:#155344;border:10px solid #b69a79;color:#e9e7d9;
+ padding:25px;font-size:20px}
+.teacher{position:absolute;top:20%;left:60%;width:100px;height:240px;
+ transform-origin:50% 80%;transition:transform .5s}
+.teacher:before{content:"";display:block;margin:auto;width:48px;height:58px;
+ border-radius:45%;background:#332d30}
+.teacher:after{content:"";display:block;margin:auto;width:85px;height:150px;
+ border-radius:25px 25px 4px 4px;background:#e5ded5;border:2px solid #8d8279}
+.desk{position:absolute;bottom:0;width:100%;height:30%;
+ background:linear-gradient(#b9814e 0 8%,#795032 9% 13%,#b9814e 14%)}
+#timer,#gauge{position:absolute;top:12px;background:#172033e8;color:white;
+ padding:12px;border-radius:12px;z-index:3}
+#timer{left:12px;font-size:28px;font-weight:bold}
+#gauge{right:12px}
+#status{position:absolute;top:57%;left:50%;transform:translateX(-50%);
+ background:#172033e8;color:white;padding:12px;border-radius:12px;
+ text-align:center;width:80%;z-index:3}
+#book{display:none;position:absolute;bottom:18%;left:34%;width:32%;height:22%;
+ background:linear-gradient(90deg,#244b7c 49%,#e9e5d9 50%,#244b7c 53%);
+ border:4px solid #162c4c;z-index:2}
+#arms{display:none;position:absolute;bottom:12%;left:20%;width:60%;height:16%;
+ background:#e8c1a8;border-radius:40%;z-index:2}
+#head{display:none;position:absolute;bottom:20%;left:38%;width:24%;height:15%;
+ background:#342c31;border-radius:50%;z-index:3}
+#buttons{position:absolute;bottom:12px;left:2%;width:96%;z-index:5;
+ display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+button{padding:10px 3px;border:1px solid #ccd4e5;border-radius:9px;
+ background:#f5f3ef;color:#20283a;font-weight:bold;cursor:pointer}
+#wake{position:absolute;right:12px;bottom:105px;z-index:5;
+ background:#315c99;color:white;padding:10px}
+#result{display:none;position:absolute;inset:0;background:#101522c9;
+ z-index:10;align-items:center;justify-content:center;flex-direction:column;
+ font-size:64px;font-weight:bold}
+#result button{font-size:18px;padding:12px 24px}
+@keyframes turn{
+ 0%{transform:rotate(0)}
+ 25%{transform:rotate(-8deg) translateX(-15px)}
+ 60%{transform:rotate(15deg) translateX(12px)}
+ 100%{transform:rotate(0)}
+}
+.moving{animation:turn 2s ease-in-out}
+@media(max-width:600px){
+ #buttons{grid-template-columns:repeat(5,1fr)}
+ button{font-size:10px}
+ .board{padding:10px;font-size:14px}
+ .teacher{left:60%;transform:scale(.7);transform-origin:top}
+}
+</style>
+</head>
+<body>
+<div id="game">
+ <div class="window"></div>
+ <div class="board">오늘의 수업<br><br>수학 · 문제 풀이<br>다음 시간 과제 안내</div>
+ <div id="teacher" class="teacher"></div>
+ <div class="desk"></div>
+ <div id="timer">00:40</div>
+ <div id="gauge">의심 게이지: <span id="percent">0</span>%</div>
+ <div id="status">선생님이 칠판을 보고 있어요.</div>
+ <div id="book"></div><div id="arms"></div><div id="head"></div>
+ <button id="wake" onclick="wakeUp()">안 자는 척하기</button>
+ <div id="buttons">
+  <button onclick="sleep(0)">1. 턱 괴고<br>자기</button>
+  <button onclick="sleep(1)">2. 책으로 얼굴<br>가리기</button>
+  <button onclick="sleep(2)">3. 필기하는 척<br>졸기</button>
+  <button onclick="sleep(3)">4. 엎드려서<br>자기</button>
+  <button onclick="sleep(4)">5. 이마 가리고<br>자기</button>
+ </div>
+ <div id="result"><div id="word"></div><button onclick="restart()">다시 하기</button></div>
+</div>
+<script>
+let time=40,sleeping=false,ended=false,running=false;
+let suspicion=0,timer,turn;
+const $=id=>document.getElementById(id);
+function sleep(type){
+ if(!running||ended)return;
+ sleeping=true;
+ $("book").style.display=type===1?"block":"none";
+ $("arms").style.display=[0,2,3,4].includes(type)?"block":"none";
+ $("head").style.display=type===3||type===0?"block":"none";
+ $("status").textContent=[
+ "턱을 괴고 졸고 있어요.",
+ "책 뒤에 숨어 자고 있어요.",
+ "필기하는 척 졸고 있어요.",
+ "팔을 베고 책상에 엎드렸어요.",
+ "이마를 손으로 가리고 있어요."
+ ][type];
+}
+function wakeUp(){
+ if(ended)return;
+ sleeping=false;
+ $("book").style.display="none";
+ $("arms").style.display="none";
+ $("head").style.display="none";
+ $("status").textContent="안 자는 척하며 수업을 듣고 있어요.";
+}
+function scheduleTurn(){
+ if(!running||ended)return;
+ turn=setTimeout(checkTeacher,3500+Math.random()*3500);
+}
+function checkTeacher(){
+ if(!running||ended)return;
+ $("status").textContent="선생님이 돌아보려고 해요!";
+ $("teacher").classList.remove("moving");
+ void $("teacher").offsetWidth;
+ $("teacher").classList.add("moving");
+ $("status").textContent="선생님이 움직이는 중! 2초 뒤 확인해요.";
+ setTimeout(()=>{
+  if(ended||!running)return;
+  if(sleeping){
+   suspicion=Math.min(100,suspicion+35);
+   $("percent").textContent=suspicion;
+   finish(false);
+  }else{
+   suspicion=Math.max(0,suspicion-10);
+   $("percent").textContent=suspicion;
+   $("status").textContent="휴! 선생님이 다시 칠판을 봐요.";
+   scheduleTurn();
+  }
+ },2000);
+}
+function finish(success){
+ ended=true;running=false;clearInterval(timer);clearTimeout(turn);
+ $("word").textContent=success?"성공":"실패";
+ $("word").style.color=success?"#438cff":"#ff3b4f";
+ $("result").style.display="flex";
+}
+function start(){
+ time=40;sleeping=false;ended=false;running=true;suspicion=0;
+ 
+("percent").textContent=0;("result").style.display="none";
+ $("timer").textContent="00:40";wakeUp();scheduleTurn();
+ timer=setInterval(()=>{
+  if(ended)return;
+  time--;
+  $("timer").textContent="00:"+String(time).padStart(2,"0");
+  if(time<=0)finish(true);
+ },1000);
+}
+function restart(){start()}
+start();
+</script>
+</body>
+</html>
