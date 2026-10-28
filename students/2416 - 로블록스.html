@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Roblox Style 3D Sunset Obby - 10 Stages</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;800&display=swap');
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Fredoka', 'Segoe UI', sans-serif;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0d0914;
+      color: #fff;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* UI Overlay */
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+    .interactive { pointer-events: auto; }
+
+    /* Top HUD */
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+    }
+    .badge-group {
+      display: flex;
+      gap: 10px;
+    }
+    .badge-card {
+      background: rgba(22, 17, 39, 0.75);
+      border: 2px solid rgba(255, 180, 220, 0.3);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+    .badge-title {
+      font-size: 0.7rem;
+      color: #f472b6;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .badge-value {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fbbf24;
+    }
+
+    /* Action Buttons Top Right */
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+    .hud-btn {
+      background: rgba(30, 24, 54, 0.85);
+      border: 2px solid #f472b6;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 14px rgba(244, 114, 182, 0.3);
+    }
+    .hud-btn:hover {
+      transform: translateY(-2px);
+      background: #f472b6;
+      color: #0f172a;
+    }
+
+    /* Controls Overlay */
+    #joystick-zone {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      width: 130px;
+      height: 130px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 2px solid rgba(255, 180, 220, 0.4);
+      border-radius: 50%;
+      touch-action: none;
+      z-index: 20;
+    }
+    #joystick-knob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 54px;
+      height: 54px;
+      background: linear-gradient(135deg, #f472b6, #db2777);
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 0 20px rgba(244, 114, 182, 0.7);
+    }
+
+    /* Jump Button */
+    #jump-btn {
+      position: absolute;
+      bottom: 35px;
+      right: 35px;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fbbf24, #d97706);
+      border: 4px solid #fef08a;
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 900;
+      box-shadow: 0 6px 25px rgba(245, 158, 11, 0.7);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+    }
+    #jump-btn:active {
+      transform: scale(0.92);
+    }
+
+    /* Guide Box */
+    .guide-box {
+      position: absolute;
+      bottom: 170px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(22, 17, 39, 0.85);
+      border: 1px solid rgba(255, 180, 220, 0.3);
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      color: #fbcfe8;
+      pointer-events: none;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* Customization Modal */
+    .modal-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-card {
+      background: #19122b;
+      border: 2px solid #f472b6;
+      border-radius: 24px;
+      padding: 24px;
+      width: 90%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      color: #fff;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .modal-title { font-size: 1.4rem; font-weight: 800; color: #f472b6; }
+    .close-btn {
+      background: none; border: none; color: #94a3b8; font-size: 1.8rem; cursor: pointer;
+    }
+    .section-label {
+      font-size: 0.85rem; font-weight: 700; color: #fbcfe8; margin: 12px 0 8px; text-transform: uppercase;
+    }
+    .grid-group {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .color-opt {
+      width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s;
+    }
+    .color-opt:hover { transform: scale(1.15); }
+    .color-opt.selected { border-color: #ffffff; box-shadow: 0 0 10px #ffffff; }
+
+    .opt-btn {
+      background: #281d45; border: 2px solid #3d2c6b; padding: 8px 12px; border-radius: 12px; color: #fff; font-weight: 600; cursor: pointer; font-size: 0.85rem;
+    }
+    .opt-btn.active {
+      border-color: #f472b6; background: #db2777;
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: absolute;
+      top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px);
+      background: rgba(34, 197, 94, 0.9);
+      color: white; padding: 10px 24px; border-radius: 30px;
+      font-weight: 800; opacity: 0; transition: all 0.3s ease;
+      z-index: 50; pointer-events: none;
+    }
+    #toast.show {
+      opacity: 1; transform: translateX(-50%) translateY(0);
+    }
+
+    /* Clear Alert */
+    #clear-modal {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+      background: linear-gradient(135deg, #2e1065, #581c87);
+      border: 3px solid #fbbf24;
+      padding: 32px; border-radius: 28px; text-align: center; color: white;
+      box-shadow: 0 0 60px rgba(251, 191, 36, 0.6);
+      z-index: 90; opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #clear-modal.active {
+      opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1);
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <div id="canvas-container"></div>
+  <div id="toast">💾 체크포인트 저장 완료!</div>
+
+  <!-- HUD Interface -->
+  <div id="ui-overlay">
+    <div class="hud-top">
+      <div class="badge-group">
+        <div class="badge-card">
+          <div class="badge-title">STAGE</div>
+          <div id="stage-val" class="badge-value">1 / 10</div>
+        </div>
+        <div class="badge-card">
+          <div class="badge-title">TIME</div>
+          <div id="timer-val" class="badge-value">00:00</div>
+        </div>
+      </div>
+
+      <div class="btn-group interactive">
+        <button class="hud-btn" id="respawn-btn">🔄 리스폰</button>
+        <button class="hud-btn" id="custom-btn">🎨 꾸미기</button>
+      </div>
+    </div>
+
+    <div class="guide-box">
+      🕹️ <b>WASD / 방향키 / 조이스틱</b> 이동 | <b>Space / JUMP</b> 점프 | <b>드래그</b> 화면 시점 회전
+    </div>
+
+    <div id="joystick-zone" class="interactive">
+      <div id="joystick-knob"></div>
+    </div>
+
+    <button id="jump-btn" class="interactive">JUMP</button>
+  </div>
+
+  <!-- Customization Modal -->
+  <div id="custom-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">아바타 꾸미기</div>
+        <button class="close-btn" id="close-modal">&times;</button>
+      </div>
+
+      <div class="section-label">피부 색상</div>
+      <div class="grid-group" id="skin-colors">
+        <div class="color-opt selected" style="background: #ffdbac;" data-color="0xffdbac"></div>
+        <div class="color-opt" style="background: #f1c27d;" data-color="0xf1c27d"></div>
+        <div class="color-opt" style="background: #e0ac69;" data-color="0xe0ac69"></div>
+        <div class="color-opt" style="background: #8d5524;" data-color="0x8d5524"></div>
+        <div class="color-opt" style="background: #7400b8;" data-color="0x7400b8"></div>
+        <div class="color-opt" style="background: #4cc9f0;" data-color="0x4cc9f0"></div>
+      </div>
+
+      <div class="section-label">의상 색상</div>
+      <div class="grid-group" id="shirt-colors">
+        <div class="color-opt selected" style="background: #2563eb;" data-color="0x2563eb"></div>
+        <div class="color-opt" style="background: #dc2626;" data-color="0xdc2626"></div>
+        <div class="color-opt" style="background: #16a34a;" data-color="0x16a34a"></div>
+        <div class="color-opt" style="background: #9333ea;" data-color="0x9333ea"></div>
+        <div class="color-opt" style="background: #ea580c;" data-color="0xea580c"></div>
+        <div class="color-opt" style="background: #f472b6;" data-color="0xf472b6"></div>
+      </div>
+
+      <div class="section-label">얼굴 표정</div>
+      <div class="grid-group" id="face-opts">
+        <button class="opt-btn active" data-face="smile">😊 방긋</button>
+        <button class="opt-btn" data-face="cool">😎 쿨</button>
+        <button class="opt-btn" data-face="wink">😉 윙크</button>
+      </div>
+
+      <div class="section-label">모자 액세서리</div>
+      <div class="grid-group" id="hat-opts">
+        <button class="opt-btn active" data-hat="none">없음</button>
+        <button class="opt-btn" data-hat="cap">야구모자</button>
+        <button class="opt-btn" data-hat="crown">황금왕관</button>
+        <button class="opt-btn" data-hat="cat">고양이귀🐱</button>
+        <button class="opt-btn" data-hat="halo">천사링😇</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Modal -->
+  <div id="clear-modal">
+    <h1 style="font-size: 2.2rem; color: #fbbf24; margin-bottom: 10px;">🎉 10 STAGES CLEAR!</h1>
+    <p style="font-size: 1.1rem; color: #fbcfe8; margin-bottom: 20px;">석양 오비(Obby) 전 코스를 완주하셨습니다!</p>
+    <div style="font-size: 1.5rem; font-weight: 800; color: #38bdf8; margin-bottom: 25px;" id="final-time">기록: 00:00</div>
+    <button class="hud-btn interactive" id="restart-btn" style="margin: 0 auto; padding: 12px 28px; font-size: 1.1rem;">처음부터 재도전</button>
+  </div>
+
+  <script>
+    // --- THREE.JS SUNSET SCENE ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+
+    // Sunset Pink-Purple Fog & Background
+    scene.background = new THREE.Color(0x2a103c);
+    scene.fog = new THREE.FogExp2(0x2a103c, 0.008);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    container.appendChild(renderer.domElement);
+
+    // Lightings
+    const ambientLight = new THREE.AmbientLight(0xffd1dc, 0.85);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffa559, 1.4);
+    sunLight.position.set(-30, 40, -40);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 300;
+    const d = 50;
+    sunLight.shadow.camera.left = -d; sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d; sunLight.shadow.camera.bottom = -d;
+    scene.add(sunLight);
+
+    // Sunset Glow Hemisphere
+    const hemiLight = new THREE.HemisphereLight(0xff77e9, 0x110826, 0.6);
+    scene.add(hemiLight);
+
+    // --- INPUT & CAMERA CONTROL ---
+    const keys = { forward: false, backward: false, left: false, right: false };
+    const joystickInput = { x: 0, y: 0 };
+    let cameraAngleX = 0;
+    let cameraAngleY = 0.3; // Default pitch angle
+    let isDraggingCam = false;
+    let lastMouseX = 0, lastMouseY = 0;
+
+    // --- GAME STATE & LOCALSTORAGE CHECKPOINT ---
+    const savedStage = parseInt(localStorage.getItem('obby_stage')) || 1;
+    const state = {
+      skinColor: 0xffdbac,
+      shirtColor: 0x2563eb,
+      activeHat: 'none',
+      activeFace: 'smile',
+      currentStage: savedStage,
+      startTime: Date.now(),
+      gameEnded: false
+    };
+
+    // --- ROBLOX CHARACTER ---
+    const playerGroup = new THREE.Group();
+    const avatarContainer = new THREE.Group();
+    playerGroup.add(avatarContainer);
+    scene.add(playerGroup);
+
+    let bodyMesh, armL, armR, legL, legR, hatMeshGroup = new THREE.Group();
+    let eyeL, eyeR, mouthMesh;
+    const skinMat = new THREE.MeshStandardMaterial({ color: state.skinColor, roughness: 0.5 });
+    const shirtMat = new THREE.MeshStandardMaterial({ color: state.shirtColor, roughness: 0.3 });
+    const pantMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.4 });
+
+    function createRobloxAvatar() {
+      // Body Torso
+      bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.2, 0.5), shirtMat);
+      bodyMesh.position.y = 1.0;
+      bodyMesh.castShadow = true;
+      avatarContainer.add(bodyMesh);
+
+      // Head
+      const headMesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), skinMat);
+      headMesh.position.y = 1.95;
+      headMesh.castShadow = true;
+      avatarContainer.add(headMesh);
+
+      // Face (+Z front facing)
+      const faceMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, 0.02), faceMat);
+      eyeL.position.set(-0.18, 2.0, 0.36);
+      eyeR = eyeL.clone();
+      eyeR.position.x = 0.18;
+      mouthMesh = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), faceMat);
+      mouthMesh.position.set(0, 1.85, 0.36);
+      avatarContainer.add(eyeL); avatarContainer.add(eyeR); avatarContainer.add(mouthMesh);
+
+      // Limbs
+      const armGeo = new THREE.BoxGeometry(0.4, 1.1, 0.4);
+      armL = new THREE.Mesh(armGeo, shirtMat);
+      armL.position.set(-0.72, 0.95, 0); armL.geometry.translate(0, -0.4, 0); armL.castShadow = true;
+      armR = new THREE.Mesh(armGeo, shirtMat);
+      armR.position.set(0.72, 0.95, 0); armR.geometry.translate(0, -0.4, 0); armR.castShadow = true;
+      avatarContainer.add(armL); avatarContainer.add(armR);
+
+      const legGeo = new THREE.BoxGeometry(0.45, 1.1, 0.45);
+      legL = new THREE.Mesh(legGeo, pantMat);
+      legL.position.set(-0.25, 0.55, 0); legL.geometry.translate(0, -0.4, 0); legL.castShadow = true;
+      legR = new THREE.Mesh(legGeo, pantMat);
+      legR.position.set(0.25, 0.55, 0); legR.geometry.translate(0, -0.4, 0); legR.castShadow = true;
+      avatarContainer.add(legL); avatarContainer.add(legR);
+
+      avatarContainer.add(hatMeshGroup);
+      hatMeshGroup.position.y = 2.3;
+    }
+    createRobloxAvatar();
+
+    function updateHat(hatType) {
+      while(hatMeshGroup.children.length > 0) hatMeshGroup.remove(hatMeshGroup.children[0]);
+      if (hatType === 'cap') {
+        const capMat = new THREE.MeshStandardMaterial({ color: 0xdc2626 });
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.2, 16), capMat);
+        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.35), capMat);
+        visor.position.set(0, -0.05, 0.3);
+        hatMeshGroup.add(cap); hatMeshGroup.add(visor);
+      } else if (hatType === 'crown') {
+        const crownMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.1 });
+        const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.32, 0.28, 6), crownMat);
+        hatMeshGroup.add(crown);
+      } else if (hatType === 'cat') {
+        const catMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b });
+        const earL = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.3, 4), catMat);
+        earL.position.set(-0.25, 0.1, 0);
+        const earR = earL.clone(); earR.position.x = 0.25;
+        hatMeshGroup.add(earL); hatMeshGroup.add(earR);
+      } else if (hatType === 'halo') {
+        const haloMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+        const halo = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.04, 8, 24), haloMat);
+        halo.rotation.x = Math.PI / 2; halo.position.y = 0.25;
+        hatMeshGroup.add(halo);
+      }
+    }
+
+    // --- PHYSICS & CHECKPOINT STAGES ---
+    const physics = {
+      velocity: new THREE.Vector3(),
+      isGrounded: false,
+      gravity: -28.0,
+      jumpForce: 11.5,
+      moveSpeed: 9.5,
+      checkpoint: new THREE.Vector3(0, 15, 0)
+    };
+
+    const platforms = [];
+    const stageCheckpoints = {};
+
+    function build10Stages() {
+      platforms.forEach(p => scene.remove(p.mesh));
+      platforms.length = 0;
+
+      function addPlat(x, y, z, w, h, d, color, isCheck = false, stageIdx = 1, rotY = 0) {
+        const geo = new THREE.BoxGeometry(w, h, d);
+        const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.1 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x, y, z);
+        mesh.rotation.y = rotY;
+        mesh.receiveShadow = true; mesh.castShadow = true;
+        scene.add(mesh);
+
+        platforms.push({ mesh: mesh, box: new THREE.Box3(), isCheck: isCheck, stageIdx: stageIdx });
+
+        if (isCheck) {
+          stageCheckpoints[stageIdx] = new THREE.Vector3(x, y + 12, z);
+          const flagMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+          const flag = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.2, 8), flagMat);
+          flag.position.set(x + w/2 - 0.6, y + h/2 + 1.1, z);
+          scene.add(flag);
+        }
+      }
+
+      // STAGE 1: Pastel Steps
+      addPlat(0, 0, 0, 8, 1, 8, 0x10b981, true, 1);
+      const pastelColors = [0xf472b6, 0x38bdf8, 0xfbbf24, 0xa855f7];
+      for(let i=1; i<=4; i++) {
+        addPlat((i%2===0?2:-2), i*0.8, -i*5.5, 3.2, 0.8, 3.2, pastelColors[i-1], false, 1);
+      }
+
+      // STAGE 2: Yellow Gate Barriers
+      addPlat(0, 4, -28, 6, 1, 6, 0x10b981, true, 2);
+      for(let i=1; i<=3; i++) {
+        addPlat(0, 4 + i*0.6, -28 - i*6, 5, 0.8, 2.5, 0xfacc15, false, 2);
+      }
+
+      // STAGE 3: Rainbow Spheres
+      addPlat(0, 6.5, -52, 6, 1, 6, 0x10b981, true, 3);
+      const sphereColors = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b];
+      for(let i=1; i<=4; i++) {
+        const sphereGeo = new THREE.SphereGeometry(1.2, 16, 16);
+        const sphereMat = new THREE.MeshStandardMaterial({ color: sphereColors[i-1], roughness: 0.2 });
+        const sMesh = new THREE.Mesh(sphereGeo, sphereMat);
+        const sz = -52 - i*5.5;
+        sMesh.position.set((i%2===0?1.8:-1.8), 7.2 + i*0.4, sz);
+        sMesh.castShadow = true; scene.add(sMesh);
+        platforms.push({ mesh: sMesh, box: new THREE.Box3(), isCheck: false, stageIdx: 3 });
+      }
+
+      // STAGE 4: Truss Climbing Tower
+      addPlat(0, 9.5, -80, 6, 1, 6, 0x10b981, true, 4);
+      for(let i=1; i<=4; i++) {
+        addPlat((i%2===0?2.5:-2.5), 9.5 + i*1.4, -80 - i*5, 2.8, 0.8, 2.8, 0x06b6d4, false, 4);
+      }
+
+      // STAGE 5: Narrow Beam Path
+      addPlat(0, 16, -106, 6, 1, 6, 0x10b981, true, 5);
+      addPlat(0, 16.5, -114, 1.8, 0.8, 7, 0xec4899, false, 5);
+      addPlat(0, 17.0, -123, 1.8, 0.8, 7, 0x8b5cf6, false, 5);
+
+      // STAGE 6: Disappearing Magic Blocks
+      addPlat(0, 18, -136, 6, 1, 6, 0x10b981, true, 6);
+      for(let i=1; i<=3; i++) {
+        addPlat(0, 18 + i*0.5, -136 - i*5.5, 3, 0.8, 3, 0x38bdf8, false, 6);
+      }
+
+      // STAGE 7: Rotating Windmill Platform
+      addPlat(0, 20, -158, 6, 1, 6, 0x10b981, true, 7);
+      addPlat(-3, 20.8, -166, 3, 0.8, 3, 0xa855f7, false, 7);
+      addPlat(3, 21.6, -173, 3, 0.8, 3, 0xa855f7, false, 7);
+
+      // STAGE 8: Laser Bar Obstacles
+      addPlat(0, 23, -185, 6, 1, 6, 0x10b981, true, 8);
+      addPlat(0, 23.5, -194, 4, 0.8, 4, 0xef4444, false, 8);
+      addPlat(0, 24.5, -203, 4, 0.8, 4, 0xef4444, false, 8);
+
+      // STAGE 9: Celestial Stepping Jewels
+      addPlat(0, 26, -216, 6, 1, 6, 0x10b981, true, 9);
+      for(let i=1; i<=4; i++) {
+        addPlat((i%2===0?3:-3), 26 + i*0.8, -216 - i*5.5, 2.2, 0.8, 2.2, 0x38bdf8, false, 9);
+      }
+
+      // STAGE 10: Final Victory Golden Crown Tower!
+      addPlat(0, 30, -245, 12, 1, 12, 0xf59e0b, true, 10);
+    }
+    build10Stages();
+
+    function respawnPlayer() {
+      const targetPos = stageCheckpoints[state.currentStage] || new THREE.Vector3(0, 15, 0);
+      playerGroup.position.copy(targetPos);
+      physics.velocity.set(0, 0, 0);
+      physics.isGrounded = false;
+      document.getElementById('stage-val').innerText = `${state.currentStage} / 10`;
+    }
+
+    // --- CONTROLS & JOYSTICK / DRAG ENGINE ---
+    const joystickZone = document.getElementById('joystick-zone');
+    const joystickKnob = document.getElementById('joystick-knob');
+    let joystickActive = false, joystickTouchId = null;
+
+    function handleJoystickMove(clientX, clientY) {
+      const rect = joystickZone.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      let deltaX = clientX - centerX, deltaY = clientY - centerY;
+      const dist = Math.hypot(deltaX, deltaY), maxR = rect.width / 2;
+      if (dist > maxR) { deltaX = (deltaX/dist)*maxR; deltaY = (deltaY/dist)*maxR; }
+      joystickKnob.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+      joystickInput.x = deltaX / maxR; joystickInput.y = deltaY / maxR;
+    }
+
+    function resetJoystick() {
+      joystickActive = false; joystickTouchId = null;
+      joystickKnob.style.transform = `translate(-50%, -50%)`;
+      joystickInput.x = 0; joystickInput.y = 0;
+    }
+
+    joystickZone.addEventListener('touchstart', (e) => {
+      e.preventDefault(); const t = e.changedTouches[0];
+      joystickActive = true; joystickTouchId = t.identifier;
+      handleJoystickMove(t.clientX, t.clientY);
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!joystickActive) return;
+      for (let i=0; i<e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joystickTouchId) {
+          handleJoystickMove(e.changedTouches[i].clientX, e.changedTouches[i].clientY); break;
+        }
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchend', (e) => {
+      if (!joystickActive) return;
+      for (let i=0; i<e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joystickTouchId) { resetJoystick(); break; }
+      }
+    });
+
+    // Camera Drag Rotate Controls
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.interactive')) return;
+      isDraggingCam = true; lastMouseX = e.clientX; lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDraggingCam) return;
+      const deltaX = e.clientX - lastMouseX, deltaY = e.clientY - lastMouseY;
+      cameraAngleX -= deltaX * 0.005;
+      cameraAngleY = Math.max(0.05, Math.min(Math.PI / 2.2, cameraAngleY + deltaY * 0.005));
+      lastMouseX = e.clientX; lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => isDraggingCam = false);
+
+    // Keyboard Listeners (WASD + Arrows)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.forward = true;
+      if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.backward = true;
+      if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
+      if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = true;
+      if (e.key === ' ' || e.key === 'Spacebar') triggerJump();
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.forward = false;
+      if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.backward = false;
+      if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = false;
+      if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = false;
+    });
+
+    function triggerJump() {
+      if (physics.isGrounded) {
+        physics.velocity.y = physics.jumpForce;
+        physics.isGrounded = false;
+      }
+    }
+
+    document.getElementById('jump-btn').addEventListener('click', triggerJump);
+    document.getElementById('respawn-btn').addEventListener('click', respawnPlayer);
+
+    // Customization Handlers
+    const customModal = document.getElementById('custom-modal');
+    document.getElementById('custom-btn').addEventListener('click', () => customModal.classList.add('active'));
+    document.getElementById('close-modal').addEventListener('click', () => customModal.classList.remove('active'));
+
+    document.querySelectorAll('#skin-colors .color-opt').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('#skin-colors .color-opt').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected'); skinMat.color.setHex(parseInt(opt.dataset.color));
+      });
+    });
+
+    document.querySelectorAll('#shirt-colors .color-opt').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('#shirt-colors .color-opt').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected'); shirtMat.color.setHex(parseInt(opt.dataset.color));
+      });
+    });
+
+    document.querySelectorAll('#hat-opts .opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#hat-opts .opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active'); updateHat(btn.dataset.hat);
+      });
+    });
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      toast.innerText = text; toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // --- GAME LOOP ---
+    const clock = new THREE.Clock();
+    let walkTime = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.1);
+
+      if (!state.gameEnded) {
+        // Timer HUD
+        const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+        const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const secs = String(elapsed % 60).padStart(2, '0');
+        document.getElementById('timer-val').innerText = `
+mins:{secs}`;
+
+        // Direction Input Calculation
+        let inputX = joystickInput.x;
+        let inputZ = joystickInput.y;
+        if (keys.left) inputX -= 1; if (keys.right) inputX += 1;
+        if (keys.forward) inputZ -= 1; if (keys.backward) inputZ += 1;
+
+        const inputLen = Math.hypot(inputX, inputZ);
+        if (inputLen > 1) { inputX /= inputLen; inputZ /= inputLen; }
+
+        // Camera Relative Movement Vector
+        const forward = new THREE.Vector3(Math.sin(cameraAngleX), 0, Math.cos(cameraAngleX)).negate();
+        const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).negate();
+
+        const moveVec = new THREE.Vector3()
+          .addScaledVector(right, inputX)
+          .addScaledVector(forward, -inputZ);
+
+        physics.velocity.x = moveVec.x * physics.moveSpeed;
+        physics.velocity.z = moveVec.z * physics.moveSpeed;
+        physics.velocity.y += physics.gravity * delta;
+
+        // Position Updates
+        playerGroup.position.x += physics.velocity.x * delta;
+        playerGroup.position.y += physics.velocity.y * delta;
+        playerGroup.position.z += physics.velocity.z * delta;
+
+        // Avatar Limb Walk Animation & Facing
+        if (moveVec.length() > 0.05) {
+          const targetAngle = Math.atan2(moveVec.x, moveVec.z);
+          let diff = targetAngle - avatarContainer.rotation.y;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          avatarContainer.rotation.y += diff * 0.25;
+
+          walkTime += delta * 12;
+          const swing = Math.sin(walkTime) * 0.6;
+          legL.rotation.x = swing; legR.rotation.x = -swing;
+          armL.rotation.x = -swing * 0.8; armR.rotation.x = swing * 0.8;
+        } else {
+          legL.rotation.x = 0; legR.rotation.x = 0;
+          armL.rotation.x = 0; armR.rotation.x = 0;
+        }
+
+        // Platform Collisions
+        const playerBox = new THREE.Box3().setFromCenterAndSize(
+          new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 0.9, playerGroup.position.z),
+          new THREE.Vector3(0.8, 1.8, 0.8)
+        );
+
+        let landed = false;
+        platforms.forEach(plat => {
+          plat.box.setFromObject(plat.mesh);
+          if (playerBox.intersectsBox(plat.box)) {
+            const platTop = plat.box.max.y;
+            if (physics.velocity.y <= 0 && playerGroup.position.y >= platTop - 0.45) {
+              playerGroup.position.y = platTop;
+              physics.velocity.y = 0;
+              physics.isGrounded = true; landed = true;
+
+              if (plat.isCheck && plat.stageIdx > state.currentStage) {
+                state.currentStage = plat.stageIdx;
+                localStorage.setItem('obby_stage', state.currentStage);
+                showToast(`💾 STAGE ${state.currentStage} 체크포인트 저장!`);
+                document.getElementById('stage-val').innerText = `${state.currentStage} / 10`;
+
+                if (plat.stageIdx === 10 && !state.gameEnded) {
+                  state.gameEnded = true;
+                  document.getElementById('final-time').innerText = `기록: mins:{secs}`;
+                  document.getElementById('clear-modal').classList.add('active');
+                }
+              }
+            }
+          }
+        });
+
+        if (!landed) physics.isGrounded = false;
+        if (playerGroup.position.y < -15) respawnPlayer();
+
+        // Third Person Camera Positioning
+        const camDistance = 11.0;
+        camera.position.x = playerGroup.position.x + Math.sin(cameraAngleX) * Math.cos(cameraAngleY) * camDistance;
+        camera.position.y = playerGroup.position.y + 1.5 + Math.sin(cameraAngleY) * camDistance;
+        camera.position.z = playerGroup.position.z + Math.cos(cameraAngleX) * Math.cos(cameraAngleY) * camDistance;
+        camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.4, playerGroup.position.z);
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    respawnPlayer();
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    document.getElementById('restart-btn').addEventListener('click', () => {
+      document.getElementById('clear-modal').classList.remove('active');
+      state.gameEnded = false; state.startTime = Date.now();
+      state.currentStage = 1; localStorage.setItem('obby_stage', 1);
+      respawnPlayer();
+    });
+  </script>
+</body>
+</html>
