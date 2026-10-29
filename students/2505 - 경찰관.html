@@ -49,10 +49,10 @@
 
     <div id="hud">
         <div class="hud-panel">
-            <h2>🚨 도심 순찰 본부</h2>
+            <h2>🚨 도심 순찰 본부 (<span id="stage-text" style="color:#facc15;">STAGE 1</span>)</h2>
             <p>경찰 체력: <span id="hp-text">100</span> / 100</p>
             <div id="hp-bar-container"><div id="hp-bar"></div></div>
-            <p style="margin-top:8px;">체포 실적: <span id="score" style="color:#00ff88; font-weight:bold;">0</span> / 20 명</p>
+            <p style="margin-top:8px;">체포 실적: <span id="score" style="color:#00ff88; font-weight:bold;">0</span> / <span id="target-score">20</span> 명</p>
             <p>테이저 탄약: <span id="ammo" style="color:#00e5ff; font-weight:bold;">10</span> 발</p>
             <div id="weapon-selector">
                 무기 조작: 
@@ -66,8 +66,8 @@
 
     <div id="overlay-screen">
         <h1 id="overlay-title">🚨 3D 도심 경찰관 시뮬레이터</h1>
-        <p id="overlay-desc1">목표: 도심 속 범죄자 20명을 체포하세요.</p>
-        <p id="overlay-desc2">범인들이 다가와 주먹으로 공격합니다! 체력이 0이 되면 사망하여 다시 시작해야 합니다.</p>
+        <p id="overlay-desc1">목표: 1단계 범죄자 20명을 체포하세요.</p>
+        <p id="overlay-desc2">단계 클리어 시 체포 목표와 테이저 탄약 수량이 늘어나며 난이도가 상승합니다!</p>
         <p style="margin-top: 10px; color: #aaa;">조작법: W/A/S/D (이동), 마우스 (시야 조작 및 발사/타격/체포), [1]/[2] 무기교체</p>
         <button id="start-btn">작전 개시 (시작하기)</button>
     </div>
@@ -181,8 +181,10 @@
             osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.18);
         }
 
+        let currentStage = 1;
         let score = 0;
-        const targetScore = 20;
+        let stageTargetScores = [20, 30, 40];
+        let targetScore = stageTargetScores[0];
         let ammo = 10;
         let health = 100;
         let gameOver = false;
@@ -504,13 +506,35 @@
             document.getElementById('score').innerText = score;
             baseSuspectSpeed += 0.005;
 
+            // 스테이지 클리어 판단 및 탄약 증발 보상 지급
             if (score >= targetScore) {
-                endGame(true, "🎉 작전 성공! 도심 속 모든 범죄자를 체포했습니다!");
-                return;
+                if (currentStage === 1) {
+                    currentStage = 2;
+                    targetScore = stageTargetScores[1];
+                    ammo = 15; // 1차 클리어 보상: 15발
+                    baseSuspectSpeed = 0.052;
+                    updateStageUI("⚡ STAGE 1 클리어! STAGE 2 (30명) 개시! 테이저 탄약 15발 보급!");
+                } else if (currentStage === 2) {
+                    currentStage = 3;
+                    targetScore = stageTargetScores[2];
+                    ammo = 20; // 2차 클리어 보상: 최대 20발
+                    baseSuspectSpeed = 0.062;
+                    updateStageUI("🔥 STAGE 2 클리어! 최종 STAGE 3 (40명) 개시! 테이저 탄약 최대 20발 보급!");
+                } else {
+                    endGame(true, "🎉 축하합니다! 모든 스테이지(40명 체포)를 완벽하게 클리어했습니다!");
+                    return;
+                }
             }
 
             showActionMsg("🚨 체포 완료! 새 범인이 출현합니다!");
             setTimeout(() => createSuspect(-20 - Math.random() * 20), 2000);
+        }
+
+        function updateStageUI(msgText) {
+            document.getElementById('stage-text').innerText = `STAGE ${currentStage}`;
+            document.getElementById('target-score').innerText = targetScore;
+            document.getElementById('ammo').innerText = ammo;
+            showActionMsg(msgText);
         }
 
         function fireTaserVisual(targetVec) {
@@ -538,7 +562,6 @@
             const flash = document.getElementById('damage-flash'); flash.style.opacity = '1';
             setTimeout(() => flash.style.opacity = '0', 150);
 
-            // 체력 소진 시 사망 및 다시 시작
             if (health <= 0) {
                 endGame(false, "☠️ 범인들의 집단 피격에 사망하셨습니다! 작전 실패!");
             }
@@ -579,13 +602,11 @@
                 }
             }
 
-            // 범인이 도망치거나 플레이어에게 다가와 직접 때리는 공격 로직
             suspects.forEach((suspect) => {
                 if (suspect.isDown || gameOver) return;
                 const dist = player.position.distanceTo(suspect.mesh.position);
 
                 if (dist < 18) {
-                    // 플레이어를 향해 돌진
                     const dir = new THREE.Vector3().subVectors(player.position, suspect.mesh.position).setY(0).normalize();
                     moveWithCollision(suspect.mesh.position, dir.x * baseSuspectSpeed, dir.z * baseSuspectSpeed);
                     suspect.mesh.rotation.y = Math.atan2(dir.x, dir.z);
@@ -598,7 +619,6 @@
 
                     if (now - suspect.lastFootstepTime > 0.35) { playFootstepSound(); suspect.lastFootstepTime = now; }
 
-                    // 근접 시 주먹 타격 공격 (-15 HP)
                     if (dist < 1.8 && now - suspect.lastAttackTime > 0.9) {
                         takeDamage(15);
                         showActionMsg("💥 범인의 피격 공격을 받았습니다! (-15 HP)");
