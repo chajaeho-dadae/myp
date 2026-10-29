@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⚔️ 검 강화 게임</title>
+
+<!-- ================================================================
+     ★★★ 개발자 설정 영역 (여기 값만 바꾸면 게임 전체에 반영됩니다) ★★★
+     ================================================================ -->
+<script>
+/* ───────── 파일 / 이미지 ───────── */
+// 이미지 폴더 이름 (index.html 과 같은 위치에 있어야 합니다)
+const IMG_FOLDER    = 'sword_images';
+// 이미지 폴더 안의 목록 파일 이름 (make_manifest.py 가 생성)
+const MANIFEST_FILE = 'manifest.json';
+// 화면에 표시되는 이미지의 가로 크기(px). 원본 가로세로 비율은 항상 유지됩니다.
+const IMG_WIDTH     = 1254;
+// 이미지 표시 영역의 세로 크기(px). 0 = 가장 큰(세로가 긴) 이미지에 자동으로 맞춤.
+// 세로가 짧은 이미지는 이 영역 안에서 세로 중앙 정렬됩니다.
+const STAGE_HEIGHT  = 0;
+
+/* ───────── 글자 크기 ───────── */
+// ★ 게임 내 모든 글자 크기의 배율 (1.0 = 기본, 1.2 = 20% 크게, 0.8 = 20% 작게)
+const FONT_SCALE    = 1.0;
+
+/* ───────── 시작 조건 ───────── */
+const START_GOLD            = 500;   // 시작 골드
+const START_WITH_FREE_SWORD = true;  // true: 시작/재시작 시 가장 낮은 단계 검을 무료 지급
+const NEW_SWORD_PRICE       = 20;    // 새 검(가장 낮은 단계) 구매 가격(골드)
+
+/* ───────── 강화 확률 (단계 A / 최대 단계 비율로 자동 계산) ───────── */
+const RATE_START = 0.95;  // 가장 낮은 단계의 성공 확률 (0~1)
+const RATE_END   = 0.05;  // 가장 높은 단계의 성공 확률 (0~1)
+const RATE_SHAPE = 2;     // 1 = 직선으로 감소, 클수록 초반엔 높게 유지하다 후반에 급락
+
+/* ───────── 실패 페널티 구간 (최대 단계 대비 비율) ───────── */
+const ZONE_KEEP_UNTIL = 0.3;  // 이 비율 이하: 실패해도 단계 유지 (골드만 소모)
+const ZONE_DROP_UNTIL = 0.7;  // 이 비율 이하: 실패 시 1단계 하락
+                              // 그 위 구간: 실패 시 파괴
+const DESTROY_CHANCE  = 1.0;  // 파괴 구간 실패 시 실제로 파괴될 확률 (나머지는 1단계 하락)
+
+/* ───────── 비용 / 판매 (수식: 기본값 × 증가율^단계) ───────── */
+const COST_BASE   = 10;    // 강화 골드 비용 기본값
+const COST_GROWTH = 1.06;  // 단계당 비용 증가율
+const SELL_BASE   = 8;     // 판매가 기본값
+const SELL_GROWTH = 1.2;   // 단계당 판매가 증가율
+const TERMINAL_SELL_BONUS = 1.5; // 종료 단계(최종) 검 판매가 보너스 배율
+
+/* ───────── 강화석 ───────── */
+const STONE_FROM_STAGE   = 20;   // 이 단계 이상을 강화할 때 강화석(+골드)이 필요
+const STONE_BASE_NEED    = 1;    // 필요한 강화석 기본 개수
+const STONE_NEED_STEP    = 10;   // 이 단계 올라갈 때마다 필요 개수 +1
+const STONE_PRICE        = 100;  // 강화석 1개 구매 가격(골드)
+const SELL_STONE_DROP    = 0.05; // 저단계 검 판매 시 강화석 1개 드랍 확률
+const DISMANTLE_MIN_STAGE = 5;   // 분해 가능한 최소 단계
+const DISMANTLE_STONE_DIV = 5;   // 분해 시 강화석 = 단계 ÷ 이 값 (최소 1개)
+
+/* ───────── 강화 성공 연출 단계 (새로 도달한 단계 기준) ───────── */
+// 모든 단계: 화면 플래시 + 빛기둥 + "+N 단계" 큰 문구
+const FX_TIER2_FROM = 11;  // 이 단계부터 파티클 폭죽/불꽃 추가
+const FX_TIER3_FROM = 20;  // 이 단계부터 화면 흔들림 + 충격파 링 추가
+
+/* ───────── 효과음 ───────── */
+const SOUND_ENABLED = true; // false 면 모든 효과음 끔
+const SOUND_VOLUME  = 0.6;  // 전체 음량 (0 ~ 1)
+
+/* ───────── 저장 ───────── */
+const SAVE_KEY = 'sword_enhance_save_v1'; // 브라우저 자동 저장 키
+</script>
+
+<style>
+:root{
+  --bg0:#07080c; --bg1:#0e1118; --bg2:#161a24; --bg3:#1f2431; --line:#2a3042;
+  --text:#e9ecf5; --sub:#8d95ad; --gold:#ffcf4a; --green:#4be08e; --red:#ff5c6c;
+  --blue:#5b9dff; --purple:#b085ff;
+  --img-w:1254px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}              /* JS 가 FONT_SCALE 을 곱해 덮어씁니다 */
+body{background:var(--bg0);color:var(--text);
+  font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:1rem;min-height:100vh}
+button{font-family:inherit}
+
+/* ── 상단 HUD ── */
+#hud{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;align-items:center;
+  padding:.6rem 1rem;background:rgba(14,17,24,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
+#hud .title{font-weight:800;font-size:1.1rem;color:var(--gold);letter-spacing:.04em}
+#hud .stat{font-size:.95rem;color:var(--sub)}
+#hud .stat b{color:var(--text);font-size:1.15rem;margin-left:.3rem}
+#hud .stat.gold b{color:var(--gold)} #hud .stat.stone b{color:var(--purple)}
+#hud .grow{flex:1}
+
+/* ── 이미지(스테이지) 영역 ── */
+#stageScroll{overflow-x:auto;overflow-y:hidden;background:#000;border-bottom:1px solid var(--line)}
+#stage{position:relative;width:var(--img-w);margin:0 auto;overflow:hidden;background:radial-gradient(ellipse at center,#141824 0%,#05060a 80%)}
+.layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#swordImg{width:var(--img-w);height:auto;display:block;will-change:transform,filter}
+#emptyMsg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:.6rem;color:var(--sub);font-size:1.4rem;text-align:center}
+#beam{position:absolute;left:50%;top:-20%;width:34%;height:140%;transform:translateX(-50%) scaleY(0);opacity:0;z-index:3;
+  background:linear-gradient(90deg,transparent,rgba(255,236,160,.55) 30%,rgba(255,255,255,.95) 50%,rgba(255,236,160,.55) 70%,transparent);
+  mix-blend-mode:screen;pointer-events:none;filter:blur(.4rem)}
+#fx{position:absolute;inset:0;z-index:4;pointer-events:none}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:5;pointer-events:none}
+#bigText{position:absolute;left:0;right:0;top:42%;transform:translateY(-50%);text-align:center;z-index:6;
+  font-weight:900;font-size:5rem;line-height:1.1;opacity:0;pointer-events:none;white-space:pre-line;
+  text-shadow:0 0 .6rem currentColor,0 .15rem 0 rgba(0,0,0,.6),0 0 2rem rgba(0,0,0,.8)}
+.ring{position:absolute;left:50%;top:50%;width:10rem;height:10rem;border-radius:50%;
+  border:.45rem solid #ffd95a;z-index:4;pointer-events:none;opacity:0;box-shadow:0 0 1.5rem #ffb400,inset 0 0 1.5rem #ffb400}
+
+/* ── 정보 카드 ── */
+#info{max-width:70rem;margin:1rem auto;padding:0 1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem}
+.card{background:var(--bg1);border:1px solid var(--line);border-radius:.7rem;padding:.8rem 1rem}
+.card h4{font-size:.8rem;color:var(--sub);font-weight:600;margin-bottom:.35rem;letter-spacing:.05em}
+.card .v{font-size:1.25rem;font-weight:800}
+.card .s{font-size:.85rem;color:var(--sub);margin-top:.25rem;line-height:1.5}
+.badge{display:inline-block;padding:.1rem .5rem;border-radius:1rem;font-size:.75rem;font-weight:700;margin-left:.4rem;vertical-align:middle}
+.b-max{background:#3a2d00;color:var(--gold);border:1px solid #7a5f00}
+.b-keep{background:#12331f;color:var(--green)} .b-drop{background:#3a2d00;color:var(--gold)} .b-destroy{background:#3a1218;color:var(--red)}
+.good{color:var(--green)} .bad{color:var(--red)} .gold{color:var(--gold)}
+
+/* ── 하단 행동 바 ── */
+#actions{position:sticky;bottom:0;z-index:50;display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;
+  padding:.7rem 1rem;background:rgba(14,17,24,.96);border-top:1px solid var(--line);backdrop-filter:blur(6px)}
+.btn{border:1px solid var(--line);background:var(--bg3);color:var(--text);padding:.65rem 1.1rem;border-radius:.6rem;
+  font-size:1rem;font-weight:700;cursor:pointer;transition:transform .08s,filter .15s,background .15s}
+.btn:hover:not(:disabled){filter:brightness(1.25)} .btn:active:not(:disabled){transform:scale(.96)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn small{display:block;font-size:.72rem;font-weight:500;color:var(--sub);margin-top:.1rem}
+.btn.primary{background:linear-gradient(180deg,#ffd75e,#e0a21a);color:#2a1d00;border-color:#ffe28a;font-size:1.15rem;padding:.7rem 1.8rem}
+.btn.primary small{color:#5c4200}
+.btn.danger{background:#3a1218;border-color:#6a2430;color:#ff9aa5}
+.btn.ghost{background:transparent}
+
+/* ── 토스트 ── */
+#toast{position:fixed;left:50%;bottom:6.5rem;transform:translateX(-50%);z-index:200;background:rgba(31,36,49,.97);
+  border:1px solid var(--line);padding:.6rem 1.2rem;border-radius:2rem;font-size:.95rem;opacity:0;pointer-events:none;transition:opacity .25s}
+#toast.show{opacity:1}
+
+/* ── 모달(도감 / 게임오버 / 로딩) ── */
+.modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:1rem}
+.modal.open{display:flex}
+.modal .box{background:var(--bg1);border:1px solid var(--line);border-radius:.9rem;width:min(70rem,100%);max-height:92vh;
+  display:flex;flex-direction:column;overflow:hidden}
+.modal .head{display:flex;align-items:center;gap:.8rem;padding:.8rem 1.1rem;border-bottom:1px solid var(--line);font-weight:800;font-size:1.1rem}
+.modal .head .grow{flex:1}
+.modal .body{overflow:auto;padding:1rem}
+.cx-row{margin-bottom:1rem}
+.cx-row h5{font-size:.9rem;color:var(--gold);margin-bottom:.4rem}
+.cx-grid{display:flex;flex-wrap:wrap;gap:.6rem}
+.cx-item{width:9.5rem;text-align:center;font-size:.8rem;color:var(--sub)}
+.cx-item .th{width:9.5rem;height:9.5rem;background:#000;border:1px solid var(--line);border-radius:.5rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cx-item img{max-width:100%;max-height:100%;object-fit:contain}
+.cx-item.locked img{filter:brightness(0) opacity(.35)}
+.cx-item.on{color:var(--text)} .cx-item.on .th{border-color:#7a5f00}
+#goBox{text-align:center;padding:2.5rem 2rem;gap:1rem;align-items:center;width:min(32rem,100%)}
+#goBox h2{font-size:3rem;color:var(--red);letter-spacing:.08em}
+#goBox p{color:var(--sub);line-height:1.7}
+#loadBox{padding:2rem;text-align:center;width:min(34rem,100%);gap:.8rem;align-items:center}
+#loadBox .bar{width:100%;height:.6rem;background:var(--bg3);border-radius:1rem;overflow:hidden}
+#loadBox .bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .15s}
+#loadMsg{color:var(--sub);line-height:1.7;font-size:.95rem;white-space:pre-line}
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <span class="title">⚔️ 검 강화</span>
+  <span class="stat gold">💰 골드<b id="hGold">0</b></span>
+  <span class="stat stone">💎 강화석<b id="hStone">0</b></span>
+  <span class="grow"></span>
+  <span class="stat">📖 도감<b id="hCodex">0/0</b></span>
+  <span class="stat">시도<b id="hTry">0</b></span>
+  <span class="stat">성공<b id="hOk">0</b></span>
+</div>
+
+<div id="stageScroll">
+  <div id="stage">
+    <div class="layer"><img id="swordImg" alt="" draggable="false"></div>
+    <div id="emptyMsg"><div style="font-size:4rem">🗡️</div><div>소유한 검이 없습니다</div><div style="font-size:1rem">아래에서 새 검을 구매하세요</div></div>
+    <div id="beam"></div>
+    <canvas id="fx"></canvas>
+    <div id="flash"></div>
+    <div id="bigText"></div>
+  </div>
+</div>
+
+<div id="info">
+  <div class="card"><h4>현재 검</h4><div class="v" id="iName">-</div><div class="s" id="iStage"></div></div>
+  <div class="card"><h4>강화 성공 확률</h4><div class="v" id="iRate">-</div><div class="s" id="iFail"></div></div>
+  <div class="card"><h4>강화 비용</h4><div class="v" id="iCost">-</div><div class="s" id="iCostSub"></div></div>
+  <div class="card"><h4>판매 / 분해</h4><div class="v" id="iSell">-</div><div class="s" id="iSellSub"></div></div>
+</div>
+
+<div id="actions">
+  <button class="btn primary" id="bEnh">🔨 강화<small id="bEnhSub"></small></button>
+  <button class="btn" id="bSell">💰 판매<small id="bSellSub"></small></button>
+  <button class="btn" id="bDis">🔧 분해<small id="bDisSub"></small></button>
+  <button class="btn" id="bBuy">🗡️ 새 검 구매<small id="bBuySub"></small></button>
+  <button class="btn" id="bStone">💎 강화석 구매<small id="bStoneSub"></small></button>
+  <button class="btn ghost" id="bCodex">📖 도감</button>
+  <button class="btn ghost" id="bMute">🔊</button>
+  <button class="btn danger ghost" id="bReset">⟲ 초기화</button>
+</div>
+
+<div id="toast"></div>
+
+<!-- 도감 -->
+<div class="modal" id="codexModal">
+  <div class="box">
+    <div class="head">📖 도감 <span id="cxCount" style="color:var(--sub);font-weight:500;font-size:.9rem"></span><span class="grow"></span>
+      <button class="btn ghost" id="cxClose">✕ 닫기</button></div>
+    <div class="body" id="cxBody"></div>
+  </div>
+</div>
+
+<!-- 게임오버 -->
+<div class="modal" id="goModal">
+  <div class="box" id="goBox">
+    <h2>GAME OVER</h2>
+    <p>가진 검도 없고, 새 검을 살 골드도 부족합니다.<br>도감은 그대로 유지됩니다.</p>
+    <button class="btn primary" id="goRestart">다시 시작</button>
+  </div>
+</div>
+
+<!-- 로딩 -->
+<div class="modal open" id="loadModal">
+  <div class="box" id="loadBox">
+    <div style="font-size:1.4rem;font-weight:800">⚔️ 이미지 불러오는 중…</div>
+    <div class="bar"><i id="loadBar"></i></div>
+    <div id="loadMsg"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================================================================
+   글자 크기 배율 적용 (모든 글자는 rem 단위 → 이 한 줄로 전체 조절)
+   ================================================================ */
+document.documentElement.style.fontSize = (16 * FONT_SCALE) + 'px';
+document.documentElement.style.setProperty('--img-w', IMG_WIDTH + 'px');
+
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rnd = (a, b) => a + Math.random() * (b - a);
+const fmt = n => Math.round(n).toLocaleString('ko-KR');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const imgUrl = f => IMG_FOLDER + '/' + encodeURIComponent(f);
+
+/* ================================================================
+   1. 이미지 목록 파싱  (파일명 규칙: A.[B.]C.png)
+   ================================================================ */
+let LEVELS = [];      // [{A, terminal, files:[{file,name,B,w,h}]}]  A 오름차순
+let MAXA = 0;
+let STAGE_H = 0;
+let TOTAL_FILES = 0;
+
+// png 이외의 파일(manifest.json 등)은 이 정규식에 맞지 않아 자동으로 무시됩니다.
+const NAME_RE = /^(\d+)\.(?:(\d+)\.)?(.+)\.png$/i;
+
+function buildLevels(list) {
+  const byA = new Map();
+  for (const f of list) {
+    if (typeof f !== 'string') continue;
+    const m = NAME_RE.exec(f);
+    if (!m) { if (!/\.json$/i.test(f)) console.warn('[규칙 불일치 → 무시]', f); continue; }
+    const A = +m[1];
+    if (!byA.has(A)) byA.set(A, []);
+    byA.get(A).push({ file: f, B: m[2] !== undefined ? +m[2] : null, name: m[3] });
+  }
+  const levels = [];
+  const keys = [...byA.keys()].sort((a, b) => a - b);
+  for (const A of keys) {
+    const arr = byA.get(A);
+    const terms = arr.filter(x => x.B !== null);
+    const norm  = arr.filter(x => x.B === null).sort((a, b) => a.file.localeCompare(b.file, 'ko'));
+    if (levels.length && levels[levels.length - 1].terminal) {
+      console.warn(`[경고] 종료 단계 뒤의 ${A}단계 파일은 무시합니다:`, arr.map(x => x.file));
+      continue;
+    }
+    if (terms.length) {
+      if (norm.length) console.warn(`[경고] ${A}단계에 종료/일반 파일이 섞여 있어 종료 파일만 사용합니다.`);
+      levels.push({ A, terminal: true, files: terms });
+    } else {
+      if (norm.length > 1) console.warn(`[경고] ${A}단계에 일반 파일이 ${norm.length}개 있습니다 (중복 없음 가정). 첫 번째만 사용:`, norm[0].file);
+      levels.push({ A, terminal: false, files: [norm[0]] });
+    }
+  }
+  return levels;
+}
+
+function preloadImages(levels, onProgress) {
+  const all = levels.flatMap(l => l.files);
+  let done = 0;
+  return Promise.all(all.map(f => new Promise(res => {
+    const im = new Image();
+    im.onload  = () => { f.w = im.naturalWidth; f.h = im.naturalHeight; f.ok = true; step(); };
+    im.onerror = () => { console.warn('[이미지 로드 실패]', imgUrl(f.file)); f.ok = false; step(); };
+    im.src = imgUrl(f.file);
+    function step() { done++; onProgress(done, all.length); res(); }
+  })));
+}
+
+/* ================================================================
+   2. 게임 규칙 함수 (수식)
+   ================================================================ */
+const lvIdx = A => LEVELS.findIndex(l => l.A === A);
+const lv    = A => LEVELS[lvIdx(A)];
+const pickFile = level => level.files[Math.floor(Math.random() * level.files.length)];
+
+function rateOf(A) {
+  const r = MAXA > 0 ? A / MAXA : 0;
+  return clamp(RATE_START + (RATE_END - RATE_START) * Math.pow(r, RATE_SHAPE), 0.001, 1);
+}
+function zoneOf(A) {
+  const r = MAXA > 0 ? A / MAXA : 0;
+  if (r <= ZONE_KEEP_UNTIL) return 'keep';
+  if (r <= ZONE_DROP_UNTIL) return 'drop';
+  return 'destroy';
+}
+const costOf      = A => Math.round(COST_BASE * Math.pow(COST_GROWTH, A));
+const stoneNeedOf = A => A >= STONE_FROM_STAGE ? STONE_BASE_NEED + Math.floor((A - STONE_FROM_STAGE) / STONE_NEED_STEP) : 0;
+const sellOf      = (A, term) => Math.round(SELL_BASE * Math.pow(SELL_GROWTH, A) * (term ? TERMINAL_SELL_BONUS : 1));
+const dismantleOf = A => Math.max(1, Math.floor(A / DISMANTLE_STONE_DIV));
+const canDismantle = (A, term) => !term && A >= DISMANTLE_MIN_STAGE && A < STONE_FROM_STAGE;
+
+/* ================================================================
+   3. 상태 / 저장
+   ================================================================ */
+let G = null;
+let busy = false;
+
+function freshState(keepCodex) {
+  const g = { gold: START_GOLD, stones: 0, sword: null, codex: keepCodex || {}, stats: { attempts: 0, success: 0 } };
+  if (START_WITH_FREE_SWORD) giveLowestSword(g);
+  return g;
+}
+function giveLowestSword(g) {
+  const l = LEVELS[0], f = pickFile(l);
+  g.sword = { A: l.A, file: f.file };
+  g.codex[f.file] = 1;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) {} }
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (!s || typeof s.gold !== 'number') return null;
+    s.codex = s.codex || {}; s.stats = s.stats || { attempts: 0, success: 0 }; s.stones = s.stones || 0;
+    if (s.sword) {
+      // 저장된 검 파일이 더 이상 없으면 같은 단계(없으면 가까운 단계)의 파일로 대체
+      const exists = LEVELS.some(l => l.files.some(f => f.file === s.sword.file));
+      if (!exists) {
+        const l = LEVELS.find(l => l.A >= s.sword.A) || LEVELS[LEVELS.length - 1];
+        s.sword = { A: l.A, file: pickFile(l).file };
+      } else {
+        s.sword.A = LEVELS.find(l => l.files.some(f => f.file === s.sword.file)).A;
+      }
+    }
+    return s;
+  } catch (e) { return null; }
+}
+
+/* ================================================================
+   4. 효과음 (Web Audio 합성 - 사운드 파일 불필요)
+   ================================================================ */
+let AC = null, MASTER = null, muted = false, NOISE = null;
+function audio() {
+  if (!SOUND_ENABLED || muted) return null;
+  if (!AC) {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return null;
+    AC = new C(); MASTER = AC.createGain(); MASTER.gain.value = SOUND_VOLUME; MASTER.connect(AC.destination);
+    NOISE = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+    const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(freq, t0, dur, o = {}) {
+  const ac = audio(); if (!ac) return;
+  const { type = 'sine', vol = 0.25, slide = null, attack = 0.005 } = o;
+  const t = ac.currentTime + t0, osc = ac.createOscillator(), g = ac.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(freq, t);
+  if (slide) osc.frequency.exponentialRampToValueAtTime(slide, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g); g.connect(MASTER); osc.start(t); osc.stop(t + dur + 0.05);
+}
+function noise(t0, dur, o = {}) {
+  const ac = audio(); if (!ac) return;
+  const { vol = 0.3, type = 'lowpass', f0 = 2000, f1 = 300, q = 1 } = o;
+  const t = ac.currentTime + t0, src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain();
+  src.buffer = NOISE; fl.type = type; fl.Q.value = q;
+  fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(MASTER); src.start(t, rnd(0, 0.9)); src.stop(t + dur + 0.05);
+}
+const N = { C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880, C6: 1046.5, E6: 1318.5, G6: 1568, C7: 2093 };
+
+const sfx = {
+  click()   { tone(880, 0, .05, { type: 'triangle', vol: .14 }); tone(1320, .03, .05, { type: 'triangle', vol: .08 }); },
+  error()   { tone(190, 0, .13, { type: 'square', vol: .13 }); tone(150, .14, .16, { type: 'square', vol: .13 }); },
+  coin()    { tone(1318, 0, .07, { type: 'square', vol: .1 }); tone(1760, .07, .22, { type: 'square', vol: .1 }); },
+  buy()     { tone(1568, 0, .06, { type: 'square', vol: .1 }); tone(1175, .06, .06, { type: 'square', vol: .1 }); tone(784, .12, .16, { type: 'square', vol: .1 }); },
+  crunch()  { noise(0, .25, { vol: .35, type: 'bandpass', f0: 1800, f1: 400, q: 2 }); tone(300, 0, .2, { type: 'sawtooth', vol: .12, slide: 90 }); tone(1500, .22, .2, { type: 'sine', vol: .12 }); },
+  charge()  { tone(180, 0, .7, { type: 'sawtooth', vol: .1, slide: 1400, attack: .1 });
+              noise(0, .7, { vol: .12, type: 'highpass', f0: 400, f1: 5000 }); },
+  fail()    { tone(330, 0, .4, { type: 'square', vol: .16, slide: 90 }); noise(0, .2, { vol: .15, type: 'lowpass', f0: 900, f1: 150 }); },
+  drop()    { tone(440, 0, .5, { type: 'sawtooth', vol: .16, slide: 110 }); tone(220, .15, .5, { type: 'triangle', vol: .12, slide: 70 }); },
+  destroy() { noise(0, .9, { vol: .5, f0: 4000, f1: 80 }); tone(130, 0, .6, { type: 'sawtooth', vol: .28, slide: 35 });
+              for (let i = 0; i < 6; i++) tone(rnd(2200, 4200), rnd(.05, .5), .12, { type: 'sine', vol: .06 }); },
+  gameover(){ [N.G5, N.E5, N.C5, 261.6].forEach((f, i) => tone(f, i * .32, .5, { type: 'triangle', vol: .2 })); tone(98, 1.1, 1.2, { type: 'sawtooth', vol: .15, slide: 60 }); },
+  // ★ 강화 성공: 상승 휘파람 → 팡파레 아르페지오 → 반짝임. 단계가 높을수록 길고 웅장해짐
+  success(tier, terminal) {
+    noise(0, .35, { vol: .3, type: 'bandpass', f0: 300, f1: 6000, q: 1.2 });            // 휘익
+    tone(260, 0, .3, { type: 'sawtooth', vol: .1, slide: 1500 });
+    const melody = tier === 1 ? [N.C5, N.E5, N.G5, N.C6]
+                 : tier === 2 ? [N.C5, N.E5, N.G5, N.C6, N.E6, N.G6]
+                 :              [N.C5, N.E5, N.G5, N.C6, N.G5, N.C6, N.E6, N.G6];
+    melody.forEach((f, i) => {                                                          // 팡파레
+      const t = .22 + i * .085;
+      tone(f, t, .28, { type: 'triangle', vol: .24 });
+      tone(f * 2, t, .2, { type: 'square', vol: .05 });
+    });
+    const tEnd = .22 + melody.length * .085;
+    [N.C6, N.E6, N.G6].forEach(f => tone(f, tEnd, .9, { type: 'triangle', vol: .2 }));   // 마무리 화음
+    tone(N.C5, tEnd, .9, { type: 'sawtooth', vol: .07 });
+    for (let i = 0; i < (tier === 1 ? 6 : 14); i++)                                      // 반짝임
+      tone(rnd(2400, 5200), tEnd + rnd(0, .8), .1, { type: 'sine', vol: .07 });
+    if (tier >= 3) { tone(90, .22, .7, { type: 'sine', vol: .5, slide: 38 }); noise(.22, .5, { vol: .3, f0: 600, f1: 60 }); }   // 쿵
+    if (terminal) {                                                                       // 최종 단계 대형 팡파레
+      const big = [N.C5, N.E5, N.G5, N.C6, N.G5, N.C6, N.E6, N.G6, N.E6, N.G6, N.C7];
+      big.forEach((f, i) => { tone(f, tEnd + 1 + i * .11, .45, { type: 'triangle', vol: .24 }); tone(f / 2, tEnd + 1 + i * .11, .45, { type: 'square', vol: .06 }); });
+      const t2 = tEnd + 1 + big.length * .11;
+      [N.C5, N.G5, N.C6, N.E6, N.G6, N.C7].forEach(f => tone(f, t2, 1.6, { type: 'triangle', vol: .17 }));
+      for (let i = 0; i < 24; i++) tone(rnd(2000, 5600), t2 + rnd(0, 1.4), .12, { type: 'sine', vol: .07 });
+    }
+  },
+};
+
+/* ================================================================
+   5. 이펙트 엔진 (파티클 / 플래시 / 빛기둥 / 흔들림 / 충격파 / 큰 문구)
+   ================================================================ */
+const stageEl = $('#stage'), swordImg = $('#swordImg'), fxCv = $('#fx'), fctx = fxCv.getContext('2d');
+let parts = [], fxRunning = false;
+
+function addBurst(x, y, n, o = {}) {
+  const { colors = ['#ffd54a', '#fff6c8', '#ff9f43'], speed = 9, life = 60, size = 5, gravity = .14, shard = false } = o;
+  for (let i = 0; i < n; i++) {
+    const a = rnd(0, Math.PI * 2), s = rnd(speed * .25, speed);
+    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - (shard ? 2 : 0), life: life * rnd(.6, 1.2), max: life, g: gravity,
+      c: colors[Math.floor(Math.random() * colors.length)], sz: size * rnd(.5, 1.4), shard, rot: rnd(0, 6.28), vr: rnd(-.3, .3) });
+  }
+  if (!fxRunning) { fxRunning = true; requestAnimationFrame(fxLoop); }
+}
+function fxLoop() {
+  fctx.clearRect(0, 0, fxCv.width, fxCv.height);
+  fctx.globalCompositeOperation = 'lighter';
+  parts = parts.filter(p => p.life > 0);
+  for (const p of parts) {
+    p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= .99; p.life--; p.rot += p.vr;
+    const a = clamp(p.life / p.max, 0, 1);
+    fctx.globalAlpha = a; fctx.fillStyle = p.c;
+    if (p.shard) { fctx.save(); fctx.translate(p.x, p.y); fctx.rotate(p.rot); fctx.fillRect(-p.sz, -p.sz / 2, p.sz * 2, p.sz); fctx.restore(); }
+    else { fctx.beginPath(); fctx.arc(p.x, p.y, p.sz * (.4 + a * .6), 0, 6.28); fctx.fill(); }
+  }
+  fctx.globalAlpha = 1; fctx.globalCompositeOperation = 'source-over';
+  if (parts.length) requestAnimationFrame(fxLoop); else fxRunning = false;
+}
+function fireworks(bursts, spanMs, big) {
+  for (let i = 0; i < bursts; i++) setTimeout(() => {
+    const x = rnd(fxCv.width * .15, fxCv.width * .85), y = rnd(fxCv.height * .15, fxCv.height * .6);
+    const pal = [['#ffd54a', '#fff6c8', '#ff9f43'], ['#7be0ff', '#fff', '#5b9dff'], ['#ff7ad9', '#ffe0f6', '#b085ff'], ['#7dffb0', '#eaffee', '#4be08e']][i % 4];
+    addBurst(x, y, big ? 110 : 70, { colors: pal, speed: big ? 13 : 10, life: 70, size: 5, gravity: .12 });
+  }, (spanMs / Math.max(1, bursts)) * i);
+}
+function flash(color, peak, dur) {
+  const f = $('#flash'); f.style.background = color;
+  f.animate([{ opacity: 0 }, { opacity: peak, offset: .3 }, { opacity: 0 }], { duration: dur, easing: 'ease-out' });
+}
+function beam(dur, color) {
+  const b = $('#beam');
+  if (color) b.style.filter = 'blur(.4rem) ' + color;
+  b.animate([
+    { transform: 'translateX(-50%) scaleY(0) scaleX(.3)', opacity: 0 },
+    { transform: 'translateX(-50%) scaleY(1) scaleX(1)', opacity: 1, offset: .25 },
+    { transform: 'translateX(-50%) scaleY(1) scaleX(.6)', opacity: .7, offset: .7 },
+    { transform: 'translateX(-50%) scaleY(1) scaleX(.1)', opacity: 0 }
+  ], { duration: dur, easing: 'ease-out' });
+}
+function shake(power, dur) {
+  const kf = [];
+  for (let i = 0; i < 14; i++) { const k = 1 - i / 14; kf.push({ transform: `translate(${rnd(-power, power) * k}px,${rnd(-power, power) * k}px)` }); }
+  kf.push({ transform: 'translate(0,0)' });
+  stageEl.animate(kf, { duration: dur, easing: 'linear' });
+}
+function ring(delay, color) {
+  const r = document.createElement('div'); r.className = 'ring';
+  if (color) { r.style.borderColor = color; r.style.boxShadow = `0 0 1.5rem ${color}, inset 0 0 1.5rem ${color}`; }
+  stageEl.appendChild(r);
+  const a = r.animate([
+    { transform: 'translate(-50%,-50%) scale(.2)', opacity: .95 },
+    { transform: 'translate(-50%,-50%) scale(14)', opacity: 0 }
+  ], { duration: 1000, delay, easing: 'cubic-bezier(.1,.6,.3,1)', fill: 'both' });
+  a.onfinish = () => r.remove();
+}
+function bigText(text, color, o = {}) {
+  const { dur = 1500, scale = 1, size = null } = o;
+  const t = $('#bigText'); t.textContent = text; t.style.color = color; t.style.fontSize = size || '5rem';
+  t.animate([
+    { opacity: 0, transform: `translateY(-50%) scale(${.2 * scale})` },
+    { opacity: 1, transform: `translateY(-50%) scale(${1.25 * scale})`, offset: .18 },
+    { opacity: 1, transform: `translateY(-50%) scale(${1 * scale})`, offset: .3 },
+    { opacity: 1, transform: `translateY(-50%) scale(${1 * scale})`, offset: .78 },
+    { opacity: 0, transform: `translateY(-65%) scale(${1.1 * scale})` }
+  ], { duration: dur, easing: 'ease-out' });
+}
+
+/* ── 연출 시퀀스 ── */
+function showCurrentImage() {
+  swordImg.getAnimations().forEach(a => a.cancel());   // 이전 연출의 잔여 효과(fill) 제거
+  if (G.sword) { swordImg.style.display = 'block'; swordImg.src = imgUrl(G.sword.file); $('#emptyMsg').style.display = 'none'; }
+  else { swordImg.style.display = 'none'; $('#emptyMsg').style.display = 'flex'; }
+}
+async function setImageDecoded(file) {
+  swordImg.style.display = 'block'; swordImg.src = imgUrl(file);
+  try { await swordImg.decode(); } catch (e) {}
+}
+
+async function playCharge() {
+  const kf = [];
+  for (let i = 0; i < 12; i++) { const k = i / 11; kf.push({ transform: `translate(${rnd(-1, 1) * 4 * k}px,${rnd(-1, 1) * 4 * k}px) scale(${1 + .015 * k})`,
+    filter: `brightness(${1 + .9 * k}) drop-shadow(0 0 ${2.2 * k}rem #ffb400)` }); }
+  swordImg.animate(kf, { duration: 700, easing: 'linear' });
+  await sleep(700);
+}
+
+async function playSuccess(oldS, newS, terminal) {
+  const A = newS.A;
+  const tier = A >= FX_TIER3_FROM ? 3 : A >= FX_TIER2_FROM ? 2 : 1;
+  const W = fxCv.width, H = fxCv.height;
+  sfx.success(tier, terminal);
+
+  // (공통) 화면 플래시 + 빛기둥
+  flash(terminal ? '#fff2b0' : '#ffffff', 1, terminal ? 1000 : 750);
+  beam(terminal ? 1800 : 1300, terminal ? 'hue-rotate(-10deg) saturate(1.6)' : '');
+
+  // 이전 이미지를 복제해 확대하며 사라지게
+  const ghost = swordImg.cloneNode(); ghost.removeAttribute('id');
+  ghost.style.cssText = 'position:absolute;left:50%;top:50%;width:var(--img-w);height:auto;transform:translate(-50%,-50%);z-index:2;pointer-events:none';
+  stageEl.appendChild(ghost);
+  ghost.animate([
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, filter: 'brightness(1)' },
+    { transform: 'translate(-50%,-50%) scale(1.25)', opacity: 0, filter: 'brightness(3.5) blur(.5rem)' }
+  ], { duration: 420, easing: 'ease-in', fill: 'forwards' }).onfinish = () => ghost.remove();
+
+  await sleep(240);   // 플래시가 가장 밝은 순간에 이미지 교체
+  await setImageDecoded(newS.file);
+  swordImg.animate([
+    { transform: 'scale(.55)', filter: 'brightness(4) blur(1rem)', opacity: .2 },
+    { transform: 'scale(1.12)', filter: 'brightness(2) drop-shadow(0 0 3rem #ffd54a)', opacity: 1, offset: .5 },
+    { transform: 'scale(1)', filter: 'brightness(1) drop-shadow(0 0 0 transparent)', opacity: 1 }
+  ], { duration: 950, easing: 'cubic-bezier(.2,.8,.3,1)' });
+
+  // (공통) +N 단계 큰 문구
+  const txt = terminal ? `+${A} 단계\n★ MAX ★` : `+${A} 단계`;
+  bigText(txt, terminal ? '#ffd54a' : '#fff6c8', { dur: terminal ? 2300 : 1600, scale: tier >= 3 ? 1.25 : 1, size: terminal ? '5.5rem' : null });
+
+  // (11단계~) 파티클 폭죽 / 불꽃
+  if (tier >= 2) {
+    addBurst(W / 2, H / 2, tier === 3 ? 160 : 100, { speed: 12, life: 70, size: 5 });
+    fireworks(tier === 3 ? 7 : 4, 1200, tier === 3);
+  }
+  // (20단계~) 화면 흔들림 + 충격파 링
+  if (tier >= 3) {
+    shake(18, 600);
+    ring(0); ring(180, '#ffffff'); ring(360);
+  }
+  // 종료 단계 특별 연출
+  if (terminal) {
+    fireworks(14, 2200, true);
+    shake(22, 900);
+    ring(0); ring(200, '#ffffff'); ring(400); ring(700, '#ffb400');
+    setTimeout(() => flash('#ffe27a', .7, 900), 700);
+    await sleep(2300);
+  } else {
+    await sleep(tier === 1 ? 1300 : 1500);
+  }
+}
+
+async function playFail(zone) {
+  const W = fxCv.width, H = fxCv.height;
+  flash('#ff2a3d', .5, 600);
+  if (zone === 'drop') { sfx.drop(); } else { sfx.fail(); }
+  shake(10, 450);
+  swordImg.animate([
+    { filter: 'brightness(1)' }, { filter: 'brightness(.35) sepia(1) hue-rotate(-30deg) saturate(4)', offset: .25 }, { filter: 'brightness(1)' }
+  ], { duration: 650 });
+  addBurst(W / 2, H / 2, 40, { colors: ['#ff5c6c', '#8a1f2b', '#444'], speed: 6, life: 40, size: 4, gravity: .2 });
+  await sleep(700);
+}
+async function playDestroy() {
+  const W = fxCv.width, H = fxCv.height;
+  sfx.destroy();
+  flash('#ff1530', .8, 800);
+  shake(24, 700);
+  swordImg.animate([
+    { transform: 'scale(1)', opacity: 1, filter: 'brightness(1)' },
+    { transform: 'scale(1.05)', opacity: 1, filter: 'brightness(3) contrast(2)', offset: .2 },
+    { transform: 'scale(.85) rotate(2deg)', opacity: 0, filter: 'brightness(.2) blur(.6rem)' }
+  ], { duration: 800, easing: 'ease-in', fill: 'forwards' });
+  addBurst(W / 2, H / 2, 150, { colors: ['#ff5c6c', '#b3b8c8', '#666c80', '#ffd0d0'], speed: 14, life: 70, size: 7, gravity: .3, shard: true });
+  bigText('검이 파괴되었습니다…', '#ff5c6c', { dur: 1800, size: '3.6rem' });
+  await sleep(1500);
+}
+
+/* ================================================================
+   6. 행동 (강화 / 판매 / 분해 / 구매)
+   ================================================================ */
+function toast(msg, ms = 2200) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+async function doEnhance() {
+  if (busy || !G.sword) return;
+  sfx.click();
+  const A = G.sword.A, level = lv(A);
+  if (level.terminal) { sfx.error(); toast('최종 단계 검입니다. 판매만 가능합니다.'); return; }
+  const cost = costOf(A), need = stoneNeedOf(A);
+  if (G.gold < cost)    { sfx.error(); toast('골드가 부족합니다.'); return; }
+  if (G.stones < need)  { sfx.error(); toast('강화석이 부족합니다.'); return; }
+
+  busy = true; G.gold -= cost; G.stones -= need; G.stats.attempts++; render();
+  sfx.charge(); await playCharge();
+
+  if (Math.random() < rateOf(A)) {
+    const next = LEVELS[lvIdx(A) + 1], f = pickFile(next), oldS = G.sword;
+    G.sword = { A: next.A, file: f.file }; G.stats.success++;
+    const isNew = !G.codex[f.file]; G.codex[f.file] = 1;
+    render();
+    await playSuccess(oldS, G.sword, next.terminal);
+    if (isNew) toast('📖 도감 등록! ' + f.name);
+  } else {
+    let zone = zoneOf(A);
+    if (zone === 'destroy' && Math.random() >= DESTROY_CHANCE) zone = 'drop';
+    if (zone === 'keep') {
+      bigText('강화 실패\n단계 유지', '#ff8a96', { dur: 1300, size: '3.4rem' });
+      await playFail('keep');
+    } else if (zone === 'drop') {
+      const idx = lvIdx(A), prev = LEVELS[Math.max(0, idx - 1)];
+      bigText(idx > 0 ? `강화 실패\n${A} → ${prev.A} 단계 하락` : '강화 실패\n단계 유지', '#ffb36b', { dur: 1400, size: '3.4rem' });
+      await playFail('drop');
+      if (idx > 0) { const f = pickFile(prev); G.sword = { A: prev.A, file: f.file }; G.codex[f.file] = 1; await setImageDecoded(f.file); }
+    } else {
+      await playDestroy();
+      G.sword = null;
+    }
+  }
+  save(); busy = false; showCurrentImage(); render(); checkGameOver();
+}
+
+function doSell() {
+  if (busy || !G.sword) return; sfx.click();
+  const { A } = G.sword, term = lv(A).terminal, price = sellOf(A, term);
+  G.gold += price; let msg = `+${fmt(price)} 골드 획득`;
+  if (!term && A < STONE_FROM_STAGE && Math.random() < SELL_STONE_DROP) { G.stones++; msg += ' · 💎 강화석 1개 드랍!'; }
+  setTimeout(sfx.coin, 40); G.sword = null;
+  swordFadeOut(); toast(msg); afterAction();
+}
+function doDismantle() {
+  if (busy || !G.sword) return; sfx.click();
+  const { A } = G.sword;
+  if (!canDismantle(A, lv(A).terminal)) { sfx.error(); toast(`분해는 ${DISMANTLE_MIN_STAGE}~${STONE_FROM_STAGE - 1}단계 검만 가능합니다.`); return; }
+  const n = dismantleOf(A); G.stones += n; G.sword = null;
+  setTimeout(sfx.crunch, 40); swordFadeOut(); toast(`💎 강화석 ${n}개 획득`); afterAction();
+}
+function doBuySword() {
+  if (busy || G.sword) return; sfx.click();
+  if (G.gold < NEW_SWORD_PRICE) { sfx.error(); toast('골드가 부족합니다.'); return; }
+  G.gold -= NEW_SWORD_PRICE; giveLowestSword(G); setTimeout(sfx.buy, 40);
+  showCurrentImage();
+  swordImg.animate([{ transform: 'scale(.8)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 400, easing: 'ease-out' });
+  toast('새 검을 구매했습니다.'); afterAction();
+}
+function doBuyStone() {
+  if (busy) return; sfx.click();
+  if (G.gold < STONE_PRICE) { sfx.error(); toast('골드가 부족합니다.'); return; }
+  G.gold -= STONE_PRICE; G.stones++; setTimeout(sfx.buy, 40); toast('💎 강화석 1개 구매'); afterAction();
+}
+function swordFadeOut() {
+  const a = swordImg.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.92)' }], { duration: 300, fill: 'forwards' });
+  a.onfinish = () => { a.cancel(); showCurrentImage(); };
+}
+function afterAction() { save(); render(); checkGameOver(); }
+
+function checkGameOver() {
+  if (!G.sword && G.gold < NEW_SWORD_PRICE) {
+    if (!$('#goModal').classList.contains('open')) { sfx.gameover(); }
+    $('#goModal').classList.add('open');
+  }
+}
+$('#goRestart').onclick = () => {
+  sfx.click(); G = freshState(G.codex); save(); $('#goModal').classList.remove('open'); showCurrentImage(); render();
+};
+
+/* ================================================================
+   7. 화면 갱신
+   ================================================================ */
+function render() {
+  const total = TOTAL_FILES, got = Object.keys(G.codex).length;
+  $('#hGold').textContent = fmt(G.gold);
+  $('#hStone').textContent = fmt(G.stones);
+  $('#hCodex').textContent = `${got}/${total}`;
+  $('#hTry').textContent = fmt(G.stats.attempts);
+  $('#hOk').textContent = fmt(G.stats.success);
+
+  const s = G.sword;
+  if (!s) {
+    $('#iName').textContent = '없음'; $('#iStage').textContent = '새 검을 구매하세요';
+    $('#iRate').textContent = '-'; $('#iFail').textContent = '';
+    $('#iCost').textContent = '-'; $('#iCostSub').textContent = '';
+    $('#iSell').textContent = '-'; $('#iSellSub').textContent = '';
+  } else {
+    const level = lv(s.A), term = level.terminal;
+    const f = level.files.find(x => x.file === s.file);
+    $('#iName').innerHTML = esc(f ? f.name : '?') + (term ? '<span class="badge b-max">MAX</span>' : '');
+    $('#iStage').textContent = `현재 ${s.A}단계` + (term ? ' · 강화 종료 (판매만 가능)' : ` · 최대 ${MAXA}단계`);
+    if (term) {
+      $('#iRate').textContent = '-'; $('#iFail').textContent = '더 이상 강화할 수 없습니다';
+      $('#iCost').textContent = '-'; $('#iCostSub').textContent = '';
+    } else {
+      const z = zoneOf(s.A), r = rateOf(s.A), need = stoneNeedOf(s.A);
+      $('#iRate').textContent = (r * 100).toFixed(1) + '%';
+      $('#iFail').innerHTML = z === 'keep' ? '<span class="badge b-keep" style="margin:0">실패 시 유지</span>'
+        : z === 'drop' ? '<span class="badge b-drop" style="margin:0">실패 시 1단계 하락</span>'
+        : '<span class="badge b-destroy" style="margin:0">실패 시 파괴 위험!</span>';
+      $('#iCost').innerHTML = `<span class="gold">${fmt(costOf(s.A))}</span> 골드`;
+      $('#iCostSub').innerHTML = need ? `+ 💎 강화석 ${need}개 (보유 ${fmt(G.stones)})` : '강화석 불필요';
+    }
+    $('#iSell').innerHTML = `<span class="gold">${fmt(sellOf(s.A, term))}</span> 골드`;
+    $('#iSellSub').textContent = canDismantle(s.A, term) ? `분해 시 💎 강화석 ${dismantleOf(s.A)}개` : '분해 불가 (' + DISMANTLE_MIN_STAGE + '~' + (STONE_FROM_STAGE - 1) + '단계만 가능)';
+  }
+
+  // 버튼 상태 / 보조 문구
+  const has = !!s, term = has && lv(s.A).terminal;
+  $('#bEnh').disabled  = busy || !has || term;
+  $('#bSell').disabled = busy || !has;
+  $('#bDis').disabled  = busy || !has || !canDismantle(s ? s.A : 0, term);
+  $('#bBuy').disabled  = busy || has;
+  $('#bStone').disabled = busy;
+  $('#bEnhSub').textContent = has && !term ? `${fmt(costOf(s.A))}G` + (stoneNeedOf(s.A) ? ` + 💎${stoneNeedOf(s.A)}` : '') : '';
+  $('#bSellSub').textContent = has ? `+${fmt(sellOf(s.A, term))}G` : '';
+  $('#bDisSub').textContent = has && canDismantle(s.A, term) ? `💎 +${dismantleOf(s.A)}` : '';
+  $('#bBuySub').textContent = `${fmt(NEW_SWORD_PRICE)}G`;
+  $('#bStoneSub').textContent = `${fmt(STONE_PRICE)}G`;
+  $('#bMute').textContent = muted ? '🔇' : '🔊';
+}
+
+/* ── 도감 ── */
+function openCodex() {
+  sfx.click();
+  const got = Object.keys(G.codex).length;
+  $('#cxCount').textContent = `${got} / ${TOTAL_FILES} 수집`;
+  $('#cxBody').innerHTML = LEVELS.map(l =>
+    `<div class="cx-row"><h5>${l.A}단계${l.terminal ? ' (최종)' : ''}</h5><div class="cx-grid">` +
+    l.files.map(f => {
+      const on = !!G.codex[f.file];
+      return `<div class="cx-item ${on ? 'on' : 'locked'}"><div class="th"><img src="${imgUrl(f.file)}" alt="" loading="lazy"></div>${on ? esc(f.name) : '???'}</div>`;
+    }).join('') + '</div></div>').join('');
+  $('#codexModal').classList.add('open');
+}
+$('#cxClose').onclick = () => { sfx.click(); $('#codexModal').classList.remove('open'); };
+$('#codexModal').addEventListener('click', e => { if (e.target.id === 'codexModal') $('#codexModal').classList.remove('open'); });
+
+/* ── 버튼 연결 ── */
+$('#bEnh').onclick = doEnhance;
+$('#bSell').onclick = doSell;
+$('#bDis').onclick = doDismantle;
+$('#bBuy').onclick = doBuySword;
+$('#bStone').onclick = doBuyStone;
+$('#bCodex').onclick = openCodex;
+$('#bMute').onclick = () => { muted = !muted; if (!muted) sfx.click(); render(); };
+$('#bReset').onclick = () => {
+  sfx.click();
+  if (!confirm('모든 진행 상황(골드, 강화석, 도감)을 초기화할까요?')) return;
+  localStorage.removeItem(SAVE_KEY); G = freshState(); save(); $('#goModal').classList.remove('open'); showCurrentImage(); render();
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') $('#codexModal').classList.remove('open');
+  if ((e.key === 'Enter' || e.key === ' ') && !$('#codexModal').classList.contains('open') && e.target === document.body) { e.preventDefault(); doEnhance(); }
+});
+
+/* ================================================================
+   8. 초기화 (manifest 읽기 → 이미지 사전 로드 → 시작)
+   ================================================================ */
+function loadFail(msg) {
+  $('#loadMsg').textContent = msg;
+  $('#loadBox').querySelector('div').textContent = '⚠️ 시작할 수 없습니다';
+}
+
+(async function init() {
+  if (location.protocol === 'file:')
+    console.warn('file:// 로 열면 manifest.json 을 읽을 수 없습니다. GitHub Pages 또는 로컬 서버(python -m http.server)로 실행하세요.');
+  let list;
+  try {
+    const res = await fetch(`${IMG_FOLDER}/${MANIFEST_FILE}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    list = Array.isArray(j) ? j : (j.files || []);
+  } catch (e) {
+    loadFail(`${IMG_FOLDER}/${MANIFEST_FILE} 를 읽지 못했습니다.\n(${e.message})\n\n· make_manifest.py 로 manifest.json 을 만들었는지\n· GitHub Pages(또는 로컬 서버)로 실행 중인지 확인하세요.\n  (index.html 을 더블클릭해 file:// 로 열면 동작하지 않습니다)`);
+    return;
+  }
+  LEVELS = buildLevels(list);
+  if (!LEVELS.length) { loadFail('규칙(A.[B.]C.png)에 맞는 이미지가 manifest 에 없습니다.'); return; }
+
+  await preloadImages(LEVELS, (d, t) => { $('#loadBar').style.width = (d / t * 100) + '%'; $('#loadMsg').textContent = `${d} / ${t}`; });
+
+  // 로드 실패한 파일 제거 → 빈 단계는 건너뜀
+  LEVELS.forEach(l => { l.files = l.files.filter(f => f.ok); });
+  LEVELS = LEVELS.filter(l => l.files.length);
+  if (!LEVELS.length) { loadFail('불러올 수 있는 이미지가 하나도 없습니다.\n폴더 이름(' + IMG_FOLDER + ')과 파일명을 확인하세요.'); return; }
+
+  MAXA = LEVELS[LEVELS.length - 1].A;
+  TOTAL_FILES = LEVELS.reduce((n, l) => n + l.files.length, 0);
+
+  // 이미지 영역 크기: 가로 IMG_WIDTH 고정, 세로는 가장 큰 이미지(또는 STAGE_HEIGHT)
+  const maxH = Math.max(...LEVELS.flatMap(l => l.files.map(f => IMG_WIDTH * f.h / f.w)));
+  STAGE_H = STAGE_HEIGHT > 0 ? STAGE_HEIGHT : Math.ceil(maxH);
+  stageEl.style.height = STAGE_H + 'px';
+  fxCv.width = IMG_WIDTH; fxCv.height = STAGE_H;
+  $('#emptyMsg').style.minHeight = '0';
+
+  G = load() || freshState();
+  save(); showCurrentImage(); render();
+  $('#loadModal').classList.remove('open');
+  checkGameOver();
+})();
+</script>
+</body>
+</html>
