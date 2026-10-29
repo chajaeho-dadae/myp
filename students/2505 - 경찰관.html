@@ -14,13 +14,13 @@
 
         #top-timer-bar {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            background: rgba(5, 12, 25, 0.88); border: 2px solid rgba(0, 229, 255, 0.6);
-            padding: 8px 25px; border-radius: 30px; backdrop-filter: blur(8px);
+            background: rgba(5, 12, 25, 0.92); border: 2px solid rgba(0, 229, 255, 0.8);
+            padding: 8px 30px; border-radius: 30px; backdrop-filter: blur(8px);
             color: #fff; z-index: 10; pointer-events: none;
-            box-shadow: 0 0 20px rgba(0, 229, 255, 0.3); display: flex; align-items: center; gap: 20px;
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.4); display: flex; flex-direction: column; align-items: center;
         }
-        .timer-title { font-size: 12px; color: #ffcc00; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
-        .timer-display { font-size: 32px; font-weight: 900; font-family: 'Courier New', Courier, monospace; color: #ffcc00; text-shadow: 0 0 12px rgba(255, 204, 0, 0.8); }
+        .timer-title { font-size: 12px; color: #ffcc00; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold; margin-bottom: 2px; }
+        .timer-display { font-size: 38px; font-weight: 900; font-family: 'Courier New', Courier, monospace; color: #ffcc00; text-shadow: 0 0 15px rgba(255, 204, 0, 0.9); letter-spacing: 2px; }
 
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; z-index: 10; }
         .hud-panel { background: rgba(0, 20, 40, 0.8); border: 1px solid rgba(0, 200, 255, 0.4); padding: 15px 20px; border-radius: 10px; backdrop-filter: blur(4px); min-width: 250px; }
@@ -58,10 +58,8 @@
     <div id="damage-flash"></div>
 
     <div id="top-timer-bar">
-        <div>
-            <div class="timer-title">⏱️ 작전 남은 시간 (5분)</div>
-            <div id="timer" class="timer-display">05:00</div>
-        </div>
+        <div class="timer-title">⏱️ 작전 남은 시간 (5분)</div>
+        <div id="timer" class="timer-display">05:00</div>
     </div>
 
     <div id="hud">
@@ -83,9 +81,9 @@
 
     <div id="overlay-screen">
         <h1 id="overlay-title">🚨 3D 도심 경찰관 시뮬레이터</h1>
-        <p id="overlay-desc1">목표: 5분 내에 도심 길거리의 범죄자 20명을 체포하세요.</p>
-        <p id="overlay-desc2">탄약이 떨어지면 숫자키 [2]를 누르거나 자동 변환되는 진압봉(근접)을 사용하세요!</p>
-        <p style="margin-top: 10px; color: #aaa;">조작법: W/A/S/D (이동), 마우스 (시야 조작 및 사격/공격/체포), [1]/[2] 무기교체</p>
+        <p id="overlay-desc1">목표: 5분 제한시간 내에 도심 속 범죄자 20명을 체포하세요.</p>
+        <p id="overlay-desc2">5분이 모두 지나면 범인들이 전부 도망치며 작전에 실패하게 됩니다!</p>
+        <p style="margin-top: 10px; color: #aaa;">조작법: W/A/S/D (이동), 마우스 (시야 조작 및 발사/타격/체포), [1]/[2] 무기교체</p>
         <button id="start-btn">작전 개시 (시작하기)</button>
     </div>
 
@@ -93,13 +91,67 @@
 
     <script>
         let audioCtx = null;
+        let isBgmPlaying = false;
+        let bgmTimer = null;
+
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+        // --- 경찰차 배경음악 (사이렌 모티프 루프 BGM) ---
+        function startPoliceBgm() {
+            if (!audioCtx || isBgmPlaying) return;
+            isBgmPlaying = true;
+
+            const baseNotes = [110, 110, 130.81, 146.83, 110, 110, 155.56, 146.83]; // A2, C3, D3, Eb3 Bass-line
+            let noteIdx = 0;
+
+            function playBgmBeat() {
+                if (!isBgmPlaying || gameOver) return;
+                const now = audioCtx.currentTime;
+
+                // 1. 긴장감 넘치는 베이스 리듬
+                const bassOsc = audioCtx.createOscillator();
+                const bassGain = audioCtx.createGain();
+                bassOsc.type = 'sawtooth';
+                bassOsc.frequency.setValueAtTime(baseNotes[noteIdx % baseNotes.length], now);
+                bassGain.gain.setValueAtTime(0.12, now);
+                bassGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                bassOsc.connect(bassGain);
+                bassGain.connect(audioCtx.destination);
+                bassOsc.start(now);
+                bassOsc.stop(now + 0.2);
+
+                // 2. 경찰차 사이렌 스윕음 효과 (8비트마다 은은하게 합성)
+                if (noteIdx % 8 === 0) {
+                    const sirenOsc = audioCtx.createOscillator();
+                    const sirenGain = audioCtx.createGain();
+                    sirenOsc.type = 'sine';
+                    sirenOsc.frequency.setValueAtTime(600, now);
+                    sirenOsc.frequency.linearRampToValueAtTime(900, now + 0.4);
+                    sirenOsc.frequency.linearRampToValueAtTime(600, now + 0.8);
+                    sirenGain.gain.setValueAtTime(0.05, now);
+                    sirenGain.gain.exponentialRampToValueAtTime(0.005, now + 0.8);
+                    sirenOsc.connect(sirenGain);
+                    sirenGain.connect(audioCtx.destination);
+                    sirenOsc.start(now);
+                    sirenOsc.stop(now + 0.8);
+                }
+
+                noteIdx++;
+                bgmTimer = setTimeout(playBgmBeat, 220); // 136 BPM
+            }
+
+            playBgmBeat();
+        }
+
+        function stopPoliceBgm() {
+            isBgmPlaying = false;
+            if (bgmTimer) clearTimeout(bgmTimer);
+        }
 
         function playTaserSound() {
             if (!audioCtx) return;
             const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
             osc.type = 'sawtooth'; osc.frequency.setValueAtTime(900, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.18);
             gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
             osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.18);
@@ -108,8 +160,7 @@
         function playBatonSound() {
             if (!audioCtx) return;
             const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
             osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
             gain.gain.setValueAtTime(0.4, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
             osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.15);
@@ -156,7 +207,7 @@
         let gameOver = false;
         let gameStarted = false;
         let baseSuspectSpeed = 0.038;
-        let currentWeapon = 'TASER'; // 'TASER' 또는 'BATON'
+        let currentWeapon = 'TASER';
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a101d);
@@ -338,7 +389,10 @@
 
         function startGame() {
             if (gameOver) { location.reload(); return; }
-            initAudio(); document.body.requestPointerLock(); gameStarted = true;
+            initAudio(); 
+            startPoliceBgm();
+            document.body.requestPointerLock(); 
+            gameStarted = true;
         }
 
         overlayScreen.addEventListener('click', startGame);
@@ -512,7 +566,9 @@
         }
 
         function endGame(isWin, message) {
-            gameOver = true; document.exitPointerLock();
+            gameOver = true; 
+            stopPoliceBgm();
+            document.exitPointerLock();
             overlayScreen.style.display = 'flex';
             document.getElementById('overlay-title').innerText = isWin ? "MISSION COMPLETE" : "GAME OVER";
             document.getElementById('overlay-title').style.color = isWin ? "#00ff88" : "#ff4444";
@@ -522,14 +578,25 @@
 
         setInterval(() => {
             if (!gameStarted || gameOver) return;
+
             timeRemaining--;
             const mins = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
             const secs = (timeRemaining % 60).toString().padStart(2, '0');
+            
             const timerEl = document.getElementById('timer');
-            timerEl.innerText = `
+            if (timerEl) timerEl.innerText = `
 mins:{secs}`;
-            if (timeRemaining < 60) timerEl.style.color = '#ef4444';
-            if (timeRemaining <= 0) endGame(false, "⏱️ 5분 제한시간이 종료되었습니다!");
+
+            if (timeRemaining < 60 && timerEl) {
+                timerEl.style.color = '#ef4444';
+                timerEl.style.textShadow = '0 0 15px rgba(239, 68, 68, 0.9)';
+            }
+
+            if (timeRemaining <= 0) {
+                suspects.forEach(s => scene.remove(s.mesh));
+                suspects.length = 0;
+                endGame(false, "⏱️ 5분 제한시간 종료! 범인들이 도망쳤습니다. 작전 실패!");
+            }
         }, 1000);
 
         const clock = new THREE.Clock();
