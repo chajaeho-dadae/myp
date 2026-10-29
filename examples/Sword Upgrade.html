@@ -14,10 +14,12 @@
 const IMG_FOLDER    = 'sword_images';
 // 이미지 폴더 안의 목록 파일 이름 (make_manifest.py 가 생성)
 const MANIFEST_FILE = 'manifest.json';
-// 화면에 표시되는 이미지의 가로 크기(px). 원본 가로세로 비율은 항상 유지됩니다.
-const IMG_WIDTH     = 1254;
+// 화면에 표시되는 이미지의 가로 크기(px).
+//   0    = 이미지를 원본 크기(픽셀) 그대로 출력 (확대/축소 없음)   ← 현재 설정
+//   숫자 = 모든 이미지를 그 가로 크기로 고정 (예: 1254). 원본 가로세로 비율은 항상 유지됩니다.
+const IMG_WIDTH     = 0;
 // 이미지 표시 영역의 세로 크기(px). 0 = 가장 큰(세로가 긴) 이미지에 자동으로 맞춤.
-// 세로가 짧은 이미지는 이 영역 안에서 세로 중앙 정렬됩니다.
+// 크기가 다른 이미지는 이 영역 안에서 가로·세로 모두 중앙 정렬됩니다.
 const STAGE_HEIGHT  = 0;
 
 /* ───────── 글자 크기 ───────── */
@@ -96,7 +98,7 @@ button{font-family:inherit}
 #stageScroll{overflow-x:auto;overflow-y:hidden;background:#000;border-bottom:1px solid var(--line)}
 #stage{position:relative;width:var(--img-w);margin:0 auto;overflow:hidden;background:radial-gradient(ellipse at center,#141824 0%,#05060a 80%)}
 .layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-#swordImg{width:var(--img-w);height:auto;display:block;will-change:transform,filter}
+#swordImg{height:auto;max-width:none;display:block;will-change:transform,filter}   /* 크기는 JS 가 이미지마다 지정 */
 #emptyMsg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
   flex-direction:column;gap:.6rem;color:var(--sub);font-size:1.4rem;text-align:center}
 #beam{position:absolute;left:50%;top:-20%;width:34%;height:140%;transform:translateX(-50%) scaleY(0);opacity:0;z-index:3;
@@ -240,7 +242,6 @@ button{font-family:inherit}
    글자 크기 배율 적용 (모든 글자는 rem 단위 → 이 한 줄로 전체 조절)
    ================================================================ */
 document.documentElement.style.fontSize = (16 * FONT_SCALE) + 'px';
-document.documentElement.style.setProperty('--img-w', IMG_WIDTH + 'px');
 
 const $ = s => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -255,7 +256,7 @@ const imgUrl = f => IMG_FOLDER + '/' + encodeURIComponent(f);
    ================================================================ */
 let LEVELS = [];      // [{A, terminal, files:[{file,name,B,w,h}]}]  A 오름차순
 let MAXA = 0;
-let STAGE_H = 0;
+let STAGE_H = 0, STAGE_W = 0;
 let TOTAL_FILES = 0;
 
 // png 이외의 파일(manifest.json 등)은 이 정규식에 맞지 않아 자동으로 무시됩니다.
@@ -521,13 +522,23 @@ function bigText(text, color, o = {}) {
 }
 
 /* ── 연출 시퀀스 ── */
+const FILEMAP = {};   // 파일명 → {w,h,...}
+// 이미지 한 장의 화면 표시 크기: IMG_WIDTH=0 이면 원본 픽셀 크기, 아니면 가로 고정 + 비율 유지
+function dispSize(f) {
+  return IMG_WIDTH > 0 ? { w: IMG_WIDTH, h: IMG_WIDTH * f.h / f.w } : { w: f.w, h: f.h };
+}
+function applyImgSize(file) {
+  const f = FILEMAP[file]; if (!f) return;
+  const d = dispSize(f);
+  swordImg.style.width = d.w + 'px'; swordImg.style.height = d.h + 'px';
+}
 function showCurrentImage() {
   swordImg.getAnimations().forEach(a => a.cancel());   // 이전 연출의 잔여 효과(fill) 제거
-  if (G.sword) { swordImg.style.display = 'block'; swordImg.src = imgUrl(G.sword.file); $('#emptyMsg').style.display = 'none'; }
+  if (G.sword) { applyImgSize(G.sword.file); swordImg.style.display = 'block'; swordImg.src = imgUrl(G.sword.file); $('#emptyMsg').style.display = 'none'; }
   else { swordImg.style.display = 'none'; $('#emptyMsg').style.display = 'flex'; }
 }
 async function setImageDecoded(file) {
-  swordImg.style.display = 'block'; swordImg.src = imgUrl(file);
+  applyImgSize(file); swordImg.style.display = 'block'; swordImg.src = imgUrl(file);
   try { await swordImg.decode(); } catch (e) {}
 }
 
@@ -551,7 +562,7 @@ async function playSuccess(oldS, newS, terminal) {
 
   // 이전 이미지를 복제해 확대하며 사라지게
   const ghost = swordImg.cloneNode(); ghost.removeAttribute('id');
-  ghost.style.cssText = 'position:absolute;left:50%;top:50%;width:var(--img-w);height:auto;transform:translate(-50%,-50%);z-index:2;pointer-events:none';
+  ghost.style.cssText = `position:absolute;left:50%;top:50%;width:${swordImg.style.width};height:${swordImg.style.height};max-width:none;transform:translate(-50%,-50%);z-index:2;pointer-events:none`;
   stageEl.appendChild(ghost);
   ghost.animate([
     { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, filter: 'brightness(1)' },
@@ -829,11 +840,15 @@ function loadFail(msg) {
   MAXA = LEVELS[LEVELS.length - 1].A;
   TOTAL_FILES = LEVELS.reduce((n, l) => n + l.files.length, 0);
 
-  // 이미지 영역 크기: 가로 IMG_WIDTH 고정, 세로는 가장 큰 이미지(또는 STAGE_HEIGHT)
-  const maxH = Math.max(...LEVELS.flatMap(l => l.files.map(f => IMG_WIDTH * f.h / f.w)));
-  STAGE_H = STAGE_HEIGHT > 0 ? STAGE_HEIGHT : Math.ceil(maxH);
+  // 이미지 영역 크기: 가장 큰 이미지에 맞춤 (가로 = IMG_WIDTH 또는 가장 넓은 원본, 세로 = 가장 높은 이미지 또는 STAGE_HEIGHT)
+  const allF = LEVELS.flatMap(l => l.files);
+  allF.forEach(f => { FILEMAP[f.file] = f; });
+  const sizes = allF.map(dispSize);
+  STAGE_W = Math.ceil(Math.max(...sizes.map(d => d.w)));
+  STAGE_H = STAGE_HEIGHT > 0 ? STAGE_HEIGHT : Math.ceil(Math.max(...sizes.map(d => d.h)));
+  document.documentElement.style.setProperty('--img-w', STAGE_W + 'px');
   stageEl.style.height = STAGE_H + 'px';
-  fxCv.width = IMG_WIDTH; fxCv.height = STAGE_H;
+  fxCv.width = STAGE_W; fxCv.height = STAGE_H;
   $('#emptyMsg').style.minHeight = '0';
 
   G = load() || freshState();
