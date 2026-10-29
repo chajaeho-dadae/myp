@@ -12,16 +12,6 @@
         #crosshair::before { top: 8px; left: 0; width: 18px; height: 2px; }
         #crosshair::after { top: 0; left: 8px; width: 2px; height: 18px; }
 
-        #top-timer-bar {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            background: rgba(5, 12, 25, 0.92); border: 2px solid rgba(0, 229, 255, 0.8);
-            padding: 8px 30px; border-radius: 30px; backdrop-filter: blur(8px);
-            color: #fff; z-index: 10; pointer-events: none;
-            box-shadow: 0 0 25px rgba(0, 229, 255, 0.4); display: flex; flex-direction: column; align-items: center;
-        }
-        .timer-title { font-size: 12px; color: #ffcc00; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold; margin-bottom: 2px; }
-        .timer-display { font-size: 38px; font-weight: 900; font-family: 'Courier New', Courier, monospace; color: #ffcc00; text-shadow: 0 0 15px rgba(255, 204, 0, 0.9); letter-spacing: 2px; }
-
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; z-index: 10; }
         .hud-panel { background: rgba(0, 20, 40, 0.8); border: 1px solid rgba(0, 200, 255, 0.4); padding: 15px 20px; border-radius: 10px; backdrop-filter: blur(4px); min-width: 250px; }
         .hud-panel h2 { font-size: 17px; color: #00e5ff; margin-bottom: 6px; }
@@ -49,18 +39,13 @@
             pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 10;
             background: rgba(0,0,0,0.85); padding: 8px 22px; border-radius: 25px; border: 1px solid #ffd700;
         }
-        #damage-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.35); pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 15; }
+        #damage-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.4); pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 15; }
     </style>
 </head>
 <body>
 
     <div id="crosshair"></div>
     <div id="damage-flash"></div>
-
-    <div id="top-timer-bar">
-        <div class="timer-title">⏱️ 작전 남은 시간 (5분)</div>
-        <div id="timer" class="timer-display">05:00</div>
-    </div>
 
     <div id="hud">
         <div class="hud-panel">
@@ -81,8 +66,8 @@
 
     <div id="overlay-screen">
         <h1 id="overlay-title">🚨 3D 도심 경찰관 시뮬레이터</h1>
-        <p id="overlay-desc1">목표: 5분 제한시간 내에 도심 속 범죄자 20명을 체포하세요.</p>
-        <p id="overlay-desc2">5분이 모두 지나면 범인들이 전부 도망치며 작전에 실패하게 됩니다!</p>
+        <p id="overlay-desc1">목표: 도심 속 범죄자 20명을 체포하세요.</p>
+        <p id="overlay-desc2">범인들이 다가와 주먹으로 공격합니다! 체력이 0이 되면 사망하여 다시 시작해야 합니다.</p>
         <p style="margin-top: 10px; color: #aaa;">조작법: W/A/S/D (이동), 마우스 (시야 조작 및 발사/타격/체포), [1]/[2] 무기교체</p>
         <button id="start-btn">작전 개시 (시작하기)</button>
     </div>
@@ -96,19 +81,17 @@
 
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
-        // --- 경찰차 배경음악 (사이렌 모티프 루프 BGM) ---
         function startPoliceBgm() {
             if (!audioCtx || isBgmPlaying) return;
             isBgmPlaying = true;
 
-            const baseNotes = [110, 110, 130.81, 146.83, 110, 110, 155.56, 146.83]; // A2, C3, D3, Eb3 Bass-line
+            const baseNotes = [110, 110, 130.81, 146.83, 110, 110, 155.56, 146.83];
             let noteIdx = 0;
 
             function playBgmBeat() {
                 if (!isBgmPlaying || gameOver) return;
                 const now = audioCtx.currentTime;
 
-                // 1. 긴장감 넘치는 베이스 리듬
                 const bassOsc = audioCtx.createOscillator();
                 const bassGain = audioCtx.createGain();
                 bassOsc.type = 'sawtooth';
@@ -120,7 +103,6 @@
                 bassOsc.start(now);
                 bassOsc.stop(now + 0.2);
 
-                // 2. 경찰차 사이렌 스윕음 효과 (8비트마다 은은하게 합성)
                 if (noteIdx % 8 === 0) {
                     const sirenOsc = audioCtx.createOscillator();
                     const sirenGain = audioCtx.createGain();
@@ -137,7 +119,7 @@
                 }
 
                 noteIdx++;
-                bgmTimer = setTimeout(playBgmBeat, 220); // 136 BPM
+                bgmTimer = setTimeout(playBgmBeat, 220);
             }
 
             playBgmBeat();
@@ -194,19 +176,18 @@
             if (!audioCtx) return;
             const now = audioCtx.currentTime;
             const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-            osc.type = 'square'; osc.frequency.setValueAtTime(160, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
-            gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.15);
+            osc.type = 'square'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.18);
+            gain.gain.setValueAtTime(0.6, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.18);
         }
 
         let score = 0;
         const targetScore = 20;
         let ammo = 10;
         let health = 100;
-        let timeRemaining = 300;
         let gameOver = false;
         let gameStarted = false;
-        let baseSuspectSpeed = 0.038;
+        let baseSuspectSpeed = 0.042;
         let currentWeapon = 'TASER';
 
         const scene = new THREE.Scene();
@@ -556,7 +537,11 @@
             if (health < 30) hpBar.style.backgroundColor = '#ef4444';
             const flash = document.getElementById('damage-flash'); flash.style.opacity = '1';
             setTimeout(() => flash.style.opacity = '0', 150);
-            if (health <= 0) endGame(false, "☠️ 체력이 소진되어 순직하셨습니다!");
+
+            // 체력 소진 시 사망 및 다시 시작
+            if (health <= 0) {
+                endGame(false, "☠️ 범인들의 집단 피격에 사망하셨습니다! 작전 실패!");
+            }
         }
 
         function showActionMsg(text) {
@@ -573,31 +558,9 @@
             document.getElementById('overlay-title').innerText = isWin ? "MISSION COMPLETE" : "GAME OVER";
             document.getElementById('overlay-title').style.color = isWin ? "#00ff88" : "#ff4444";
             document.getElementById('overlay-desc1').innerText = message;
+            document.getElementById('overlay-desc2').innerText = "클릭하여 게임을 다시 시작합니다.";
             startBtn.innerText = "다시 도전하기";
         }
-
-        setInterval(() => {
-            if (!gameStarted || gameOver) return;
-
-            timeRemaining--;
-            const mins = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
-            const secs = (timeRemaining % 60).toString().padStart(2, '0');
-            
-            const timerEl = document.getElementById('timer');
-            if (timerEl) timerEl.innerText = `
-mins:{secs}`;
-
-            if (timeRemaining < 60 && timerEl) {
-                timerEl.style.color = '#ef4444';
-                timerEl.style.textShadow = '0 0 15px rgba(239, 68, 68, 0.9)';
-            }
-
-            if (timeRemaining <= 0) {
-                suspects.forEach(s => scene.remove(s.mesh));
-                suspects.length = 0;
-                endGame(false, "⏱️ 5분 제한시간 종료! 범인들이 도망쳤습니다. 작전 실패!");
-            }
-        }, 1000);
 
         const clock = new THREE.Clock();
         function animate() {
@@ -616,12 +579,14 @@ mins:{secs}`;
                 }
             }
 
+            // 범인이 도망치거나 플레이어에게 다가와 직접 때리는 공격 로직
             suspects.forEach((suspect) => {
                 if (suspect.isDown || gameOver) return;
                 const dist = player.position.distanceTo(suspect.mesh.position);
 
-                if (dist < 15) {
-                    const dir = new THREE.Vector3().subVectors(suspect.mesh.position, player.position).setY(0).normalize();
+                if (dist < 18) {
+                    // 플레이어를 향해 돌진
+                    const dir = new THREE.Vector3().subVectors(player.position, suspect.mesh.position).setY(0).normalize();
                     moveWithCollision(suspect.mesh.position, dir.x * baseSuspectSpeed, dir.z * baseSuspectSpeed);
                     suspect.mesh.rotation.y = Math.atan2(dir.x, dir.z);
 
@@ -632,7 +597,13 @@ mins:{secs}`;
                     suspect.armR.rotation.x = Math.sin(suspect.animTime) * 0.65;
 
                     if (now - suspect.lastFootstepTime > 0.35) { playFootstepSound(); suspect.lastFootstepTime = now; }
-                    if (dist < 1.8 && now - suspect.lastAttackTime > 1.0) { takeDamage(15); suspect.lastAttackTime = now; }
+
+                    // 근접 시 주먹 타격 공격 (-15 HP)
+                    if (dist < 1.8 && now - suspect.lastAttackTime > 0.9) {
+                        takeDamage(15);
+                        showActionMsg("💥 범인의 피격 공격을 받았습니다! (-15 HP)");
+                        suspect.lastAttackTime = now;
+                    }
                 }
             });
 
