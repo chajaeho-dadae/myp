@@ -290,7 +290,7 @@ const imgUrl = f => IMG_FOLDER + '/' + encodeURIComponent(f);
 /* ================================================================
    1. 이미지 목록 파싱  (파일명 규칙: A.[B.]C.png)
    ================================================================ */
-let LEVELS = [];      // [{A, terminal, files:[{file,name,B,w,h}]}]  A 오름차순
+let LEVELS = [];      // [{A, files:[{file,name,B,term,w,h}]}]  A 오름차순 (term=true: 더 강화할 수 없는 종료 검)
 let MAXA = 0;
 let STAGE_H = 0, STAGE_W = 0;
 let TOTAL_FILES = 0;
@@ -308,25 +308,26 @@ function buildLevels(list) {
     if (!byA.has(A)) byA.set(A, []);
     byA.get(A).push({ file: f, B: m[2] !== undefined ? +m[2] : null, name: m[3] });
   }
-  const levels = [];
-  const keys = [...byA.keys()].sort((a, b) => a - b);
-  for (const A of keys) {
-    const arr = byA.get(A);
-    const terms = arr.filter(x => x.B !== null);
-    const norm  = arr.filter(x => x.B === null).sort((a, b) => a.file.localeCompare(b.file, 'ko'));
-    if (levels.length && levels[levels.length - 1].terminal) {
-      console.warn(`[경고] 종료 단계 뒤의 ${A}단계 파일은 무시합니다:`, arr.map(x => x.file));
-      continue;
-    }
-    if (terms.length) {
-      if (norm.length) console.warn(`[경고] ${A}단계에 종료/일반 파일이 섞여 있어 종료 파일만 사용합니다.`);
-      levels.push({ A, terminal: true, files: terms });
-    } else {
-      if (norm.length > 1) console.warn(`[경고] ${A}단계에 일반 파일이 ${norm.length}개 있습니다 (중복 없음 가정). 첫 번째만 사용:`, norm[0].file);
-      levels.push({ A, terminal: false, files: [norm[0]] });
-    }
+  // 같은 단계의 파일은 일반(계속 강화 가능)·종료(B 숫자 있음)를 모두 보관합니다.
+  // 종료 여부(f.term)는 finalizeLevels() 가 이미지 로드 후 확정합니다.
+  return [...byA.keys()].sort((a, b) => a - b).map(A => ({
+    A, files: byA.get(A).sort((a, b) => a.file.localeCompare(b.file, 'ko'))
+  }));
+}
+
+// 이미지 로드 검증 후 호출: 강화 사슬(일반 파일이 이어지는 단계)을 확정하고 각 파일의 종료 여부를 표시
+//  - 어떤 단계에 일반 파일이 하나도 없으면 그 뒤 단계에는 도달할 수 없으므로 잘라냅니다.
+//  - 마지막 단계의 파일은 (다음 단계가 없으므로) 모두 종료 파일로 취급합니다.
+function finalizeLevels(levels) {
+  const out = [];
+  for (const l of levels) {
+    out.push(l);
+    if (!l.files.some(f => f.B === null)) break;
   }
-  return levels;
+  if (out.length < levels.length)
+    console.warn(`[경고] ${out[out.length - 1].A}단계에 일반 파일(계속 강화 가능)이 없어 이후 ${levels.length - out.length}개 단계는 도달할 수 없으므로 무시합니다.`);
+  out.forEach((l, i) => l.files.forEach(f => { f.term = f.B !== null || i === out.length - 1; }));
+  return out;
 }
 
 function preloadImages(levels, onProgress) {
@@ -346,7 +347,12 @@ function preloadImages(levels, onProgress) {
    ================================================================ */
 const lvIdx = A => LEVELS.findIndex(l => l.A === A);
 const lv    = A => LEVELS[lvIdx(A)];
+// 강화 성공 시: 다음 단계의 파일(일반+종료) 중 n개 균등 확률(1/n)로 결정
 const pickFile = level => level.files[Math.floor(Math.random() * level.files.length)];
+// 시작·하락 시: 계속 강화 가능한 일반 파일만 대상
+const pickNormal = level => { const n = level.files.filter(f => !f.term); return pickFile({ files: n.length ? n : level.files }); };
+// 현재 검이 종료 검인지 (파일명 규칙 A.B.이름.png 의 B 유무 / 마지막 단계)
+const isTerm = s => { const f = s && FILEMAP[s.file]; return !!(f && f.term); };
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const L = (pair, d) => lerp(pair[0], pair[1], d);
@@ -382,7 +388,7 @@ function freshState(keepCodex) {
   return g;
 }
 function giveLowestSword(g) {
-  const l = LEVELS[0], f = pickFile(l);
+  const l = LEVELS[0], f = pickNormal(l);
   g.sword = { A: l.A, file: f.file, spent: 0 };
   g.codex[f.file] = 1;
 }
@@ -935,7 +941,7 @@ async function doEnhance() {
   if (busy || !G.sword) return;
   sfx.click();
   const A = G.sword.A, level = lv(A);
-  if (level.terminal) { sfx.error(); toast('최종 단계 검입니다. 판매만 가능합니다.'); return; }
+  if (isTerm(G.sword)) { sfx.error(); toast('최종 단계 검입니다. 판매만 가능합니다.'); return; }
   const cost = costOf(A), need = stoneNeedOf(A);
   if (G.gold < cost)    { sfx.error(); toast('골드가 부족합니다.'); return; }
   if (G.stones < need)  { sfx.error(); toast('강화석이 부족합니다.'); return; }
@@ -952,7 +958,7 @@ async function doEnhance() {
     G.sword = { A: next.A, file: f.file, spent: oldS.spent }; G.stats.success++;
     const isNew = !G.codex[f.file]; G.codex[f.file] = 1;
     render();
-    await playSuccess(oldS, G.sword, next.terminal);
+    await playSuccess(oldS, G.sword, !!f.term);
     if (isNew) toast('📖 도감 등록! ' + f.name);
   } else {
     let zone = zoneOf(A);
@@ -964,7 +970,7 @@ async function doEnhance() {
       const idx = lvIdx(A), prev = LEVELS[Math.max(0, idx - 1)];
       bigText(idx > 0 ? `강화 실패\n${A} → ${prev.A} 단계 하락` : '강화 실패\n단계 유지', '#ffb36b', { dur: 1400, size: '3.4rem' });
       await playFail('drop');
-      if (idx > 0) { const f = pickFile(prev); G.sword = { A: prev.A, file: f.file, spent: G.sword.spent }; G.codex[f.file] = 1; await setImageDecoded(f.file); }
+      if (idx > 0) { const f = pickNormal(prev); G.sword = { A: prev.A, file: f.file, spent: G.sword.spent }; G.codex[f.file] = 1; await setImageDecoded(f.file); }
     } else {
       await playDestroy();
       G.sword = null;
@@ -975,7 +981,7 @@ async function doEnhance() {
 
 function doSell() {
   if (busy || !G.sword) return; sfx.click();
-  const { A } = G.sword, term = lv(A).terminal, refund = refundOf(G.sword), price = sellTotalOf(G.sword, term);
+  const { A } = G.sword, term = isTerm(G.sword), refund = refundOf(G.sword), price = sellTotalOf(G.sword, term);
   G.gold += price; let msg = `+${fmt(price)} 골드 획득` + (refund ? ` (강화비 환급 +${fmt(refund)})` : '');
   if (!term && A < STONE_FROM_STAGE && Math.random() < SELL_STONE_DROP) { G.stones++; msg += ' · 💎 강화석 1개 드랍!'; }
   setTimeout(sfx.coin, 40); G.sword = null;
@@ -984,7 +990,7 @@ function doSell() {
 function doDismantle() {
   if (busy || !G.sword) return; sfx.click();
   const { A } = G.sword;
-  if (!canDismantle(A, lv(A).terminal)) { sfx.error(); toast(`분해는 ${DISMANTLE_MIN_STAGE}~${STONE_FROM_STAGE - 1}단계 검만 가능합니다.`); return; }
+  if (!canDismantle(A, isTerm(G.sword))) { sfx.error(); toast(`분해는 ${DISMANTLE_MIN_STAGE}~${STONE_FROM_STAGE - 1}단계 검만 가능합니다.`); return; }
   const n = dismantleOf(A); G.stones += n; G.sword = null;
   setTimeout(sfx.crunch, 40); swordFadeOut(); toast(`💎 강화석 ${n}개 획득`); afterAction();
 }
@@ -1035,7 +1041,7 @@ function render() {
     $('#iCost').textContent = '-'; $('#iCostSub').textContent = '';
     $('#iSell').textContent = '-'; $('#iSellSub').textContent = '';
   } else {
-    const level = lv(s.A), term = level.terminal;
+    const level = lv(s.A), term = isTerm(s);
     const f = level.files.find(x => x.file === s.file);
     $('#iName').innerHTML = esc(f ? f.name : '?') + (term ? '<span class="badge b-max">MAX</span>' : '');
     $('#iStage').textContent = `현재 ${s.A}단계` + (term ? ' · 강화 종료 (판매만 가능)' : ` · 최대 ${MAXA}단계`);
@@ -1057,7 +1063,7 @@ function render() {
   }
 
   // 버튼 상태 / 보조 문구
-  const has = !!s, term = has && lv(s.A).terminal;
+  const has = !!s, term = has && isTerm(s);
   $('#bEnh').disabled  = busy || !has || term;
   $('#bSell').disabled = busy || !has;
   $('#bDis').disabled  = busy || !has || !canDismantle(s ? s.A : 0, term);
@@ -1077,10 +1083,10 @@ function openCodex() {
   const got = Object.keys(G.codex).length;
   $('#cxCount').textContent = `${got} / ${TOTAL_FILES} 수집`;
   $('#cxBody').innerHTML = LEVELS.map(l =>
-    `<div class="cx-row"><h5>${l.A}단계${l.terminal ? ' (최종)' : ''}</h5><div class="cx-grid">` +
+    `<div class="cx-row"><h5>${l.A}단계</h5><div class="cx-grid">` +
     l.files.map(f => {
       const on = !!G.codex[f.file];
-      return `<div class="cx-item ${on ? 'on' : 'locked'}"><div class="th"><img src="${imgUrl(f.file)}" alt="" loading="lazy"></div>${on ? esc(f.name) : '???'}</div>`;
+      return `<div class="cx-item ${on ? 'on' : 'locked'}"><div class="th"><img src="${imgUrl(f.file)}" alt="" loading="lazy"></div>${on ? esc(f.name) : '???'}${f.term ? '<br><span style="color:var(--gold)">★ 종착</span>' : ''}</div>`;
     }).join('') + '</div></div>').join('');
   $('#codexModal').classList.add('open');
 }
@@ -1136,6 +1142,7 @@ function loadFail(msg) {
   LEVELS = LEVELS.filter(l => l.files.length);
   if (!LEVELS.length) { loadFail('불러올 수 있는 이미지가 하나도 없습니다.\n폴더 이름(' + IMG_FOLDER + ')과 파일명을 확인하세요.'); return; }
 
+  LEVELS = finalizeLevels(LEVELS);   // 강화 사슬 확정 + 파일별 종료 여부(term) 표시
   MAXA = LEVELS[LEVELS.length - 1].A;
   TOTAL_FILES = LEVELS.reduce((n, l) => n + l.files.length, 0);
 
