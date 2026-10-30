@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>전찬우 보스전 - 탄막</title>
+<title>친구 보스전 - 탄막</title>
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#e6f0e4;--ink:#1d2a3a;--mute:#5c6b7a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -40,13 +40,13 @@ button:focus-visible{outline:3px solid #f2b632;outline-offset:2px}
 </head>
 <body>
 <div class="wrap">
-<canvas id="c" width="480" height="640" tabindex="0" aria-label="전찬우 보스전 게임 화면"></canvas>
+<canvas id="c" width="480" height="640" tabindex="0" aria-label="친구 보스전 게임 화면"></canvas>
 <canvas id="c3" width="480" height="640" aria-hidden="true"></canvas>
 <div id="fl"></div>
 <div id="mg"><div id="mgt"></div><div class="rg" id="rg1"></div><div class="rg" id="rg2"></div></div>
 <div id="tbc">▶ TO BE CONTINUED</div>
 <div class="ov ready" id="ov">
-  <div><h1 id="ttl">전찬우</h1><p id="sub" style="color:#ff8a78">속보: 전찬우가 지구를 침략했다!</p></div>
+  <div><h1 id="ttl">친구</h1><p id="sub" style="color:#ff8a78">속보: 친구가 지구를 침략했다!</p></div>
   <div class="bot">
     <div class="seg" id="seg" role="group" aria-label="난이도">
       <button data-d="0" aria-pressed="false">쉬움</button>
@@ -73,7 +73,7 @@ function start(){
 }
 function showOv(win){
   st=win?"win":"lose";ov.hidden=false;ov.className="ov";
-  sub.style.color="";ttl.textContent=win?"승리!":"패배...";sub.textContent=win?"전찬우를 쓰러뜨렸다":"전찬우는 아직 건재하다";go.textContent="다시 도전";
+  sub.style.color="";ttl.textContent=win?"승리!":"패배...";sub.textContent=win?"친구를 쓰러뜨렸다":"친구는 아직 건재하다";go.textContent="다시 도전";
 }
 function laser(x,y,a,w,warn,fire,o){o=o||{};lasers.push({x:x,y:y,a:a,w:w,warn:warn,fire:fire,t:0,ray:!!o.ray,track:!!o.track,off:o.off||0})}
 function spawn(x,y,a,s,c){s*=SPD[diff]*BS[phase-1];bul.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,c:c||0})}
@@ -222,7 +222,7 @@ function drawBoss(x,y,s,ph,tt,fl,lx,ly,nm){
   g.fillStyle="#f7f3d8";
   for(i=-3;i<=3;i++){g.beginPath();g.moveTo(i*9-4,15);g.lineTo(i*9+4,15);g.lineTo(i*9,15+8);g.fill()}
   for(i=-2;i<=2;i++){g.beginPath();g.moveTo(i*11-4,16+open*1.5);g.lineTo(i*11+4,16+open*1.5);g.lineTo(i*11,16+open*1.5-8);g.fill()}
-  if(nm){g.textAlign="center";g.font="28px 'Black Han Sans','Apple SD Gothic Neo',sans-serif";g.lineWidth=7;g.strokeStyle="#1d2a3a";g.strokeText("전찬우",0,-100);g.fillStyle=ph>=3?"#ff6b52":"#f2b632";g.fillText("전찬우",0,-100)}
+  if(nm){g.textAlign="center";g.font="28px 'Black Han Sans','Apple SD Gothic Neo',sans-serif";g.lineWidth=7;g.strokeStyle="#1d2a3a";g.strokeText("친구",0,-100);g.fillStyle=ph>=3?"#ff6b52":"#f2b632";g.fillText("친구",0,-100)}
   g.restore();
 }
 var T3={ok:false},saved=0;
@@ -270,7 +270,7 @@ function init3(){
     for(i=0,j=0;i<120&&j<28;i++){var fx=rnd(-38,38),fz=rnd(-44,0),ok=Math.abs(fx)>6&&(fz>-24||Math.abs(fx)>16);
       for(k=0;k<6;k++){if(Math.abs(fx-TG[k][0])<8&&Math.abs(fz-TG[k][1])<8)ok=false}
       if(ok){mkB(fx,fz,rnd(4,7),rnd(6,20),rnd(4,7));j++}}
-    // 전찬우
+    // 친구
     var ch=new THREE.Group(),bm=M(0x9c1f33,0x330008),arms=[],tents=[],spM=M(0x6d1424,0x200008),hornM=M(0xe8dcc0,0x221a10);
     var bd=new THREE.Mesh(new THREE.IcosahedronGeometry(2.4,2),bm);bd.scale.set(1.05,0.95,0.8);ch.add(bd);
     var outM=new THREE.MeshBasicMaterial({color:0x1d2a3a,side:THREE.BackSide}),ob=new THREE.Mesh(bd.geometry,outM);ob.scale.set(1.11,1.0,0.85);ch.add(ob);
@@ -379,7 +379,7 @@ function init3(){
       if(cur>=0&&!imp){b=BL[cur];cxs+=(b.x*0.5-cxs)*Math.min(1,dt*2.5);czs+=(Math.max(-20,Math.min(-9,b.z-4))-czs)*Math.min(1,dt*2.5)}
       // 판정
       for(i=0;i<5;i++){e=E[i];if(!e.done&&t>=e.L){e.done=true;b=BL[i];if(e.res===1){saved++;shieldT=0;shield.position.set(b.x,b.h*0.5,b.z);rc=1;shk=Math.max(shk,0.35)}else{breakB(b);lives=Math.max(1,lives-1);fl.style.background='#e02020';flv=Math.max(flv,0.5);shk=Math.max(shk,0.9)}}}
-      // 전찬우
+      // 친구
       if(!shat){
         var jt=imp?0.25:0.1;
         ch.scale.setScalar(2*(1+0.04*Math.sin(t*14)));
@@ -488,9 +488,9 @@ function finale(){
     for(i=0;i<3;i++){var rt=t-3-i*0.18;if(rt>0&&rt<0.8){g.strokeStyle="rgba(255,90,100,"+(1-rt/0.8)*0.8+")";g.lineWidth=5;g.beginPath();g.arc(ox,oy,rt*340,0,6.283);g.stroke()}}
     drawOverlord(ox,oy,0.2+0.95*e,clk,e)}
   var cap="",cc="#ff6b52";
-  if(t<1.7)cap="전찬우가 폭주한다!";
+  if(t<1.7)cap="친구가 폭주한다!";
   else if(t<2.6){cap="무언가 다가온다...";cc="#e8f1e6"}
-  else if(t<3.6){cap="일격에 전찬우가 쓰러졌다!";cc="#ffffff"}
+  else if(t<3.6){cap="일격에 친구가 쓰러졌다!";cc="#ffffff"}
   else{cap="정체불명의 괴물이 눈앞에 나타났다";cc="#f2b632"}
   
   for(i=0;i<parts.length;i++){pr=parts[i];g.globalAlpha=Math.max(0,pr.life/pr.max);g.fillStyle=pr.c;g.beginPath();g.arc(pr.x,pr.y,pr.r,0,6.283);g.fill()}
@@ -569,14 +569,14 @@ function draw(){
   g.fillText(h,16,H-14);
   g.textAlign="right";g.fillText(phase>=3?"마지막 페이즈":"페이즈 "+phase,W-16,H-14);
   if(banner>0){g.save();g.globalAlpha=Math.min(1,banner);g.textAlign="center";g.font="46px 'Black Han Sans',sans-serif";g.lineWidth=8;g.strokeStyle="#1d2a3a";g.fillStyle=phase>=3?"#ff6b52":"#f2b632";var bt=phase>=3?"마지막 페이즈":phase+"페이즈";g.strokeText(bt,W/2,H/2);g.fillText(bt,W/2,H/2);g.restore()}
-  if(minions.length&&st==="play"){g.textAlign="center";g.font="17px Jua,sans-serif";g.fillStyle="#7be0c3";g.fillText("부하를 처치하세요! 전찬우는 무적",W/2,H-40)}
+  if(minions.length&&st==="play"){g.textAlign="center";g.font="17px Jua,sans-serif";g.fillStyle="#7be0c3";g.fillText("부하를 처치하세요! 친구는 무적",W/2,H-40)}
   if(smn>0){g.save();g.globalAlpha=Math.min(1,smn);g.textAlign="center";g.font="42px 'Black Han Sans',sans-serif";g.lineWidth=8;g.strokeStyle="#1d2a3a";g.fillStyle="#7be0c3";g.strokeText("부하 소환!",W/2,H/2-60);g.fillText("부하 소환!",W/2,H/2-60);g.restore()}
   for(i=0;i<parts.length;i++){var pr=parts[i];g.globalAlpha=Math.max(0,pr.life/pr.max);g.fillStyle=pr.c;g.beginPath();g.arc(pr.x,pr.y,pr.r,0,6.283);g.fill()}
   g.globalAlpha=1;
   if(st==="dying"&&!use3d)finale();
   if(st==="win"&&ox>=0&&!use3d)drawOverlord(ox,oy,1.15,clk,1);
   if(false){var fa=1-(dt0-2.4)/0.6;if(fa>0){g.fillStyle="rgba(255,255,255,"+fa+")";g.fillRect(0,0,W,H)}
-    if(dt0>2.9){g.save();g.globalAlpha=Math.min(1,(dt0-2.9)*2);g.textAlign="center";g.font="46px 'Black Han Sans',sans-serif";g.lineWidth=8;g.strokeStyle="#1d2a3a";g.fillStyle="#f2b632";g.strokeText("전찬우 격파!",W/2,H/2-20);g.fillText("전찬우 격파!",W/2,H/2-20);g.restore()}}
+    if(dt0>2.9){g.save();g.globalAlpha=Math.min(1,(dt0-2.9)*2);g.textAlign="center";g.font="46px 'Black Han Sans',sans-serif";g.lineWidth=8;g.strokeStyle="#1d2a3a";g.fillStyle="#f2b632";g.strokeText("친구 격파!",W/2,H/2-20);g.fillText("친구 격파!",W/2,H/2-20);g.restore()}}
 }
 var last=0;
 function loop(ts){
