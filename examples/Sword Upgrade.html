@@ -759,6 +759,7 @@ const MG_DEFS = {
               continue;
             }
             const active = t >= h.spawn;
+            if (!active) continue;   // 아직 차례가 아닌 원은 숨김 (현재 턴의 원 하나만 표시)
             c.save();
             c.lineWidth = 4; c.strokeStyle = active ? '#ffb400' : 'rgba(255,180,0,.25)';
             c.fillStyle = active ? 'rgba(255,180,0,.18)' : 'rgba(255,180,0,.05)';
