@@ -72,12 +72,16 @@ button{
  </div>
 </div>
 <style>
-.stageTile{min-height:88px;border:2px solid #cbd8ed;border-radius:13px;background:#fff;color:#183b66;font-size:17px;font-weight:900;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.stageTile{min-height:142px;padding:5px;border:2px solid #cbd8ed;border-radius:13px;background:#fff;color:#183b66;font-size:16px;font-weight:900;cursor:pointer;overflow:hidden;transition:transform .15s,box-shadow .15s}
+.stagePreview{display:block;width:100%;height:68px;object-fit:cover;border-radius:8px;margin-bottom:5px;border:1px solid #ffffff99}
+.stageTileDetails{line-height:1.35}
+.stageTileDetails small{font-size:11px;font-weight:700}
+.stageCoinCount{display:inline-block;margin-top:2px;color:#9a6b00;font-size:12px!important} 
 .stageTile:not(:disabled):hover{transform:translateY(-3px);box-shadow:0 7px 16px #1d467522;border-color:#2868c7}
 .stageTile.cleared{background:linear-gradient(145deg,#e2ffef,#f7fffb);border-color:#45bb86}
 .stageTile.current{background:linear-gradient(145deg,#eaf3ff,#fff);border-color:#2868c7}
 .stageTile:disabled{background:#e7eaf1;color:#8993a5;border-color:#d4d9e2;cursor:not-allowed}
-@media(max-width:560px){#stageChoices{grid-template-columns:repeat(2,minmax(0,1fr))!important}.stageTile{min-height:70px}}
+@media(max-width:560px){#stageChoices{grid-template-columns:repeat(2,minmax(0,1fr))!important}.stageTile{min-height:132px}.stagePreview{height:62px}}
 </style>
 
 <div id="skinScreen">
@@ -153,10 +157,74 @@ function showStageSelect(title="🗺️ 스테이지 선택",desc="클리어한 
    const btn=document.createElement("button");
    btn.className="stageTile"+(cleared?" cleared":"")+(i===stage?" current":"");
    btn.disabled=!unlocked;
-   btn.innerHTML=unlocked
+
+   // 각 스테이지의 실제 테마 색과 발판 배치를 축소해 미리보기로 표시
+   const preview=document.createElement("canvas");
+   preview.className="stagePreview";
+   preview.width=300; preview.height=82;
+   const pc=preview.getContext("2d");
+   const th=themes[i], level=stages[i];
+   const bg=pc.createLinearGradient(0,0,0,82);
+   bg.addColorStop(0,th.sky1); bg.addColorStop(1,th.sky2);
+   pc.fillStyle=bg; pc.fillRect(0,0,300,82);
+
+   // 테마별 배경 장식
+   if(["stars","space","final"].includes(th.decor)){
+     for(let n=0;n<32;n++){
+       pc.fillStyle=n%4===0?"#ffe88a":"#ffffff";
+       pc.globalAlpha=.45+(n%4)*.12;
+       pc.fillRect((n*37+11)%300,(n*23+7)%82,2,2);
+     }
+     pc.globalAlpha=1;
+     if(th.decor==="space"||th.decor==="final"){
+       pc.fillStyle=th.decor==="space"?"#9e8cff":"#ff9de1";
+       pc.beginPath();pc.arc(245,25,16,0,Math.PI*2);pc.fill();
+     }
+   } else if(["lava","volcano"].includes(th.decor)){
+     pc.fillStyle="#241b27";pc.beginPath();pc.moveTo(0,65);
+     pc.lineTo(45,28);pc.lineTo(82,62);pc.lineTo(138,18);
+     pc.lineTo(190,64);pc.lineTo(245,30);pc.lineTo(300,65);
+     pc.lineTo(300,82);pc.lineTo(0,82);pc.fill();
+     pc.strokeStyle="#ff8b35";pc.lineWidth=2;
+     pc.beginPath();pc.moveTo(25,78);pc.lineTo(35,68);pc.lineTo(32,61);pc.stroke();
+   } else if(th.decor==="forest"||th.decor==="cloud"){
+     if(th.decor==="forest"){
+       for(let x=10;x<300;x+=38){
+         pc.fillStyle="#174d3d";pc.beginPath();pc.moveTo(x,65);
+         pc.lineTo(x+12,25+(x%3)*3);pc.lineTo(x+25,65);pc.fill();
+       }
+     } else {
+       pc.fillStyle="#ffffff99";
+       [[35,17],[145,20],[245,14]].forEach(([x,y])=>{
+         pc.beginPath();pc.arc(x,y,8,0,Math.PI*2);pc.arc(x+10,y-3,10,0,Math.PI*2);pc.arc(x+20,y,7,0,Math.PI*2);pc.fill();
+       });
+     }
+   } else if(th.decor==="cave"){
+     pc.fillStyle="#211e35";
+     for(let x=0;x<300;x+=30){pc.beginPath();pc.moveTo(x,0);pc.lineTo(x+12,0);pc.lineTo(x+18,15);pc.lineTo(x+25,0);pc.fill();}
+   } else if(th.decor==="snow"||th.decor==="storm"){
+     pc.fillStyle="#ffffffaa";
+     for(let n=0;n<24;n++){pc.beginPath();pc.arc((n*47)%300,(n*29)%82,1.5,0,Math.PI*2);pc.fill();}
+   }
+
+   // 해당 스테이지의 발판 위치를 축소해서 그리기
+   for(const q of level.platforms){
+     const x=q[0]/3, y=q[1]/6.1, w=q[2]/3, h=Math.max(3,q[3]/3);
+     pc.fillStyle=th.platform;pc.fillRect(x,y,w,h);
+     pc.fillStyle=th.top;pc.fillRect(x,y,w,2);
+   }
+   pc.fillStyle="#ffffff22";pc.fillRect(0,0,300,82);
+   btn.appendChild(preview);
+
+   const coinCount=collectedCoinsByStage[i].filter(Boolean).length;
+   const details=document.createElement("div");
+   details.className="stageTileDetails";
+   details.innerHTML=unlocked
     ? `${cleared?"✅ ":""}STAGE 
-i+1<br><small>{cleared?"클리어 · 다시 플레이":(i===maxUnlockedStage-1?"도전 가능":"열림")}</small>`
-    : `🔒 STAGE ${i+1}<br><small>잠김</small>`;
+i+1<br><small>{cleared?"클리어 · 다시 플레이":(i===maxUnlockedStage-1?"도전 가능":"열림")}</small><br><small class="stageCoinCount">🪙 ${coinCount}/3</small>`
+    : `🔒 STAGE ${i+1}<br><small>잠김</small><br><small class="stageCoinCount">🪙 ${coinCount}/3</small>`;
+   btn.appendChild(details);
+
    if(unlocked) btn.addEventListener("click",()=>{
      stage=i;
      stageScreen.style.display="none";
@@ -307,32 +375,44 @@ const coinRouteSpecs = [
  [[100,315,48,16],[200,245,48,16],[300,300,48,16],[405,215,48,16],[515,275,48,16],[625,225,48,16]],
  [[95,320,46,16],[190,250,46,16],[285,305,46,16],[385,220,46,16],[490,280,46,16],[595,230,46,16],[700,275,46,16]]
 ];
-const coinRoutes = coinRouteSpecs.map((platforms, si) => ({
- platforms,
- coins: platforms.map((p, i) => ({x:p[0]+12, y:p[1]-23, r:9, got:false, phase:i*1.7+si})),
- // route hazards make coin collection a risk/reward choice, while leaving a safe line around them
- hazards: platforms.filter((p,i)=>i===1||i===3).map((p,i)=>({type:"spike",x:p[0]+p[2]-14,y:p[1]-18,w:12,h:18,coinRouteHazard:true}))
-}));
-let totalCoins = 0;
-let stageCoinsCollected = 0;
+const coinRoutes = coinRouteSpecs.map((platforms, si) => {
+ // 코인 전용 발판은 스테이지마다 3개만 둬서 화면을 단정하게 유지
+ const secretPlatform=[390+(si%3)*18,455,82,12];
+ const routePlatforms=[platforms[1],platforms[Math.min(3,platforms.length-1)],secretPlatform];
+ return {
+  platforms:routePlatforms,
+  secretPlatformIndex:2,
+  coins:routePlatforms.map((q,i)=>({
+   x:q[0]+q[2]/2,y:q[1]-23,r:9,got:false,phase:i*1.7+si,hidden:i===2
+  })),
+  // 추가 코인 루트 함정은 줄이고, 기본 스테이지의 함정과 점프 간격으로 난이도 유지
+  hazards:[]
+ };
+});
+let collectedCoinsByStage=Array.from({length:10},()=>[false,false,false]);
+try{const saved=JSON.parse(localStorage.getItem("jumpMapCoinsByStage")||"null");if(Array.isArray(saved))collectedCoinsByStage=saved.slice(0,10).map(a=>[0,1,2].map(i=>!!(a&&a[i])));}catch(e){}
+let totalCoins=collectedCoinsByStage.reduce((n,a)=>n+a.filter(Boolean).length,0);
+let stageCoinsCollected=0;
+function saveCoinProgress(){try{localStorage.setItem("jumpMapCoinsByStage",JSON.stringify(collectedCoinsByStage));}catch(e){}totalCoins=collectedCoinsByStage.reduce((n,a)=>n+a.filter(Boolean).length,0);}
+
 function stagePlatforms(){
  return stages[stage].platforms.concat(coinRoutes[stage].platforms);
 }
 function loadStage(){
  const s=stages[stage];
- coinRoutes[stage].coins.forEach(c=>c.got=false);
- stageCoinsCollected=0;
+ coinRoutes[stage].coins.forEach((c,i)=>c.got=!!collectedCoinsByStage[stage][i]);
+ stageCoinsCollected=collectedCoinsByStage[stage].filter(Boolean).length;
  for(const t of s.traps) if(t.type==="moving") t.dir=1;
  player.x=35;player.y=390;player.vx=0;player.vy=0;
  gameOver=false;stageClear=false;
  fireworks=[];confetti=[];celebrationFrames=0;fireworkTimer=0;
  stageFrames=0; stageTime=Math.max(22,45-stage*2.5);
  stageText.textContent=`STAGE ${stage+1} / 10 · ${themes[stage].name}`;
- document.getElementById("coinHud").textContent=`🪙 코인 totalCoins·이번단계0/{coinRoutes[stage].coins.length}`;
+ document.getElementById("coinHud").textContent=`🪙 전체 ${totalCoins}/30 · 이번 단계 ${stageCoinsCollected}/3`;
  message.textContent=`⭐ 스테이지 ${stage+1} 시작! 제한 시간 ${Math.ceil(stageTime)}초`;
 }
 
-function restartStage(){totalCoins=Math.max(0,totalCoins-stageCoinsCollected);stageCoinsCollected=0;allClear=false;fireworks=[];confetti=[];celebrationFrames=0;loadStage()}
+function restartStage(){allClear=false;fireworks=[];confetti=[];celebrationFrames=0;loadStage()}
 
 function overlap(a,b){
  return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
@@ -363,7 +443,7 @@ function update(){
    gameOver=true; message.textContent="⏱️ 시간 초과! Enter 키로 다시 도전하세요."; return;
  }
  stageText.textContent=`STAGE ${stage+1} / 10 · ${themes[stage].name} · ${Math.ceil(stageTime-stageFrames/60)}초`;
- document.getElementById("coinHud").textContent=`🪙 코인 ${totalCoins} · 이번 단계 stageCoinsCollected/{coinRoutes[stage].coins.length}`;
+ document.getElementById("coinHud").textContent=`🪙 전체 ${totalCoins}/30 · 이번 단계 ${stageCoinsCollected}/3`;
 
  player.vx=0;
  if(keys.ArrowLeft||keys.a)player.vx=-player.speed;
@@ -411,9 +491,12 @@ function update(){
    if(!c.got){
      const cb={x:c.x-c.r,y:c.y-c.r,w:c.r*2,h:c.r*2};
      if(overlap(player,cb)){
-       c.got=true;totalCoins++;stageCoinsCollected++;
-       message.textContent=`🪙 코인 획득! 이번 단계 stageCoinsCollected/{coinRoutes[stage].coins.length}`;
-       document.getElementById("coinHud").textContent=`🪙 코인 ${totalCoins} · 이번 단계 stageCoinsCollected/{coinRoutes[stage].coins.length}`;
+       c.got=true;
+       collectedCoinsByStage[stage][coinRoutes[stage].coins.indexOf(c)]=true;
+       saveCoinProgress();
+       stageCoinsCollected=collectedCoinsByStage[stage].filter(Boolean).length;
+       message.textContent=`🪙 코인 획득! 이번 단계 ${stageCoinsCollected}/3`;
+       document.getElementById("coinHud").textContent=`🪙 전체 ${totalCoins}/30 · 이번 단계 ${stageCoinsCollected}/3`;
      }
    }
  }
@@ -427,14 +510,14 @@ function update(){
    try{localStorage.setItem("jumpMapMaxUnlocked",String(maxUnlockedStage));}catch(e){}
    if(stage===9){
      allClear=true;
-     message.textContent=`🎉🎉🎉 10단계 모두 클리어! 코인 ${totalCoins}개 획득! 축하합니다! 🎆`;
+     message.textContent=`🎉🎉🎉 10단계 모두 클리어! 코인 ${totalCoins}/30개 획득! 축하합니다! 🎆`;
      setTimeout(()=>{
        if(allClear) showStageSelect("🏆 전체 클리어!","모든 스테이지를 열었어요. 원하는 스테이지를 골라 다시 플레이하세요!");
      },1800);
    }else{
      message.textContent=`🎉 스테이지 ${stage+1} 클리어! 스테이지 선택 화면에서 다음 단계 또는 이전 단계를 고를 수 있어요.`;
      setTimeout(()=>{
-       if(stageClear&&!allClear) showStageSelect(`🎉 스테이지 ${stage+1} 클리어!`,`코인 ${totalCoins}개 · 다음 스테이지가 열렸어요. 원하는 열린 스테이지를 선택하세요.`);
+       if(stageClear&&!allClear) showStageSelect(`🎉 스테이지 ${stage+1} 클리어!`,`이번 스테이지 코인 ${stageCoinsCollected}/3 · 전체 ${totalCoins}/30개 · 다음 스테이지가 열렸어요.`);
      },1400);
    }
  }
@@ -749,16 +832,20 @@ function draw(){
  for(let i=0;i<s.platforms.length;i++) drawPlatform(s.platforms[i],i,theme);
  // 코인 루트는 가장자리에 금빛 라인이 들어간 좁은 보조 발판으로 표시
  for(let i=0;i<coinRoutes[stage].platforms.length;i++){
-   const p=coinRoutes[stage].platforms[i];
-   drawPlatform(p, i+s.platforms.length, theme);
+   const p=coinRoutes[stage].platforms[i],secret=i===coinRoutes[stage].secretPlatformIndex;
+   if(secret&&player.y<300)continue;
+   drawPlatform(p,i+s.platforms.length,theme);
    ctx.save();
-   ctx.strokeStyle="#ffd84a";ctx.lineWidth=2;ctx.shadowColor="#ffc928";ctx.shadowBlur=8;
+   ctx.strokeStyle=secret?"#83cfc8":"#d8bd68";
+   ctx.lineWidth=1;
+   ctx.globalAlpha=secret?0.8:0.65;
    ctx.beginPath();ctx.moveTo(p[0]+5,p[1]+2);ctx.lineTo(p[0]+p[2]-5,p[1]+2);ctx.stroke();
+   if(secret&&player.y>=300){ctx.fillStyle="#b9fff7";ctx.font="bold 8px sans-serif";ctx.textAlign="center";ctx.fillText("숨겨진 발판",p[0]+p[2]/2,p[1]-5);}
    ctx.restore();
  }
  // 코인은 회전하는 듯한 금빛 링과 반짝임으로 표시
  for(const c of coinRoutes[stage].coins){
-   if(c.got) continue;
+   if(c.got||(c.hidden&&player.y<300))continue;
    const pulse=1+Math.sin(stageFrames*.12+c.phase)*.12;
    ctx.save();ctx.translate(c.x,c.y);ctx.scale(pulse,1);
    ctx.shadowColor="#ffd83d";ctx.shadowBlur=15;
